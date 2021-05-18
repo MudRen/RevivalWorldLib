@@ -14,22 +14,19 @@
 #include <ansi.h>
 #include <inherit.h>
 
-inherit BULLETIN_BOARD;
+inherit STANDARD_BULLETIN_BOARD;
 
 void create()
 {
-	set_idname(HIG"board"NOR GRN" of player"NOR, HIG"玩家"NOR GRN"留言"NOR);
+	set_idname(HIG"player"NOR GRN" board"NOR, HIG"玩家"NOR GRN"留言"NOR);
 	
+	set_temp("decorated", 1);
+
 	// 利用 shadow_ob 技術來做分散式公佈欄, 即時資料皆儲存於 shadow_ob 上
-	if( clonep() ) 
-		set("shadow_ob", find_object(base_name(this_object())));
-	else
-	{
-		set("boardid", "player");
-		set("capacity", 2000);
+	if( this_object()->set_shadow_ob() ) return;
 		
-		initialize_board();
-	}
-	startup_action();
+	set("board_id", "player");
+	
+	set("mass", -1);
 }
 

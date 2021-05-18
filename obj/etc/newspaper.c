@@ -87,6 +87,7 @@ void do_readpaper(object me, string arg)
 {
 	int i;
 	array newsd_news, real_news;
+	string popproduct;
 	string section, tnews="", onews="", rnews="", pop_product = "";
 	string type, msg = @PAPER
 ╭──────────────────────────────────────╮
@@ -98,7 +99,7 @@ void do_readpaper(object me, string arg)
 PAPER;
 
 	type = query("env/newspaper", me);
-	if( !type ) type = "bahamut";
+        if( !type ) type = "udn";
 	if( arg && (sscanf(arg, "%s %d", type, i) == 2 || sscanf(arg, "%d", i)) )
 	{
 		string lines;
@@ -158,8 +159,18 @@ PAPER;
        	}
        	
        	/* Popular Product */
-       	if( SHOPPING_D->query_pop_product() )
-		pop_product = "  "MAG+"熱門商品 "+load_object(SHOPPING_D->query_pop_product())->query_idname()+NOR"\n";
+       	if( stringp(popproduct = SHOPPING_D->query_pop_product()) )
+       	{
+       		object ob;
+       		
+       		if( objectp(ob = load_object(popproduct)) )
+			pop_product = "  "MAG+"熱門商品 "+ob->query_idname()+NOR"\n";
+		else if( objectp(ob = load_object("/std/module/product/"+popproduct+"_module.c")) )
+		{
+			mapping data = ob->query_product_info();
+			pop_product = "  "MAG+"熱門商品 "+data["name"]+"("+data["id"]+")類工業產品"NOR"\n";
+		}
+	}
 
 	/* Realnews_D news */
 	real_news = REALNEWS_D->query_news_titles(type);
@@ -184,7 +195,7 @@ PAPER;
        	msg += HIC"舊聞"NOR CYN"軼事"NOR"\n" + onews + "\n";
        	msg += HIM"流行"NOR MAG"特刊"NOR"\n" + pop_product + "\n";
        	msg += HIW"即時"NOR WHT"新聞"NOR"\n" + rnews + "\n";
-       	msg += "目前新聞版面有: thg, bahamut\n";
+       	msg += "目前新聞版面有: udn\n";
        	msg += "使用說明請查閱 help newspaper\n";
        	me->more(paper_style(msg));
 
@@ -195,7 +206,7 @@ PAPER;
 
 void create()
 {
-	set_idname("newspaper", MUD_CHINESE_NAME+"電子報");
+	set_idname("newspaper", "電子報");
 	
 	if( clonep() ) 
 		set("shadow_ob", find_object(base_name(this_object())));

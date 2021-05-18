@@ -77,6 +77,9 @@ nomask varargs void catch_tell(string msg, string classes)
 {
 	if( !msg || !msg[0] ) return;
 
+	if( classes == "dodge_msg" && query("env/no_dodge_msg") )
+		return;
+
 	if( undefinedp(classes) || (stringp(classes) && classes != "snoop") )
 		catch(COMMAND_D->find_command_object("snoop")->notify_snooper_catch(this_object(), msg));
 

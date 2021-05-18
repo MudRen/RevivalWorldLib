@@ -16,40 +16,28 @@ string to_string(mixed arg)
 	return stringp(arg) ? arg : save_variable(arg);
 }
 
-string ansi_capitalize(string arg)
-{
-	string s, str, ansi, word, *res = allocate(0);
-	int i;
-
-	if( !arg || !stringp(arg) ) return 0;
-		
-	if( strsrch(arg, "-") != -1 )
-		s = "-";
-	else
-		s = " ";
-
-	foreach(str in explode(arg, s))
-	{
-		do
-		{
-			i = sscanf(str, "%(\e\\[[0-9;#]*[HJMmrs])%s", ansi, word);
-			if( i == 2 )
-				str = sprintf("%s%s", ansi, efun::capitalize(word));
-			else
-				str = efun::capitalize(str);
-		}
-		while(i == 2 && word && word[0..1] == "\e[" && str = word);
-		res += ({ str });
-	}
-	return implode(res, s);
-}
-
 string capitalize(string arg)
 {
-	/*
-	CHANNEL_D->channel_broadcast("sys",
-		sprintf("%O capitalize redirect to ansi_capitalize.", previous_object()));*/
-	return ansi_capitalize(arg);
+	string str, ansi_temp, word, *res = allocate(0), *ansi;
+
+	if( !arg || !stringp(arg) ) return 0;
+
+	foreach(str in explode(arg, " "))
+	{
+		ansi = allocate(0);
+		
+		while( sscanf(str, "%(\e\\[[0-9;#]*[HJMmrs])%s", ansi_temp, word) == 2 )
+		{
+			ansi += ({ ansi_temp });
+			
+			str = word;
+		}
+		
+		str = efun::capitalize(str);
+		
+		res += ({ implode(ansi,"") + str });
+	}
+	return implode(res, " ");
 }
 
 string big_number_check(mixed bn)
@@ -193,3 +181,25 @@ string money(string unit, mixed money)
 
 	return "$"+unit+" "+NUMBER_D->number_symbol(money);
 }
+
+string trim(string str)
+{
+	int i, j;
+	int len= strlen(str);
+	
+	for(i=0;i<len;++i)
+		if( str[i] != ' ' ) 
+			break;
+	
+	for(j=1;j<=len;++j)
+		if( str[<j] != ' ' )
+			break;
+			
+	return str[i..<j];
+}
+
+mapping memory_summary()
+{
+	error("memory_summary() is a crasher.");	
+}
+

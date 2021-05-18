@@ -19,6 +19,12 @@ inherit DATABASE;
 /* 儲存 */
 inherit SAVE;
 
+/* 數量 */
+inherit AMOUNT;
+
+/* 飛行 */
+inherit FLY;
+
 /* 生物 */
 inherit LIVING_LIV;
 
@@ -37,11 +43,11 @@ inherit ATTRIBUTION_LIV;
 /* 延遲 */
 inherit DELAY_LIV;
 
+/* 困住 */
+inherit STUCK_LIV;
+
 /* 移動 */
 inherit MOVE_LIV;
-
-/* 戰鬥 */
-inherit COMBAT_LIV;
 
 /* 技能 */
 inherit SKILL_LIV;
@@ -68,7 +74,7 @@ inherit MORE_USR;
 inherit EDIT_USR;
 
 /* 心跳 */
-inherit HEART_BEAT_USR;
+inherit HEART_BEAT_LIV;
 
 /* 動作 */
 inherit ACTION_USR;
@@ -79,3 +85,10 @@ inherit RESTORE_USR;
 /* 指令 */
 inherit COMMAND_USR;
 
+/* 組隊 */
+inherit GROUP_LIV;
+
+int is_person()
+{
+	return 1;
+}

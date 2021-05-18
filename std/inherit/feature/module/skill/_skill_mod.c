@@ -27,7 +27,7 @@ nomask varargs string query_name(int raw)
 }
 nomask varargs string query_idname(int raw)
 {
-	return undefinedp(raw) ? query_name()+"("+ansi_capitalize(query_id())+")" : query_name(1)+"("+capitalize(query_id(1))+")";
+	return undefinedp(raw) ? query_name()+"("+capitalize(query_id())+")" : query_name(1)+"("+capitalize(query_id(1))+")";
 }
 nomask int query_skill_type()
 {
@@ -44,7 +44,7 @@ void add_title(object ob, int level)
 	string title = query("title/"+level);
 	
 	if( stringp(title) )
-		ob->add_title(title);	
+		ob->add_title(title, query_name()+"等級達 "+level+" 級以上");
 }
 
 

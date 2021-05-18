@@ -13,8 +13,13 @@
 
 #include <daemon.h>
 #include <inherit.h>
+#include <feature.h>
 
-inherit INTERACTIVE_WIZ;
+/* 基本互動 */
+inherit INTERACTIVE;
+
+/* 巫師指令 */
+inherit COMMAND_WIZ;
 
 int is_user_ob()
 {

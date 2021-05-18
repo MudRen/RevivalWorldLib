@@ -14,3 +14,13 @@
 #include <inherit.h>
 
 inherit STANDARD_MAPROOM;
+
+string query_area()
+{
+	return query("area");
+}
+
+int query_num()
+{
+	return query("num");
+}

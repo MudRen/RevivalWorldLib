@@ -6,7 +6,7 @@
  * Date   : 2000-00-00
  * Note   : 翻譯精靈
  * Update :
- *  o 2000-00-00 目前是利用此網站作查詢 http://www.ee.tku.edu.tw/~rexchen/
+ *  o 2000-00-00 目前是利用此網站作查詢 http://cdict.freetcp.com
  *
  -----------------------------------------
  */
@@ -36,14 +36,14 @@ void find_word(object user,string word)
 
 	if ( fd < 0 )
 	{
-		return tell( user, HIR"查詢失敗, 請稍後在試。\n"NOR);             
+		return tell( user, HIR"查詢失敗，請稍後再試。\n"NOR);             
 	}
 
-	err = socket_connect(fd,"163.13.132.61 80","read_callback","write_callback" );
+	err = socket_connect(fd,"211.23.128.57 80","read_callback","write_callback" );
 
 	if( err!=EESUCCESS )
 	{
-		return tell( user, HIR"查詢失敗, 請稍後在試。\n"NOR);     
+		return tell( user, HIR"無法連線，請稍後再試。\n"NOR);     
 	}
 
 	connects[fd] = allocate_mapping(3);
@@ -63,7 +63,8 @@ int close_socket(int fd)
 void read_callback(int fd, mixed message)
 {
 	/* 把每次取得的資料存進 strs 裡 */
-	connects[fd]["data"] += message;
+	connects[fd]["data"] += to_default_encoding(message, "UTF-8");
+	
 	return ;
 }
 
@@ -72,9 +73,7 @@ void write_callback(int fd)
 	string code="";
 	code = connects[fd]["simplex"];
 	/* 輸入指令抓取該頁內容 */
-	socket_write(fd,
-	    sprintf("GET /~rexchen/cdict/wwwcdict.cgi?word=%s\r\n"
-		,code));
+	socket_write(fd, sprintf("GET /wwwcdict.cgi?word=%s HTTP/1.0\r\n\r\n", code));
 	return ;
 }
 
@@ -83,12 +82,11 @@ private void get_data(int fd)
 	string str;
 	if(sscanf(connects[fd]["data"],"%*s<pre>%s</pre>%*s",str)!=3)
 	{
-		tell(connects[fd]["user"], HIR"查詢失敗, 請稍後在試。\n"NOR);
+		tell(connects[fd]["user"], HIR"無法取得單字資料，請稍後再試。\n"NOR);
 		return ;
 	}
 	str = replace_string(str,connects[fd]["simplex"],HIY+connects[fd]["simplex"]+NOR);
-	str = sprintf(HIC"您查詢的單字為 : %s "NOR"\n%s\n%s", 
-	    connects[fd]["simplex"],repeat_string("=",50),str);
+	str = sprintf(HIC"您查詢的單字為 : %s "NOR"\n%s\n%s", connects[fd]["simplex"], repeat_string("=",50), str);
 
 	tell(connects[fd]["user"], str );
 

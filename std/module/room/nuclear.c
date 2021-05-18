@@ -73,7 +73,7 @@ nosave array building_info = ({
 	,INDUSTRY_REGION
 
 	// 開張儀式費用
-	,"99900000000"
+	,99900000000
 	
 	// 建築物關閉測試標記
 	,1

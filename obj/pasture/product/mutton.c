@@ -23,6 +23,6 @@ void create()
 	
 	set("long", "帶著一層厚皮的羊肉。\n");
 	set("unit", "塊");
-	set("mass", 600);
-	set("value", 12000);
+	set("mass", 500);
+	set("value", 6000);
 }

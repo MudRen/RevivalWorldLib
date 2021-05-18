@@ -1,7 +1,7 @@
 /* This program is a part of RW mudlib
  * See /doc/help/copyright for more info
  -----------------------------------------
- * File   : girl.c
+ * File   : npc_old_farmer.c
  * Author : Clode@RevivalWorld
  * Date   : 2003-05-10
  * Note   : 
@@ -26,8 +26,7 @@
 #include <daemon.h>
 #include <quest.h>
 
-inherit STANDARD_NPC;
-inherit "/quest/old_farmer/fuck_robotking.c";
+inherit STANDARD_PERSON;
 
 void do_command(string cmd);
 void make_money();
@@ -110,13 +109,7 @@ void reply_get_object(object me, object ob, mixed amount)
 			destruct(ob);
 			return do_command("say 啊！"+pnoun(2, me)+"不是上次那個大好人嗎？真的很謝謝"+pnoun(2, me)+"又給我飯吃，真是謝謝了");
 		}
-		
-		// 防止一些白癡整天用不同 char 解一樣的 quest by Msr
-		if( check_login_ip(me) )
-		{
-			destruct(ob);
-			return do_command("say 啊！"+pnoun(2, me)+"不是上次那個大好人嗎？真的很謝謝"+pnoun(2, me)+"又給我飯吃，真是謝謝了");
-		}
+
 		if( query("total_online_time", me) < 24*60*60 )
 		{
 			destruct(ob);
@@ -192,9 +185,24 @@ void create()
 	
 	set("age", 78);
 	set("gender", MALE_GENDER);
-	set("money/RW", "1000000");
 	set("title", HIG"農神"NOR);
-	
+	set("heartbeat", 1); // 永久性心跳
+
+	set("attr/str", 500);
+	set("attr/phy", 200);
+	set("attr/int", 300);
+	set("attr/agi", 500);
+	set("attr/cha", 10);
+
+	set("abi/stamina/max", 3000);
+	set("abi/stamina/cur", 3000);
+	set("abi/health/max", 8000);
+	set("abi/health/cur", 8000);
+	set("abi/energy/max", 1000);
+	set("abi/energy/cur", 1000);
+
+	set("no_fight", 1);
+
 	// 啟動主動行為
 	set_behavior();
 	

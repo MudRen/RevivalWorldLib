@@ -17,8 +17,12 @@
 #include <daemon.h>
 #include <inherit.h>
 
-#define INITIAL_RESOURCE_AMOUNT	200
+#define INITIAL_RESOURCE_AMOUNT		200
 
+int query_material_grow_rate(string area, int num)
+{
+	return sizeof(users());
+}
 
 string percentage_color(int p)
 {

@@ -81,12 +81,13 @@ varargs nomask void remove_action(object ob, mapping commands)
 private nomask void do_action(mapping fit_actions, string verb, string arg)
 {
 	function verb_fp;
-	
 	// NPC 不管如何直接執行第一個物件指令
-	verb_fp = values(fit_actions)[0];
+	object action_ob = keys(fit_actions)[0];
+
+	verb_fp = fit_actions[action_ob];
 			
 	if( functionp(verb_fp) & FP_OWNER_DESTED )
 		error(verb+" 之指令函式指標擁有者已被摧毀，請通知巫師處理。\n");
 				
-	evaluate(verb_fp, this_object(), arg);
+	evaluate(verb_fp, this_object(), arg, action_ob);
 }

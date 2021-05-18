@@ -13,6 +13,8 @@
 
 #include <daemon.h>
 
+#include "simul_efun/ansi.c"
+
 #include "simul_efun/person.c"
 
 #include "simul_efun/log.c"
@@ -60,8 +62,4 @@ private void create()
 	printf("Simul Efun Object(/system/kernel/simul_efun.c) 載入成功\n");
 }
 
-string iconv_string(string from, string to, string text)
-{
-	printf("此 Efun 被懷疑是 Crasher 目前被封鎖中, 請勿任意使用\n");
-	return 0;
-}
+

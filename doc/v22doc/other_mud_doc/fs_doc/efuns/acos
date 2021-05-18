@@ -1,0 +1,21 @@
+acos(3)               LPC ╰参ㄧ计               acos(3)
+
+嘿
+     acos() - 肚は緇┒(arc cos())ㄧ计(àㄧ计)
+
+粂猭
+     float acos( float f );
+
+磞瓃
+     肚把计 <f> は緇┒ㄧ计, 把计蛤肚常琌疊翴计篈跑计,
+     ㄤ虫褃秖(獶à秖虫).
+
+     褃秖 r 蛤à秖 a 闽玒:
+
+     r = a * PI / 180.0;
+
+叫把σ
+     asin(3), atan(3), cos(3), sin(3), tan(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

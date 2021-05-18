@@ -61,7 +61,7 @@ void init(object me)
 {
 	if( me->query_quest_step(QUEST_YIN_LING_YU_2) < 3 )
 	{
-		me->move(({ 81, 71, 0, "lightforest", 8, 0, "81/71/0/lightforest/8/0" }));
+		me->move(({ 10, 70, 0, "lightforest", 7, 0, "10/70/0/lightforest/7/0" }));
 		msg("$ME突然從洞口狠狠地摔了進來，摔了個四腳朝天，但只見眼前突然一片模糊，只覺得身體似乎被某種力量拋了出去。\n", me, 0, 1);
 		me->faint();
 	}

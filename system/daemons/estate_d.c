@@ -18,6 +18,7 @@
 #include <estate.h>
 #include <location.h>
 #include <daemon.h>
+#include <areadata.h>
 #include <citydata.h>
 #include <map.h>
 #include <roommodule.h>
@@ -59,17 +60,14 @@ private mapping estates;
 		])
 */
 
-// 建立城市房地產資訊
-int create_city_estate(string city, int num)
+// 建立城市或郊區房地產資訊
+int create_estate(string name, int num)
 {
-	//if( previous_object() != load_object(CITY_D) )
-	//	return 0;
+	if( !mapp(estates[name]) )
+		estates[name] = allocate_mapping(0);
 
-	if( !mapp(estates[city]) )
-		estates[city] = allocate_mapping(0);
-
-	if( !mapp(estates[city][num]) )
-		estates[city][num] = allocate_mapping(0);
+	if( !mapp(estates[name][num]) )
+		estates[name][num] = allocate_mapping(0);
 
 	return 1;
 }
@@ -78,62 +76,62 @@ int create_city_estate(string city, int num)
 int set_land_estate(string id, array loc)
 {
 	string sloc = save_variable(loc);
-	string city = loc[CITY];
+	string zone = loc[CITY];
 	int i, num = loc[NUM];
 	mapping ori_estdata, new_estdata = allocate_mapping(0);
 	
-	if( undefinedp(estates[city]) || undefinedp(estates[city][num]) ) return 0;
+	if( undefinedp(estates[zone]) || undefinedp(estates[zone][num]) ) return 0;
 
-	if( !arrayp(estates[city][num][id]) )
-		estates[city][num][id] = allocate(0);
+	if( !arrayp(estates[zone][num][id]) )
+		estates[zone][num][id] = allocate(0);
 
 	// 找自己的每一棟建築
-	foreach( ori_estdata in estates[city][num][id] )
+	foreach( ori_estdata in estates[zone][num][id] )
 	{
 		// 若有重覆建物,以新的為主..
 		if( member_array(sloc, ori_estdata["walltable"] + ori_estdata["roomtable"]) != -1 )
-			estates[city][num][id][i] = 0;
+			estates[zone][num][id][i] = 0;
 
 		i++;
 	}
 	
-	estates[city][num][id] -= ({ 0 });
+	estates[zone][num][id] -= ({ 0 });
 
 	new_estdata["type"] = "land";
 	new_estdata["regtime"] = time();
 	new_estdata["walltable"] = ({ sloc });
 	new_estdata["roomtable"] = allocate(0);
 
-	estates[city][num][id] += ({ new_estdata });
+	estates[zone][num][id] += ({ new_estdata });
 }
 
 
 // 設定房地產資訊
-int set_estate(string id, mapping table, string btype, string city, int num)
+int set_estate(string id, mapping table, string btype, string name, int num)
 {
 	int i;
 	string sloc;
 	mapping ori_estdata, new_estdata = allocate_mapping(0);
 	
-	if( undefinedp(estates[city]) || undefinedp(estates[city][num]) ) return 0;
+	if( undefinedp(estates[name]) || undefinedp(estates[name][num]) ) return 0;
 
-	if( !arrayp(estates[city][num][id]) )
-		estates[city][num][id] = allocate(0);
+	if( !arrayp(estates[name][num][id]) )
+		estates[name][num][id] = allocate(0);
 
 	// 檢查城市的每一棟建築, 若有重覆建物, 更新成新地產資訊
-	foreach( string ids, array all_estdata in estates[city][num] )
+	foreach( string ids, array all_estdata in estates[name][num] )
 	{
 		i = 0;
 		foreach( ori_estdata in all_estdata )
 		{
 			foreach( sloc in table["walltable"] + table["roomtable"] )
 				if( member_array(sloc, ori_estdata["walltable"] + ori_estdata["roomtable"]) != -1 )
-					estates[city][num][ids][i] = 0;
+					estates[name][num][ids][i] = 0;
 					
 			i++;
 		}
 		
-		estates[city][num][ids] -= ({ 0 });
+		estates[name][num][ids] -= ({ 0 });
 	}
 	
 	new_estdata["type"] = btype;
@@ -141,7 +139,7 @@ int set_estate(string id, mapping table, string btype, string city, int num)
 	new_estdata["walltable"] = table["walltable"];
 	new_estdata["roomtable"] = table["roomtable"];
 
-	estates[city][num][id] += ({ new_estdata });
+	estates[name][num][id] += ({ new_estdata });
 }
 
 
@@ -149,14 +147,14 @@ int set_estate(string id, mapping table, string btype, string city, int num)
 string whose_estate(array loc)
 {
 	string sloc = save_variable(loc);
-	string city = loc[CITY];
+	string name = loc[CITY];
 	int num = loc[NUM];
 	mapping estdata;
 
-	if( undefinedp(estates[city]) || undefinedp(estates[city][num]) )
+	if( undefinedp(estates[name]) || undefinedp(estates[name][num]) )
 		return 0;
 
-	foreach(string id, array myestates in estates[city][num])
+	foreach(string id, array myestates in estates[name][num])
 		foreach(estdata in myestates)
 			if( member_array( sloc, estdata["walltable"] + estdata["roomtable"] ) != -1 )
 				return id;
@@ -169,16 +167,16 @@ string whose_estate(array loc)
 mapping query_loc_estate(array loc)
 {
 	string sloc = save_variable(loc);
-	string city = loc[CITY];
+	string name = loc[CITY];
 	int num = loc[NUM];
 	string id;
 	mapping estdata;
 	array myestates;
 
-	if( !estates || !estates[city] || !estates[city][num] )
+	if( !estates || !estates[name] || !estates[name][num] )
 		return 0;
 
-	foreach(id, myestates in estates[city][num])
+	foreach(id, myestates in estates[name][num])
 		foreach(estdata in myestates)
 			if( member_array( sloc, estdata["walltable"] + estdata["roomtable"] ) != -1 )
 				return copy(estdata);
@@ -186,34 +184,80 @@ mapping query_loc_estate(array loc)
 	return 0;
 }
 
-// 回傳城市所有房地產資料
-varargs mapping query_city_estate(string city, int num)
+// 設定某座標之房地產資訊
+mixed set_loc_estate_data(array loc, string key, mixed value)
 {
-	if( undefinedp(estates[city]) )
+	string sloc = save_variable(loc);
+	string name = loc[CITY];
+	int num = loc[NUM];
+	string id;
+	array myestates;
+
+	if( !estates || !estates[name] || !estates[name][num] )
+		return 0;
+
+	foreach(id, myestates in estates[name][num])
+	{
+		for(int i=0;i<sizeof(myestates);i++)
+			if( member_array( sloc, myestates[i]["walltable"] + myestates[i]["roomtable"] ) != -1 )
+				return (estates[name][num][id][i][key] = value);
+	}
+
+	return 0;
+}
+
+// 回傳某座標之完整房地產資訊
+mixed query_loc_estate_data(array loc, string key)
+{
+	string sloc = save_variable(loc);
+	string name = loc[CITY];
+	int num = loc[NUM];
+	string id;
+	mapping estdata;
+	array myestates;
+
+	if( !estates || !estates[name] || !estates[name][num] )
+		return 0;
+
+	foreach(id, myestates in estates[name][num])
+		foreach(estdata in myestates)
+			if( member_array( sloc, estdata["walltable"] + estdata["roomtable"] ) != -1 )
+				return estdata[key];
+
+	return 0;
+}
+
+// 回傳城市所有房地產資料
+varargs mapping query_estate(string name, int num)
+{
+	if( undefinedp(name) )
+		return copy(estates);
+
+	if( undefinedp(estates[name]) )
 		return 0;
 
 	if( undefinedp(num) )	
-		return copy(estates[city]);
+		return copy(estates[name]);
 
-	return copy(estates[city][num]);
+	return copy(estates[name][num]);
 }
 
 
 // 回傳某位玩家在某個城市中或所有的房地產資料
-varargs array query_player_estate(string id, string city, int num)
+varargs array query_player_estate(string id, string zone, int num)
 {
-	mapping citydata, numdata;
+	mapping zonedata, numdata;
 	array all_myestates;
 
 	if( !id ) return 0;
 
 	all_myestates = allocate(0);
 
-	if( undefinedp(city) )
+	if( undefinedp(zone) )
 	{
 		// 回傳玩家所有房地產資料
-		foreach( city, citydata in estates )
-		foreach( num, numdata in citydata )
+		foreach( zone, zonedata in estates )
+		foreach( num, numdata in zonedata )
 		{
 			if( !mapp(numdata) || undefinedp(numdata[id]) ) continue;
 
@@ -222,24 +266,24 @@ varargs array query_player_estate(string id, string city, int num)
 	}
 	else
 	{
-		if( undefinedp(estates[city]) )
+		if( undefinedp(estates[zone]) )
 			return 0;
 
-		// 回傳玩家在城市 city 中的所有房地產資料
+		// 回傳玩家在城市或區域中的所有房地產資料
 		if( undefinedp(num) )
 		{
-			foreach( num, numdata in estates[city] )
+			foreach( num, numdata in estates[zone] )
 			{
 				if( !numdata || undefinedp(numdata[id]) ) continue;
 
 				all_myestates += numdata[id];
 			}
 		}
-		// 回傳玩家在城市 city num 中的房地產資料
+		// 回傳玩家在城市 zone num 中的房地產資料
 		else 
 		{
-			if( arrayp(estates[city][num][id]) )
-				all_myestates += estates[city][num][id];
+			if( arrayp(estates[zone][num][id]) )
+				all_myestates += estates[zone][num][id];
 			else
 				return 0;
 		}
@@ -251,7 +295,7 @@ varargs array query_player_estate(string id, string city, int num)
 
 
 // 自動回收沒有利用的空地
-varargs int handle_freeland(string city, int num, int outdate)
+varargs int handle_freeland(string zone, int num, int outdate)
 {
 	int i;
 	array myestates;
@@ -264,9 +308,9 @@ varargs int handle_freeland(string city, int num, int outdate)
 	if( !outdate )
 		outdate = 3*24*60*60;
 
-	if( !estates || !estates[city] || !estates[city][num] ) return 0;
+	if( !estates || !estates[zone] || !estates[zone][num] ) return 0;
 
-	foreach(id, myestates in estates[city][num])
+	foreach(id, myestates in estates[zone][num])
 	{
 		if( belong_to_government(id) ) continue;
 
@@ -279,7 +323,7 @@ varargs int handle_freeland(string city, int num, int outdate)
 			
 			if( !estdata["regtime"] ) 
 			{
-				estates[city][num][id][i]["regtime"] = time();
+				estates[zone][num][id][i]["regtime"] = time();
 				continue;
 			}
 			
@@ -318,7 +362,7 @@ int remove_unknown_estate(array loc)
 	TOP_D->delete_top("maintain", save_variable(loc));
 
 	// 刪除所有房間檔案
-	foreach( file in city_roomfiles(loc) )
+	foreach( file in zone_roomfiles(loc) )
 	{
 		if( objectp(room = find_object(file[0..<3])) )
 		{
@@ -343,13 +387,13 @@ array remove_estate(mixed arg)
 	if( stringp(arg) )
 	{
 		int num;
-		string city, sloc, file;
-		mapping estdata, citydata, numdata;
+		string zone, sloc, file;
+		mapping estdata, zonedata, numdata;
 		object room;
 		array loc, removed_estates = allocate(0);
 
-		foreach( city, citydata in estates )
-		foreach( num, numdata in citydata )
+		foreach( zone, zonedata in estates )
+		foreach( num, numdata in zonedata )
 		{
 			if( !numdata || !numdata[arg] ) continue;
 
@@ -363,12 +407,12 @@ array remove_estate(mixed arg)
 				{
 					loc = restore_variable(sloc);
 
-					CITY_D->delete_coor_data(loc);
-					CITY_D->delete_coor_icon(loc);
+					MAP_D->delete_coor_data(loc);
+					MAP_D->delete_coor_icon(loc);
 					TOP_D->delete_top("maintain", save_variable(loc));
 
 					// 刪除所有房間檔案
-					foreach( file in city_roomfiles(loc) )
+					foreach( file in zone_roomfiles(loc) )
 					{
 						if( objectp(room = find_object(file[0..<3])) )
 						{
@@ -384,7 +428,7 @@ array remove_estate(mixed arg)
 				}
 			}
 
-			map_delete(estates[city][num], arg);
+			map_delete(estates[zone][num], arg);
 		}
 
 		if( sizeof(removed_estates) )
@@ -396,17 +440,17 @@ array remove_estate(mixed arg)
 	else if( arrayp(arg) )
 	{
 		string id, sloc, file, tempsloc;
-		string city = arg[CITY];
+		string zone = arg[CITY];
 		int i, num = arg[NUM];
 		object room;
 		array loc, myestates, removed_estates = allocate(0);
 		mapping estdata;
 
-		if( undefinedp(estates[city]) || undefinedp(estates[city][num]) ) return 0;
+		if( undefinedp(estates[zone]) || undefinedp(estates[zone][num]) ) return 0;
 
 		sloc = save_variable(arg);
 
-		foreach( id, myestates in estates[city][num] )
+		foreach( id, myestates in estates[zone][num] )
 		{
 			i = 0;
 			foreach( estdata in myestates )
@@ -417,12 +461,12 @@ array remove_estate(mixed arg)
 					{
 						loc = restore_variable(tempsloc);
 
-						CITY_D->delete_coor_data(loc);
-						CITY_D->delete_coor_icon(loc);
+						MAP_D->delete_coor_data(loc);
+						MAP_D->delete_coor_icon(loc);
 						TOP_D->delete_top("maintain", save_variable(loc));
 
 						// 刪除所有房間檔案
-						foreach( file in city_roomfiles(loc) )
+						foreach( file in zone_roomfiles(loc) )
 						{
 							if( objectp(room = find_object(file[0..<3])) )
 							{
@@ -439,16 +483,16 @@ array remove_estate(mixed arg)
 
 					removed_estates += ({ copy(estdata) });
 					
-					estates[city][num][id][i] = 0;
+					estates[zone][num][id][i] = 0;
 
 					if( !sizeof(myestates) )
-						map_delete(estates[city][num], id);
+						map_delete(estates[zone][num], id);
 
 					CHANNEL_D->channel_broadcast("nch", "房地產：刪除 "+id+" 房地產\n"+save_variable(removed_estates));
 				}
 				i++;
 			}
-			estates[city][num][id] -= ({ 0 });
+			estates[zone][num][id] -= ({ 0 });
 		}
 		return removed_estates;
 	}
@@ -462,13 +506,13 @@ int unlink_estate(array loc)
 {
 	string id, file;
 	string sloc = save_variable(loc);
-	string city = loc[CITY];
+	string zone = loc[CITY];
 	int i, num = loc[NUM];
 	object room;
 	array myestates;
 	mapping estdata;
 
-	foreach( id, myestates in estates[city][num] )
+	foreach( id, myestates in estates[zone][num] )
 	{
 		i = 0;
 		foreach( estdata in copy(myestates) )
@@ -481,27 +525,27 @@ int unlink_estate(array loc)
 					
 					if( sizeof(estdata["roomtable"]) )
 					{
-						CITY_D->delete_coor_data(loc, ROOM);
-						CITY_D->delete_coor_data(loc, FLAGS);
-						CITY_D->delete_coor_data(loc, "lock");
+						MAP_D->delete_coor_data(loc, ROOM);
+						MAP_D->delete_coor_data(loc, FLAGS);
+						MAP_D->delete_coor_data(loc, "lock");
 					}
 					else
 					{
-						CITY_D->delete_coor_data(loc, TYPE);
-						CITY_D->delete_coor_data(loc, "capacity");
-						CITY_D->delete_coor_data(loc, "maintain_time");
-						CITY_D->delete_coor_data(loc, "growth_level");
-						CITY_D->delete_coor_data(loc, "status");
-						CITY_D->delete_coor_data(loc, "growth");
-						CITY_D->delete_coor_data(loc, FLAGS);
+						MAP_D->delete_coor_data(loc, TYPE);
+						MAP_D->delete_coor_data(loc, "capacity");
+						MAP_D->delete_coor_data(loc, "maintain_time");
+						MAP_D->delete_coor_data(loc, "growth_level");
+						MAP_D->delete_coor_data(loc, "status");
+						MAP_D->delete_coor_data(loc, "growth");
+						MAP_D->delete_coor_data(loc, FLAGS);
 						TOP_D->delete_top("maintain", save_variable(loc));
-						CITY_D->set_coor_icon(loc, BWHT"□"NOR);
+						MAP_D->set_coor_icon(loc, BWHT"□"NOR);
 					}
 					if( member_array(sloc, estdata["roomtable"]) != -1 )
-						CITY_D->set_coor_icon(loc, BWHT"□"NOR);
+						MAP_D->set_coor_icon(loc, BWHT"□"NOR);
 					
 					// 刪除所有房間檔案
-					foreach( file in city_roomfiles(loc) )
+					foreach( file in zone_roomfiles(loc) )
 					{
 						if( objectp(room = find_object(file[0..<3])) )
 						{
@@ -516,8 +560,8 @@ int unlink_estate(array loc)
 					}
 				}
 
-				estates[city][num][id][i] = 0;
-				estates[city][num][id] -= ({ 0 });
+				estates[zone][num][id][i] = 0;
+				estates[zone][num][id] -= ({ 0 });
 				
 				foreach( sloc in copy(estdata["walltable"] + estdata["roomtable"]) )
 					set_land_estate(id, restore_variable(sloc));				
@@ -531,35 +575,37 @@ int unlink_estate(array loc)
 	return 0;
 }
 
-
-
 // 刪除整座城市之不動產資料
-int remove_city_estate(string city, int num)
+int remove_zone_estate(string zone, int num)
 {
 	object room;
 	string sloc, file;
 	array loc;
 	mapping estdata;
 
-	if( undefinedp(estates[city]) || undefinedp(estates[city][num]) ) return 0;
+	if( undefinedp(estates[zone]) || undefinedp(estates[zone][num]) ) return 0;
 
-	if( mapp(estates[city][num]) )
-	foreach( string id, array myestates in estates[city][num] )
+	if( mapp(estates[zone][num]) )
+	foreach( string id, array myestates in estates[zone][num] )
 	foreach( estdata in myestates )
 	foreach( sloc in estdata["walltable"] + estdata["roomtable"] )
 	{
+		reset_eval_cost();
+
 		loc = restore_variable(sloc);
 
-		if( !CITY_D->valid_coordinate(loc) )
+		if( !MAP_D->valid_coordinate(loc) )
 			continue;
 			
-		CITY_D->delete_coor_data(loc);
-		CITY_D->delete_coor_icon(loc);
+		MAP_D->delete_coor_data(loc);
+		MAP_D->delete_coor_icon(loc);
 		TOP_D->delete_top("maintain", save_variable(loc));
 
 		// 刪除所有房間檔案
-		foreach( file in city_roomfiles(loc) )
+		foreach( file in zone_roomfiles(loc) )
 		{
+			reset_eval_cost();
+
 			if( objectp(room = find_object(file[0..<3])) )
 			{
 				TOP_D->delete_top("building", base_name(room));
@@ -574,24 +620,23 @@ int remove_city_estate(string city, int num)
 		}
 	}
 
-	map_delete(estates[city], num);
+	map_delete(estates[zone], num);
 
-	if( !sizeof(estates[city]) )
-		map_delete(estates, city);
+	if( !sizeof(estates[zone]) )
+		map_delete(estates, zone);
 }
 
-
-void scan_overlap_estate(string city, int num)
+void scan_overlap_estate(string zone, int num)
 {
 	int overlaps;
 	string *allcoor=allocate(0), sloc;
 	string *overlapcoor=allocate(0);
 	mapping estdata;
 
-	if( !mapp(estates[city]) || !mapp(estates[city][num]) )
+	if( !mapp(estates[zone]) || !mapp(estates[zone][num]) )
 		return 0;
 
-	foreach( string id, array myestates in estates[city][num] )
+	foreach( string id, array myestates in estates[zone][num] )
 	if( arrayp(myestates) )
 	foreach( estdata in myestates )
 	if( mapp(estdata["walltable"]) && mapp(estdata["roomtable"]) )
@@ -606,7 +651,7 @@ void scan_overlap_estate(string city, int num)
 			allcoor+= ({ sloc });
 	}
 
-	CHANNEL_D->channel_broadcast("sys", "掃描 "+city+"_"+num+" 之地產資料重疊數為 "+overlaps+"\n"+sprintf("%O", overlapcoor));
+	CHANNEL_D->channel_broadcast("sys", "掃描 "+zone+"_"+num+" 之地產資料重疊數為 "+overlaps+"\n"+sprintf("%O", overlapcoor));
 }
 
 
@@ -618,21 +663,21 @@ int transfer_estate(string from, string to, array loc)
 	mapping temp_estdata, estdata;
 	string sloc = save_variable(loc);
 	string file;
-	string city = loc[CITY];
+	string zone = loc[CITY];
 	int i, num = loc[NUM];
 
-	city = loc[CITY];
+	zone = loc[CITY];
 	num = loc[NUM];
 	
-	if( undefinedp(estates[city]) || undefinedp(estates[city][num]) || undefinedp(estates[city][num][from]) ) return 0;
+	if( undefinedp(estates[zone]) || undefinedp(estates[zone][num]) || undefinedp(estates[zone][num][from]) ) return 0;
 
-	foreach( estdata in estates[city][num][from] )
+	foreach( estdata in estates[zone][num][from] )
 	{
 		if( member_array(sloc, estdata["walltable"] + estdata["roomtable"] ) != -1 )
 		{
 			temp_estdata = copy(estdata);
-			estates[city][num][from][i] = 0;
-			estates[city][num][from] -= ({0});
+			estates[zone][num][from][i] = 0;
+			estates[zone][num][from] -= ({0});
 			break;
 		}
 		i++;
@@ -649,7 +694,7 @@ int transfer_estate(string from, string to, array loc)
 		TOP_D->update_top("maintain", save_variable(loc), CITY_D->query_coor_data(loc, "growth_level"), capitalize(to), CITY_D->query_coor_data(loc, TYPE));
 		
 		// 修改所有房間檔案
-		foreach( file in city_roomfiles(loc, temp_estdata["type"]) )
+		foreach( file in zone_roomfiles(loc) )
 		{
 			if( objectp(room = load_object(file[0..<3])) )
 			{
@@ -667,34 +712,40 @@ int transfer_estate(string from, string to, array loc)
 				}
 
 				set("owner", to, room);
-				
+
+				delete("product", room);
+				delete("warehouse", room);
+				delete("research", room);
+				delete("line", room);
+				delete("productslist", room);
+								
 				if( query("floor", room) && !SECURE_D->is_wizard(to) )
-					TOP_D->update_top("building", base_name(room), query("floor", room)+1, to, room->query_room_name(), city);
+					TOP_D->update_top("building", base_name(room), query("floor", room)+1, to, room->query_room_name(), zone);
 
 				room->save();
 			}
 		}
 	}
 	
-	if( undefinedp(estates[city][num][to]) )
-		estates[city][num][to] = allocate(0);
+	if( undefinedp(estates[zone][num][to]) )
+		estates[zone][num][to] = allocate(0);
 		
-	estates[city][num][to] += ({ temp_estdata });
+	estates[zone][num][to] += ({ temp_estdata });
 	
 	return 1;
 }
 
 // 回傳城市裡某種類建築物的總數
-int query_city_amount(string city, int num, string estate_type)
+int query_zone_amount(string zone, int num, string estate_type)
 {
 	int amount;
 	string id;
 	array hisestates;
 	mapping estdata;
 	
-	if( undefinedp(estates[city]) || undefinedp(estates[city][num]) ) return 0;
+	if( undefinedp(estates[zone]) || undefinedp(estates[zone][num]) ) return 0;
 	
-	foreach(id, hisestates in estates[city][num])
+	foreach(id, hisestates in estates[zone][num])
 	foreach(estdata in hisestates)
 		if( estdata["type"] == estate_type )
 			++amount;
@@ -706,16 +757,16 @@ int query_city_amount(string city, int num, string estate_type)
 int query_owner_amount(string owner, string estate_type)
 {
 	int amount;
-	string city;
-	mapping citydata;
+	string zone;
+	mapping zonedata;
 	int num;
 	mapping numdata;
 	string id;
 	array hisestates;
 	mapping estdata;
 	
-	foreach(city, citydata in estates)
-	foreach(num, numdata in citydata)
+	foreach(zone, zonedata in estates)
+	foreach(num, numdata in zonedata)
 	{
 		if( !sizeof(numdata) )
 			continue;
@@ -735,16 +786,16 @@ int query_owner_amount(string owner, string estate_type)
 int query_world_amount(string estate_type)
 {
 	int amount;
-	string city;
-	mapping citydata;
+	string zone;
+	mapping zonedata;
 	int num;
 	mapping numdata;
 	string id;
 	array hisestates;
 	mapping estdata;
 	
-	foreach(city, citydata in estates)
-	foreach(num, numdata in citydata)
+	foreach(zone, zonedata in estates)
+	foreach(num, numdata in zonedata)
 	{
 		if( !sizeof(numdata) )
 			continue;
@@ -763,20 +814,13 @@ int query_world_amount(string estate_type)
 	return amount;
 }
 
-
-// 回傳所有房地產資訊
-mapping query_estate()
-{
-	return copy(estates);
-}
-
 // 用於手動修復資料庫的錯誤
 void fix_estate_database()
 {	
 	int i;
-	foreach(string city, mapping citydata in estates)
+	foreach(string zone, mapping zonedata in estates)
 	{
-		foreach( int num, mapping numdata in citydata )
+		foreach( int num, mapping numdata in zonedata )
 		{
 			foreach( string id, array myestates in numdata )
 			{
@@ -791,28 +835,129 @@ void fix_estate_database()
 	}
 }
 
-int query_estate_flourish(mapping estdata)
+// 回傳建築物的樓層
+int query_estate_floors(array loc)
+{
+	int floor = 0;
+	object room;
+	mapping estdata = query_loc_estate(loc);
+	string type = estdata["type"];
+
+	if( !sizeof(estdata["roomtable"]) )
+		return sizeof(estdata["walltable"]);
+	else
+	foreach(string sloc in estdata["roomtable"])
+	{
+		loc = restore_variable(sloc);
+			
+		room = find_object(CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], type)) || find_object(AREA_ROOM_MODULE(loc[AREA], loc[NUM], loc[X], loc[Y], type));
+		
+		if( !objectp(room) ) continue;
+
+		floor += query("floor", room) + 1;
+	}
+
+	return floor;
+}
+
+// 回傳某玩家擁有的所有建築物樓層數
+int query_total_estate_floors(string id)
+{
+	int num, floor = 0;
+	object room;
+	array loc;
+	string zone, sloc, file;
+	mapping estdata, zonedata, numdata;
+	
+	foreach( zone, zonedata in estates)
+	foreach( num, numdata in zonedata )
+        if( numdata && arrayp(numdata[id]) )
+	foreach( estdata in numdata[id] )
+	{
+		floor += sizeof(estdata["walltable"])+sizeof(estdata["roomtable"]);
+
+		foreach( sloc in estdata["roomtable"] )
+		{
+			loc = restore_variable(sloc);
+			
+			file = CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"]);
+			
+			if( !file_exists(file) ) continue;
+				
+			room = load_object(file);
+		
+			if( !objectp(room) ) continue;
+
+			floor += query("floor", room) + 1;
+		}
+	}
+
+	return floor;
+}
+
+// 回傳建築物的有效樓層
+int query_estate_function_floors(array loc)
+{
+	int floor = 0;
+	object room;
+	mapping estdata = query_loc_estate(loc);
+	string* getdir;
+	string roomfile;
+
+	if( !sizeof(estdata["roomtable"]) )
+		return sizeof(estdata["walltable"]);
+	else
+	foreach(string sloc in estdata["roomtable"])
+	{
+		loc = restore_variable(sloc);
+
+		if( !getdir )
+			getdir = get_dir(CITY_NUM_ROOM(loc[CITY], loc[NUM]));
+
+		foreach( roomfile in zone_roomfiles(loc, getdir) )
+		{
+			room = find_object(roomfile[0..<3]);
+		
+			if( !objectp(room) || !query("function", room) ) continue;
+		
+			floor++;
+		}
+	}
+
+	return floor;
+}
+
+varargs int query_estate_flourish(mapping estdata, string *getdir)
 {
 	string sloc;
 	string roomfile;
 	object room;
 	string type;
 	object master;
-	object *checked_master = allocate(0);
-	int flourish, floor;
+	object *checked_function_master = allocate(0);
+	object *checked_no_function_master = allocate(0);
+	int flourish, totalflourish, floor, no_function_floor, *floors = allocate(0);
 	int typeflourish;
+	int distance;
 	mapping buildingtable = BUILDING_D->query_building_table();
-
-	typeflourish = to_int(buildingtable[estdata["type"]][ROOMMODULE_FLOURISH]);
+	array loc;
 	
-	flourish = 0;
-			
+	typeflourish = to_int(buildingtable[estdata["type"]][ROOMMODULE_FLOURISH]);
+	type = estdata["type"];
+
+	totalflourish = 0;
+
 	foreach(sloc in estdata["roomtable"])
 	{
 		floor = 0;
-		type = estdata["type"];
+		no_function_floor = 0;
 
-		foreach( roomfile in city_roomfiles(restore_variable(sloc), type) )
+		loc = restore_variable(sloc);
+
+		if( undefinedp(getdir) )
+			getdir = get_dir(CITY_NUM_ROOM(loc[CITY], loc[NUM]));
+
+		foreach( roomfile in zone_roomfiles(loc, getdir) )
 		{
 			room = find_object(roomfile[0..<3]);
 			
@@ -821,23 +966,31 @@ int query_estate_flourish(mapping estdata)
 			switch(query("function", room))
 			{
 				case 0:
-					continue;
+					no_function_floor++;
 					break;
 				case "front":
 					master = room->query_master();
 					
-					if( member_array(master, checked_master) == -1 )
+					if( member_array(master, checked_no_function_master) != -1 )
+						no_function_floor++;
+					else if( member_array(master, checked_function_master) != -1 )
+						;
+					else
 					{
 						// 連鎖數量大於管理能力
 						// 沒有產品或者沒有員工
 						if( 
 							sizeof(master->query_slave()) + 1 > query("shopping/management", master) ||
 							!sizeof(query("products", master)) || 
+							query("lastselltime", master) < time() - 3600 ||
 							!sizeof(filter_array(all_inventory(master), (: $1->is_module_npc() :)) ) 
 						)
-							return 0;
-					
-						checked_master += ({ master });
+						{
+							no_function_floor++;
+							checked_no_function_master += ({ master });
+						}
+						else
+							checked_function_master += ({ master });
 					}
 					
 					break;
@@ -846,59 +999,71 @@ int query_estate_flourish(mapping estdata)
 			++floor;
 		}
 		
-		if( floor <= 100 )
-			flourish += to_int(typeflourish*pow(floor, 1.2 + (0.02*floor/20.)));
-		else
-			flourish += to_int(typeflourish*pow(floor, 1.2 + (0.022*floor/20.))) + 150*(floor-100);
+		flourish = typeflourish * (floor - no_function_floor);
+
+		floors += ({ floor });
+		
+		distance = pythagorean_thm(49-loc[X], 49-loc[Y]);
+
+		if( distance > 30 && flourish > 0 )
+			flourish -= to_int(to_float(flourish) * (distance-30) / 100.);
+			
+		totalflourish += flourish;
 	}
 	
-	if( flourish > 50000 )
-		flourish = 50000;
+	floors = sort_array(floors, 1);
+	
+	if( totalflourish > 20000 )
+		totalflourish = 20000;
 		
-	return flourish;
+	return totalflourish;
 }
 
-
-varargs string query_estate_value(array loc, int noland)
+// 回傳建築物價值
+varargs int query_estate_value(array loc, int noland)
 {
-	string value;
+	int value;
 	string sloc = save_variable(loc);
-	string city = loc[CITY];
+	string zone = loc[ZONE];
 	int num = loc[NUM];
 	mapping estdata;
 	mapping floor_total_value = BUILDING_D->query_floor_total_value();
 	object room;
 	
-	if(!estates[city] || !estates[city][num]) return "-1";
+	if(!estates[zone] || !estates[zone][num]) return -1;
 
-	foreach( string id, array myestates in estates[city][num] )
+	foreach( string id, array myestates in estates[zone][num] )
 	foreach( estdata in myestates )
 	if( member_array( sloc, estdata["walltable"] + estdata["roomtable"] ) != -1 )
 	{
-		value = count(sizeof(estdata["roomtable"]), "*", BUILDING_D->query_building_table()[estdata["type"]][ROOMMODULE_OPENCOST]);
+		value = sizeof(estdata["roomtable"]) * BUILDING_D->query_building_table()[estdata["type"]][ROOMMODULE_OPENCOST];
 		
 		foreach( sloc in estdata["walltable"] + estdata["roomtable"] )
 		{
 			loc = restore_variable(sloc);
 			
 			if( !noland ) 
-			switch( CITY_D->query_coor_data(loc, "region") )
+			switch( MAP_D->query_coor_data(loc, "region") )
 			{
 				case AGRICULTURE_REGION:
-					value = count(value, "+", 100000); break;
+					value += 100000; break;
 				case INDUSTRY_REGION:
-					value = count(value, "+", 200000); break;
+					value += 200000; break;
 				case COMMERCE_REGION:
-					value = count(value, "+", 300000); break;
+					value += 300000; break;
 				default: break;
 			}
 		
-			room = find_object(CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"]));
+			room = find_object(CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"])) || find_object(AREA_ROOM_MODULE(loc[AREA], loc[NUM], loc[X], loc[Y], estdata["type"]));
 			
 			if( objectp(room) )
-				value = count(value, "+", floor_total_value[query("floor", room)]);
+			{
+				if( noland )
+					value += floor_total_value[query("floor", room)];
+				else
+					value += floor_total_value[query("floor", room)+1];
+			}
 		}
-		
 		
 		break;
 	}
@@ -906,54 +1071,55 @@ varargs string query_estate_value(array loc, int noland)
 	return value;
 }
 
-varargs string query_all_estate_value(string id, int default_unit)
+varargs int query_all_estate_value(string id, int default_unit)
 {
 	int num;
 	string defaultmoneyunit = MONEY_D->query_default_money_unit();
-	string city, sloc, totalvalue, value;
+	string zone, sloc;
+	int totalvalue, value;
 	array loc;
-	mapping estdata, citydata, numdata;
+	mapping estdata, zonedata, numdata;
 	mapping buildingtable = BUILDING_D->query_building_table();
 	mapping floor_total_value = BUILDING_D->query_floor_total_value();
 	object room;
 
-	foreach( city, citydata in estates)
-	foreach( num, numdata in citydata )
+	foreach( zone, zonedata in estates)
+	foreach( num, numdata in zonedata )
         if( numdata && arrayp(numdata[id]) )
 	foreach( estdata in numdata[id] )
 	{
-		value = count(sizeof(estdata["roomtable"]), "*", buildingtable[estdata["type"]][ROOMMODULE_OPENCOST]);
+		value = sizeof(estdata["roomtable"]) * buildingtable[estdata["type"]][ROOMMODULE_OPENCOST];
 		
 		if( !default_unit )
-			totalvalue = count(totalvalue, "+", EXCHANGE_D->convert(value, MONEY_D->city_to_money_unit(city), defaultmoneyunit));
+			totalvalue += EXCHANGE_D->convert(value, MONEY_D->city_to_money_unit(zone), defaultmoneyunit);
 		else
-			totalvalue = count(totalvalue, "+", value);
+			totalvalue += value;
 
 		foreach( sloc in estdata["walltable"] + estdata["roomtable"] )
 		{
 			loc = restore_variable(sloc);
 					
-			switch( CITY_D->query_coor_data(loc, "region") )
+			switch( MAP_D->query_coor_data(loc, "region") )
 			{
 				case AGRICULTURE_REGION:
-					value = "100000"; break;
+					value = 100000; break;
 				case INDUSTRY_REGION:
-					value = "200000"; break;
+					value = 200000; break;
 				case COMMERCE_REGION:
-					value = "300000"; break;
+					value = 300000; break;
 				default: 
 					value = 0; break;
 			}
 			
-			room = find_object(CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"]));
+			room = find_object(CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"])) || find_object(AREA_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"]));
 			
 			if( objectp(room) )
-				value = count(value, "+", floor_total_value[query("floor", room)]);
+				value += floor_total_value[query("floor", room)];
 
 			if( default_unit )
-				totalvalue = count(totalvalue, "+", EXCHANGE_D->convert(value, MONEY_D->city_to_money_unit(city), defaultmoneyunit));
+				totalvalue += EXCHANGE_D->convert(value, MONEY_D->city_to_money_unit(zone), defaultmoneyunit);
 			else
-				totalvalue = count(totalvalue, "+", value);
+				totalvalue += value;
 		}
 	}
 
@@ -963,25 +1129,44 @@ varargs string query_all_estate_value(string id, int default_unit)
 void restore_all_data()
 {
 	mixed num;
-	string city;
+	string zone, area;
 
 	estates = allocate_mapping(0);
 
 	// 讀取所有城市房地產資料檔
-	foreach(city in CITY_D->query_cities())
+	foreach(zone in CITY_D->query_cities())
 	{
 		reset_eval_cost();
-		estates[city] = allocate_mapping(0);
+		estates[zone] = allocate_mapping(0);
 
-		foreach( num in get_dir(CITY_PATH(city)) )
+		foreach( num in get_dir(CITY_PATH(zone)) )
 			if( sscanf(num ,"%d", num) ) {
-				if(!read_file(CITY_NUM_ESTATE(city, num))) {
-					CHANNEL_D->channel_broadcast("sys", sprintf("%s 經讀取後字串值為 0 ... 略過。", CITY_NUM_ESTATE(city, num)));
+				if(!read_file(CITY_NUM_ESTATE(zone, num))) {
+					CHANNEL_D->channel_broadcast("sys", sprintf("%s 經讀取後字串值為 0 ... 略過。", CITY_NUM_ESTATE(zone, num)));
 					continue;
 				}
-				estates[city][num] = restore_variable(read_file(CITY_NUM_ESTATE(city, num)));
-				if(!estates[city][num]) {
-					CHANNEL_D->channel_broadcast("sys", sprintf("%s 所存資料以 restore_variable 讀出結果為 0 ... 略過。", CITY_NUM_ESTATE(city, num)));
+				estates[zone][num] = restore_variable(read_file(CITY_NUM_ESTATE(zone, num)));
+				if(!estates[zone][num]) {
+					CHANNEL_D->channel_broadcast("sys", sprintf("%s 所存資料以 restore_variable 讀出結果為 0 ... 略過。", CITY_NUM_ESTATE(zone, num)));
+				}
+			}
+	}
+	
+	// 讀取所有城市房地產資料檔
+	foreach(area in AREA_D->query_areas())
+	{
+		reset_eval_cost();
+		estates[area] = allocate_mapping(0);
+
+		foreach( num in get_dir(AREA_PATH(area)) )
+			if( sscanf(num ,"%d", num) ) {
+				if(!read_file(AREA_NUM_ESTATE(area, num))) {
+					CHANNEL_D->channel_broadcast("sys", sprintf("%s 經讀取後字串值為 0 ... 略過。", AREA_NUM_ESTATE(area, num)));
+					continue;
+				}
+				estates[area][num] = restore_variable(read_file(AREA_NUM_ESTATE(area, num)));
+				if(!estates[area][num]) {
+					CHANNEL_D->channel_broadcast("sys", sprintf("%s 所存資料以 restore_variable 讀出結果為 0 ... 略過。", AREA_NUM_ESTATE(area, num)));
 				}
 			}
 	}
@@ -989,12 +1174,12 @@ void restore_all_data()
 
 void error_check()
 {
-	string city;
+	string zone;
 	int num;
-	mapping citydata, numdata;
+	mapping zonedata, numdata;
 
-	foreach( city, citydata in estates)
-	foreach( num, numdata in citydata )
+	foreach( zone, zonedata in estates)
+	foreach( num, numdata in zonedata )
 	{
 
 	}	

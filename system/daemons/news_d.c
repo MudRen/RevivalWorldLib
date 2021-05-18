@@ -84,8 +84,9 @@ void broadcast_news()
 {
 	int time, num;
 	array newe, broadcast_news;
-	
-	if( !sizeof(news) )	
+
+	// 隨新聞數量調整播放頻率
+	if( sizeof(news) <= random(3)  )
 		return;
 	
 	time = time();

@@ -62,3 +62,4 @@ private void create()
 {
         printf("Master Object(/system/kernel/master.c) ¸ü¤J¦¨¥\\n");
 }
+

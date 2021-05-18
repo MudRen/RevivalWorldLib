@@ -44,22 +44,26 @@ HELP;
 
 private void do_command(object me, string arg)
 {
-	int h, w;
+        int h, w;
 
-	h = query_temp("windowsize/height", me);
-	w = query_temp("windowsize/width", me);
-	
-	if( !arg )
-		return tell(me, pnoun(2, me)+"目前設定的畫面大小為：高 "+h+" 行，寬 "+w+" 字元。\n");
-	
-	foreach(arg in explode(arg, " "))
-	{
-		if( sscanf(arg, "h%d", h) )
-			set_temp("windowsize/height", h, me);
-		
-		if( sscanf(arg, "w%d", w) )
-			set_temp("windowsize/width", w, me);
-	}
+        h = query_temp("windowsize/height", me);
+        w = query_temp("windowsize/width", me);
 
-	return tell(me, pnoun(2, me)+"目前設定的畫面大小為：高 "+h+" 行，寬 "+w+" 字元。\n");
+        if( !arg )
+                return tell(me, pnoun(2, me)+"目前設定的畫面大小為：高 "+h+" 行，寬 "+w+" 字元。\n");
+        if( arg == "-unset" ) {
+                delete_temp("windowsize", me);
+                return tell(me, pnoun(2, me)+"取消自訂畫面大小，將由系統自動偵測。\n");
+        }
+
+        foreach(arg in explode(arg, " "))
+        {
+                if( sscanf(arg, "h%d", h) )
+                        set_temp("windowsize/height", h, me);
+
+                if( sscanf(arg, "w%d", w) )
+                        set_temp("windowsize/width", w, me);
+        }
+
+        return tell(me, pnoun(2, me)+"目前設定的畫面大小為：高 "+h+" 行，寬 "+w+" 字元。\n");
 }

@@ -43,7 +43,7 @@ void reset_buginfo()
 // 列出 Bug 列表
 string list_bug(int options)
 {
-	string listmsg;
+	string *listmsg;
 	array list_buginfo;
 	
 	if( options & LIST_OPT_ALL )
@@ -57,23 +57,23 @@ string list_bug(int options)
 		list_buginfo = buginfo;
 
 	list_buginfo = sort_array(list_buginfo, (: count($1["number"], "<", $2["number"]) ? 1 : -1 :));
-	listmsg =  "\n"+MUD_FULL_NAME+HIY" 臭蟲回報系統\n"NOR;
-	listmsg += WHT"─────────────────────────────────────\n"NOR;
-	listmsg += "編號 回報者                   主題                          處理狀態  回應\n";
-	listmsg += WHT"─────────────────────────────────────\n"NOR;
+	listmsg = ({ "\n"+MUD_FULL_NAME+HIY" 臭蟲回報系統\n"NOR });
+	listmsg += ({ WHT"─────────────────────────────────────\n"NOR });
+	listmsg += ({ "編號 回報者                   主題                          處理狀態  回應\n" });
+	listmsg += ({ WHT"─────────────────────────────────────\n"NOR });
 	
 	foreach( mapping data in list_buginfo )
 	{		
-		listmsg += sprintf(HIY"%-4s"NOR" %-24s %-:30s%|8s %5s\n", data["number"], data["author_idname"], data["title"], data["status"], sizeof(data["reply"]) ? sizeof(data["reply"])+"" : "");	
+		listmsg += ({ sprintf(HIY"%-4s"NOR" %-24s %-:30s%|8s %5s\n", data["number"], data["author_idname"], data["title"], data["status"], sizeof(data["reply"]) ? sizeof(data["reply"])+"" : "") });	
 	}
-	listmsg += WHT"─────────────────────────────────────\n"NOR;
+	listmsg += ({ WHT"─────────────────────────────────────\n"NOR });
 	
 	if( options & LIST_OPT_ALL )
-		listmsg += "列出所有回報資料\n";
+		listmsg += ({ "列出所有回報資料\n" });
 	else
-		listmsg += "列出最近 "+DEFAULT_LOAD+" 項回報資料\n";	
+		listmsg += ({ "列出最近 "+DEFAULT_LOAD+" 項回報資料\n" });	
 	
-	return listmsg;
+	return implode(listmsg, "");
 }
 
 // 新增 Bug 資料
@@ -171,7 +171,7 @@ varargs void remove_bug(object me, string number, int reply)
 }
 
 // 查詢 Bug 資料
-string query_bug(string number)
+string query_bug(string number, object me)
 {
 	string bugmsg;
 	mapping data;
@@ -185,7 +185,11 @@ string query_bug(string number)
 	bugmsg += sprintf(HIM"時間"NOR" %-20s "HIM"回報"NOR" %s\n", TIME_D->replace_ctime(data["time"]), data["author_idname"]);
 	bugmsg += sprintf(HIM"狀況"NOR" %-20s "HIM"回應"NOR" %d\n", data["status"], sizeof(data["reply"]));
 	bugmsg += WHT"─────────────────────────────────────\n"NOR;
-	bugmsg += data["content"]+"\n";
+	
+	if( wizardp(me) || me->query_id(1) == data["author_id"] )
+		bugmsg += data["content"]+"\n";
+	else
+		bugmsg += WHT"("+pnoun(2, me)+"的權限無法閱讀詳細回報內容)\n"NOR;
 	
 	if( sizeof(data["reply"]) )
 	{
@@ -194,7 +198,7 @@ string query_bug(string number)
 		foreach( array reply in data["reply"] )
 		{
 			replies++;
-			bugmsg += HIY"\n\n*** 第 "+replies+" 篇回應："+reply[REPLY_AUTHOR]+HIY+" ***\n"NOR;
+			bugmsg += NOR YEL"\n***"HIY" 第 "+replies+" 篇回應："+reply[REPLY_AUTHOR]+NOR YEL" ***\n"NOR;
 			bugmsg += reply[REPLY_MESSAGE]+NOR"\n";
 		}
 	}

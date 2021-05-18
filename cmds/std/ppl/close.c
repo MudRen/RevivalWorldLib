@@ -41,7 +41,7 @@ HELP;
 private void confirm_close(object me, array loc, string owner, string enterprise, string arg)
 {
 	int percent;
-	string value;
+	int value;
 	mapping building_table;
 	mapping estdata;
 	string moneyunit = MONEY_D->city_to_money_unit(loc[CITY]);
@@ -56,13 +56,12 @@ private void confirm_close(object me, array loc, string owner, string enterprise
 		percent = SELL_PERCENT + me->query_skill_level("estaterebate")/2;
 
 		if( estdata["roomtable"] )
-		{
-			value = ESTATE_D->query_estate_value(loc, 1);
-			value = count(count(value, "*", percent), "/", 100);
-		}
+			value = ESTATE_D->query_estate_value(loc, 1) * percent / 100;
 
 		ESTATE_D->unlink_estate(loc);
 		
+		CITY_D->save_city(loc[CITY], loc[NUM]);
+
 		if( belong_to_enterprise(owner) )
 		{
 			if( estdata["roomtable"] )
@@ -92,7 +91,7 @@ private void confirm_close(object me, array loc, string owner, string enterprise
 	me->finish_input();
 }
 
-private void confirm_close_up(object me, object env, object up_room, string moneyunit, string value, string arg)
+private void confirm_close_up(object me, object env, object up_room, string moneyunit, int value, string arg)
 {
 	object first_floor_room;
 	object connect_room;
@@ -139,6 +138,9 @@ private void confirm_close_up(object me, object env, object up_room, string mone
 	me->earn_money(moneyunit, value);
 	tell(me, pnoun(2, me)+"將上層房間拆除掉了，拿回 "HIY+money(moneyunit, value)+NOR" 元。\n");
 	me->finish_input();
+	
+	if( !wizardp(me) )
+		TOP_D->update_top("building", base_name(first_floor_room), env->query_floor(), query("owner", env), first_floor_room->query_room_name(1), env->query_city());
 }
 
 
@@ -152,11 +154,11 @@ private void do_command(object me, string arg)
 	if( arg == "up" )
 	{
 		object up_room;
-		string value; 
+		int value; 
 		string moneyunit = env->query_money_unit();
 		int percent;
 
-		if( query("owner", env) != me->query_id(1) )
+		if( !wizardp(me) && query("owner", env) != me->query_id(1) )
 			return tell(me, pnoun(2, me)+"不是這棟建築物的擁有者。\n");
 		
 		if( !query("exits/up", env) )
@@ -169,10 +171,9 @@ private void do_command(object me, string arg)
 			return tell(me, "上層的房間並不是頂樓，"+pnoun(2, me)+"必須從最頂樓一層一層拆下來。\n");
 		
 		value = BUILDING_D->query_floor_value(up_room->query_floor());
-		
+				
 		percent = SELL_PERCENT + me->query_skill_level("estaterebate")/2;
-
-		value = count(count(value, "*", percent), "/", 100);
+		value = value * percent / 100;
 		
 		tell(me, "拆除上層房間可回收 "+percent+"% 的金額共 "HIY+money(moneyunit, value)+NOR"，確定拆除上面這一層房間嗎(y/n)？");
 		
@@ -181,7 +182,7 @@ private void do_command(object me, string arg)
 		return;
 	}
 	
-        if( !arrayp(loc) || !env || !env->is_maproom() || !CITY_D->is_city_location(loc) )
+        if( !arrayp(loc) || !env || !env->is_maproom() )
 	{
 		if( query("owner", env) != me->query_id(1) )
 			return tell(me, pnoun(2, me)+"無法關閉這個建築物。\n");
@@ -198,27 +199,30 @@ private void do_command(object me, string arg)
 	else if( arg == "east" )
 		loc = arrange_city_location(loc[X]+1, loc[Y], loc[CITY], loc[NUM]);
 	
-	if( !CITY_D->valid_coordinate(loc[X], loc[Y], loc[CITY], loc[NUM]) )
+	if( !MAP_D->valid_coordinate(loc) )
 		return tell(me, "那個方向的座標錯誤。\n");
 
-	owner = CITY_D->query_coor_data(loc, "owner");
-
-	if( !owner )
-		return tell(me, "這塊土地不屬於"+pnoun(2, me)+"。\n");
-	else if( belong_to_government(owner) )
+	if( CITY_D->is_city_location(loc) )
 	{
-		if( !CITY_D->is_mayor_or_officer(loc[CITY], me) )
-			return tell(me, "這塊地是市政府資產，"+pnoun(2, me)+"沒有權利關閉這裡的建築物或景觀。\n");
+		owner = CITY_D->query_coor_data(loc, "owner");
+	
+		if( !owner )
+			return tell(me, "這塊土地不屬於"+pnoun(2, me)+"。\n");
+		else if( belong_to_government(owner) )
+		{
+			if( !CITY_D->is_mayor_or_officer(loc[CITY], me) )
+				return tell(me, "這塊地是市政府資產，"+pnoun(2, me)+"沒有權利關閉這裡的建築物或景觀。\n");
+		}
+		else if( belong_to_enterprise(owner) )
+		{
+			enterprise = query("enterprise", me);
+			
+			if( enterprise != owner[11..] )
+				return tell(me, pnoun(2, me)+"並不是"+ENTERPRISE_D->query_enterprise_color_id(enterprise)+"企業集團的成員，沒有權利關閉這裡的建築物或景觀。\n");
+		}
+		else if( owner != me->query_id(1) )
+			return tell(me, "這塊地是 "+capitalize(owner)+" 的私人土地，"+pnoun(2, me)+"沒有權利關閉這裡的建築物或景觀。\n");
 	}
-	else if( belong_to_enterprise(owner) )
-	{
-		enterprise = query("enterprise", me);
-		
-		if( enterprise != owner[11..] )
-			return tell(me, pnoun(2, me)+"並不是"+ENTERPRISE_D->query_enterprise_color_id(enterprise)+"企業集團的成員，沒有權利關閉這裡的建築物或景觀。\n");
-	}
-	else if( owner != me->query_id(1) )
-		return tell(me, "這塊地是 "+capitalize(owner)+" 的私人土地，"+pnoun(2, me)+"沒有權利關閉這裡的建築物或景觀。\n");
 
 	estdata = ESTATE_D->query_loc_estate(loc);
 

@@ -20,3 +20,13 @@
 #define AREA_NUM(area, num)			AREA_PATH(area)+(string)num+"/"
 #define AREA_NUM_DATA(area, num)		AREA_NUM(area, num)+"data"
 #define AREA_NUM_MAP(area, num)			AREA_NUM(area, num)+"map"
+#define AREA_NUM_ROOM(area, num)		AREA_NUM(area, num)+"room/"
+#define AREA_NUM_ESTATE(area, num)		AREA_NUM(area, num)+"estate"
+
+#define AREA_ROOM_MODULE(area, num, x, y, roomtype)		AREA_NUM_ROOM(area, num)+(string)x+"_"+(string)y+"_"+(string)roomtype
+
+#define MAP		"map"
+#define RMAP		"realtime_map"
+#define DATA		"data"
+#define INFO		"info"
+#define AROOM		"arearoom"

@@ -22,8 +22,9 @@ inherit COMMAND;
 string help = @HELP
 可列出目前擁有的技能、技能等級及經驗值、升上一級所須經驗值。
 
-skill		- 列出自己的技能資料
-skill [員工]	- 列出您某位員工的技能資料
+skill			- 列出自己所有的技能資料
+skill -u		- 列出自己未滿 100 級的技能資料
+skill [員工]		- 列出您某位員工的技能資料
 
 系統縮寫: sk
 HELP;
@@ -44,7 +45,7 @@ varargs string percent_bar(int len, string str, int cur, int max, int flag)
 	);
 }
 
-string skill_list(object me, object ob)
+string skill_list(object me, object ob, int show_all)
 {
 	string msg;
 	string skill, skill_type;
@@ -74,6 +75,8 @@ string skill_list(object me, object ob)
 			continue;
 		}
 
+		if( !show_all && data["level"] >= 100 ) continue;
+
 		skillob = load_object(SKILL(skill));
 		
 		if( !objectp(skillob) ) continue;
@@ -102,7 +105,7 @@ string skill_list(object me, object ob)
 		next_level_exp = ob->next_level_exp(skill);
 		
 
-		msg += sprintf("  %-30s %s%4d"NOR" %s%|4s "NOR" %s %s\n"NOR,
+		msg += sprintf("  %-32s%s%3d"NOR" %s%|4s "NOR" %s %s\n"NOR,
 			    (SKILL(skill))->query_idname(),
 			    level_color, data["level"],
 			    level_color, grade,
@@ -125,8 +128,14 @@ string skill_list(object me, object ob)
 private void do_command(object me, string arg)
 {
 	object ob;
-
-	if( wizardp(me) )
+	int show_all = 1;
+	
+	if( arg == "-u" )
+	{
+		ob = me;
+		show_all = 0;
+	}
+	else if( wizardp(me) )
 	{
 		if( arg ) 
 			ob = find_player(arg) || present(arg); 
@@ -143,5 +152,5 @@ private void do_command(object me, string arg)
 	}
 	else ob = me;
 
-	me->more(skill_list(me, ob))+"\n";
+	me->more(skill_list(me, ob, show_all))+"\n";
 }

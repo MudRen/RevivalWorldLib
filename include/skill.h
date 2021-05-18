@@ -23,8 +23,12 @@
 #define PLAYER_SKILL		(1<<0)
 #define NPC_SKILL		(1<<1)
 
+#define SOCIAL_SKILL		(1<<0)
+#define COMBAT_SKILL		(1<<1)
+
+/*
 varargs string query_id(int raw);
 varargs string query_name(int raw);
 varargs string query_idname(int raw);
 string query_file();
-
+*/

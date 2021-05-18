@@ -51,6 +51,12 @@ private void command(object me, string arg)
 #include <message.h>
 #include <runtime_config.h>
 #include <quest.h>
+#include <condition.h>
+#include <map.h>
+#include <areadata.h>
+#include <citydata.h>
+#include <buff.h>
+#include <equipment.h>
 
 void create()
 {

@@ -13,60 +13,34 @@
  
 #include <ansi.h>
 #include <buff.h>
+#include <feature.h>
 
-#define CONDITION_ID		"selfcharge"
-#define CONDITION_NAME		HIY"自我"NOR YEL"充實"NOR
-#define CONDITION_TYPE		"加持"
-#define DEFAULT_TIME		(3*60*60)
-#define DEFAULT_HEART_BEAT	0
+inherit CONDITION_MOD;
 
-// 回傳狀態英文名稱
-string query_condition_id()
-{
-	return CONDITION_ID;
-}
-
-// 回傳狀態中文名稱
-string query_condition_name()
-{
-	return CONDITION_NAME;
-}
-
-// 回傳狀態型態名稱
-string query_condition_type()
-{
-	return CONDITION_TYPE;
-}
-
-// 回傳狀態預設持續時間
-int query_default_condition_time()
-{
-	return DEFAULT_TIME;
-}
-
-// 回傳狀態預設心跳時間
-int query_default_condition_heart_beat()
-{
-	return DEFAULT_HEART_BEAT;
-}
+string id 		= "selfcharge";
+string name 	= HIY"自我"NOR YEL"充實"NOR;
+string type 	= CONDITION_TYPE_POSITIVE;
+int time 		= (3*60*60);
+int heartbeat 	= 0;
 
 // 啟動狀態時的效果
 void start_effect(object ob)
 {
-	string condition_key = "condition/"+replace_string(base_name(this_object()), "/","#")+"/";
+	string condition_key = query_key()+"/";
 
 	set(condition_key+BUFF_SOCIAL_EXP_BONUS, 2, ob);
+	set(condition_key+BUFF_COMBAT_EXP_BONUS, 2, ob);
 	set(condition_key+BUFF_STAMINA_MAX, 50, ob);
 	set(condition_key+BUFF_HEALTH_MAX, 50, ob);
 	set(condition_key+BUFF_ENERGY_MAX, 50, ob);
 
-	msg("$ME進入「"CONDITION_NAME"」的"CONDITION_TYPE"狀態。\n", ob, 0, 1);
+	::start_effect(ob);
 }
 
 // 結束狀態時的效果
 void stop_effect(object ob)
 {
-	msg("$ME脫離「"CONDITION_NAME"」的"CONDITION_TYPE"狀態。\n", ob, 0, 1);
+	::stop_effect(ob);
 }
 
 // 狀態進行中的效果

@@ -25,9 +25,9 @@ HELP;
 private void do_command(object me, string arg)
 {
 	if( !arg )
-		return msg("$ME自言自語不知道在說些什麼。\n", me, 0, 1);
+		return msg("$ME自言自語不知道在說些什麼。\n", me, 0, 1, SAYMSG);
 
-	msg("$ME說道: "HIG+arg+NOR"\n", me, 0, 1);
+	msg("$ME說道: "HIG+arg+NOR"\n", me, 0, 1, SAYMSG);
 	
 	me->add_msg_log("say", pnoun(2, me)+"說道: "HIG+arg+NOR"\n");
 	(present_objects(me)-({ me }))->add_msg_log("say", me->query_idname()+"說道: "HIG+arg+NOR"\n");

@@ -22,8 +22,20 @@
 inherit COMMAND;
 
 string help = @HELP
-        標準 info 指令。
+info		- 查詢當地資訊
 HELP;
+
+string influence_color(int i)
+{
+	switch(i)
+	{
+		case 0..20: return WHT; break;
+		case 21..40: return HIY; break;
+		case 41..60: return HIG; break;
+		case 61..80: return HIC; break;
+		case 81..100: return HIW; break;
+	}
+}
 
 private void do_command(object me, string arg)
 {
@@ -73,8 +85,42 @@ private void do_command(object me, string arg)
 	
 
 		}
-		else
-			msg += "一望無際的郊區區域...。\n";
+		else if( AREA_D->is_area_location(loc) )
+		{
+			mapping area_section_influence;
+			float rate;
+			int total_count;
+			string* sort_city;
+			string city;
+			
+			if( !env->is_maproom() || !arrayp(loc) || !AREA_D->area_exist(loc[AREA], loc[NUM]) )
+				return tell(me, "此地無法查詢這種資料。\n");
+		
+			area_section_influence = AREA_D->query_section_info(loc[AREA], loc[NUM], "area_section_influence");
+
+			msg = AREA_D->query_area_idname(loc[AREA], loc[NUM])+"的資源佔有率資料如下：\n";
+			
+			msg += WHT"─────────────────────────────────────\n"NOR;
+			
+			total_count = implode(values(area_section_influence), (: $1+$2 :));
+			msg += HIW BRED"城市名稱                    資源佔有率    佔有數量                        \n"NOR;
+			
+			sort_city = sort_array(keys(area_section_influence), (: $(area_section_influence)[$1] < $(area_section_influence)[$2] ? 1 : -1 :));
+				
+			foreach(city in sort_city)
+			{
+				if( !CITY_D->city_exist(city) ) continue;
+				
+				rate = area_section_influence[city] * 100. / total_count;
+				
+				msg += sprintf("%-30s%s%7.2f%%    "HIW"%d\n"NOR, CITY_D->query_city_idname(city), influence_color(to_int(rate)), rate, area_section_influence[city]);
+			}
+		
+			msg += WHT"─────────────────────────────────────\n"NOR;
+			
+			return me->more(msg);
+			
+		}
 	}
 	else
 		return tell(me, "目前只能查詢土地資料。\n");

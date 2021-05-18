@@ -18,18 +18,19 @@
 #include <feature.h>
 #include <message.h>
 #include <roommodule.h>
+#include <citydata.h>
 
 inherit ROOM_ACTION_MOD;
 
-#define INTEREST_RATE	3
+#define INTEREST_RATE	1
+#define MAX_INTEREST	100000
 
 // 計算利息
 void count_rate(object env, string id)
 {
-	/*
 	object player;
 	mapping savings;
-	string newmoney, interest;
+	int newmoney, interest;
 	
 	if( !user_exists(id) )
 	{
@@ -43,19 +44,23 @@ void count_rate(object env, string id)
 
 	player = find_player(id);
 
-	foreach( string unit, string money in savings )
+	foreach( string unit, mixed money in savings )
 	{
+		money = to_int(money);
+		
 		// 利息
-		interest = count(count(money,"*",INTEREST_RATE),"/",100000);
+		interest = money * INTEREST_RATE / 1000000;
 
-		newmoney = count(money,"+",interest);
+		if( interest > MAX_INTEREST )
+			interest = MAX_INTEREST;
+
+		newmoney = money + interest;
 
 		if( objectp(player) )
-			tell(player, query("short", env)+"銀行單日結算，利息共 "+HIY+money(unit, interest)+NOR"。\n");
+			tell(player, env->query_room_name()+"單日結算，利息共 "+HIY+money(unit, interest)+NOR"。\n");
 		
 		set("savings/"+id+"/money/"+unit, newmoney, env);
 	}
-	*/
 }
 
 // 搶劫
@@ -71,17 +76,20 @@ void do_rob(object me, string arg)
 void do_deposit(object me, string arg)
 {
 	int type;
-	string unit, money, originmoney;
+	string unit;
+	mixed money, originmoney;
 	string id = me->query_id(1);
 	object env = environment(me);
 	object master = env->query_master();
 	mapping moneydata = MONEY_D->query_moneydata(id);
 
+	if( !userp(me) ) return;
+
 	if( !arg || sscanf(arg, "$%s %s", unit, money) != 2 )
 		return tell(me, pnoun(2, me)+"想要存進多少錢？(例：$"+env->query_money_unit()+" 100)\n");
 
 	unit = upper_case(unit);
-	money = big_number_check(money);
+	money = to_int(big_number_check(money));
 
 	if( !MONEY_D->money_unit_exist(unit) )
 	{
@@ -92,14 +100,14 @@ void do_deposit(object me, string arg)
 	if( !money )
 		return tell(me, "請輸入正確的數字。\n");
 
-	if( count(money, "<=", 0) )
+	if( money <= 0 )
 		return tell(me, "金額必須要大於零。\n");
 
-	if( count( moneydata["cash"][unit], "<", money ) )
+	if( to_int(moneydata["cash"][unit]) < money )
 		return tell(me, pnoun(2, me)+"身上沒有那麼多的 $"+unit+" 錢！\n");
 
-	originmoney = query("savings/"+me->query_id(1)+"/money/"+unit, master);
-	set("savings/"+me->query_id(1)+"/money/"+unit, count(money,"+",originmoney), master);
+	originmoney = to_int(query("savings/"+me->query_id(1)+"/money/"+unit, master));
+	set("savings/"+me->query_id(1)+"/money/"+unit, money + originmoney, master);
 
 	me->spend_money(unit, money);
 
@@ -116,30 +124,33 @@ void do_deposit(object me, string arg)
 // 提錢
 void do_withdraw(object me, string arg)
 {
-	string unit, money, originmoney;
+	string unit;
+	mixed money, originmoney;
 	string id = me->query_id(1);
 	object env = environment(me);
 	object master = env->query_master();
+
+	if( !userp(me) ) return;
 
 	if( !arg || sscanf(arg, "$%s %s", unit, money) != 2 )
 		return tell(me, pnoun(2, me)+"想要提領多少錢？\n");
 
 	unit = upper_case(unit);
-	money = big_number_check(money);
+	money = to_int(big_number_check(money));
 
 	if( !money )
 		return tell(me, "請輸入正確的數字。\n");
 
-	if( count(money, "<=", 0) )
+	if( money <= 0 )
 		return tell(me, "金額必須要大於零。\n");
 
-	if( count(query("savings/"+me->query_id(1)+"/money/"+unit, master), "<", money) )
+	if( to_int(query("savings/"+me->query_id(1)+"/money/"+unit, master)) < money )
 		return tell(me, pnoun(2, me)+"在這間銀行的 $"+unit+" 存款並沒有那麼多。\n");
 
-	originmoney = query("savings/"+me->query_id(1)+"/money/"+unit, master);
+	originmoney = to_int(query("savings/"+me->query_id(1)+"/money/"+unit, master));
 
-	if( count(originmoney, ">", money) )
-		set("savings/"+me->query_id(1)+"/money/"+unit, count(originmoney,"-",money), master);
+	if( originmoney > money )
+		set("savings/"+me->query_id(1)+"/money/"+unit, originmoney - money, master);
 	else
 	{
 		delete("savings/"+me->query_id(1)+"/money/"+unit, master);
@@ -211,6 +222,8 @@ void do_autotransfer(object me, string arg)
 	string bankfile = base_name(master);
 	mapping moneydata = MONEY_D->query_moneydata(id);
 	
+	if( !userp(me) ) return;
+
 	type = moneydata["bank"][bankfile];
 	
 	if( !type )
@@ -235,7 +248,12 @@ void do_convert(object me, string arg)
 	int ratio;
 	string msg;
 	string default_money_unit = MONEY_D->query_default_money_unit();
-	string src_unit, src_money, src_city, dst_unit, dst_money, dst_city;
+	string src_unit, src_city, dst_unit, dst_city;
+	mixed src_money, dst_money;
+
+	if( !userp(me) ) return;
+
+	//return tell(me, "匯制修改中，停止兌換任何外幣。\n");
 
 	if( !arg || sscanf(arg, "$%s %s %*(to|TO) $%s", src_unit, src_money, dst_unit) != 4 )
 		return tell(me, pnoun(2, me)+"要將哪種貨幣兌換為哪種貨幣？(例：convert $CT 100 to $DL)。\n");
@@ -258,10 +276,10 @@ void do_convert(object me, string arg)
 	if( dst_unit != default_money_unit && !CITY_D->city_exist(dst_city) )
 		return tell(me, "使用 $"+dst_unit+" 貨幣的城市已經消失，此種貨幣已不再具有價值。\n");
 	
-	if( !(src_money = big_number_check(src_money)) || count(src_money, "<", 1) )
+	if( !(src_money = to_int(big_number_check(src_money))) || src_money < 1 )
 		return tell(me, "請輸入正確的貨幣兌換數量。\n");
 	
-	if( count(src_money, "<", 10000) )
+	if( src_money < 10000 )
 		return tell(me, "每次兌換至少要 10,000 以上金額。\n");
 
 	if( !MONEY_D->money_unit_exist(src_unit) )
@@ -270,13 +288,13 @@ void do_convert(object me, string arg)
 	if( !MONEY_D->money_unit_exist(dst_unit) )
 		return tell(me, "這個世界上並沒有 "+dst_unit+" 這種貨幣。\n");
 	
-	dst_money = EXCHANGE_D->convert(src_money, src_unit, dst_unit);
+	dst_money = to_int(EXCHANGE_D->convert(src_money, src_unit, dst_unit));
 
 	if( !me->spend_money(src_unit, src_money) )
 		return tell(me, pnoun(2, me)+"身上並沒有那麼多的 "+src_unit+" 現金。\n");
 
 	ratio = 50 - to_int(me->query_skill_level("exchange")/5);
-	dst_money = count(dst_money, "-", count(count(dst_money, "*", ratio), "/", 1000));
+	dst_money -= (dst_money * ratio) / 1000;
 
 	msg = "\n目前國際匯率比值 "HIC+src_unit+NOR":"HIC+dst_unit+NOR" 為 "HIG+EXCHANGE_D->query_exchange_data(src_unit)+NOR":"HIG+EXCHANGE_D->query_exchange_data(dst_unit)+NOR"。\n";
 	msg += "扣除 "+ratio+"/1000 交易費後，"+pnoun(2, me)+"兌換 "HIY"$"+src_unit+" "+NUMBER_D->number_symbol(src_money)+NOR" 得到 "HIY"$"+dst_unit+" "+NUMBER_D->number_symbol(dst_money)+NOR"。\n\n";
@@ -288,16 +306,15 @@ void do_convert(object me, string arg)
 
 void do_list(object me, string arg)
 {
-	string trend;
 	string msg, city;
-	float change, ex;
+	float ex;
 	mapping exchange = EXCHANGE_D->query_exchange_data();
 	string *sort_exchange;
 
 	msg = HIC"各大城市"NOR CYN"貨幣匯率比值如下：\n"NOR;
 	msg += NOR WHT"────────────────────────────────\n"NOR;
 	msg += sprintf("%-24s "HIG"%-5s"NOR HIW"%6.10f\n"NOR WHT"────────────────────────────────\n\n"NOR, HIW"重生的世界標準貨幣"NOR, MONEY_D->query_default_money_unit(), EXCHANGE_D->query_exchange_data(MONEY_D->query_default_money_unit()));
-	msg += NOR HIY"城市                   "NOR GRN"幣種           "NOR WHT"匯率    趨勢  "NOR YEL"城市總繁榮度\n"NOR;
+	msg += NOR HIY"城市                   "NOR GRN"幣種               "NOR WHT"匯率      "NOR YEL"城市總繁榮度\n"NOR;
 	msg += NOR WHT"────────────────────────────────\n"NOR;
 	
 	sort_exchange = sort_array(keys(exchange), (: $(exchange)[$1] < $(exchange)[$2] ? 1 : -1 :));
@@ -306,21 +323,12 @@ void do_list(object me, string arg)
 	{
 		ex = exchange[unit];
 
-		change = EXCHANGE_D->query_exchange_trend(unit);
-
-		if( change > ex )
-			trend = BRED HIR"↑"NOR;
-		else if( change < ex )
-			trend = BGRN HIG"↓"NOR;
-		else
-			trend = BYEL HIY"－"NOR;
-
 		city = MONEY_D->money_unit_to_city(unit);
 		
 		if( city == "wizard" ) continue;
 
 		if( CITY_D->city_exist(city) )
-			msg += sprintf("%-24s "HIG"%-5s"NOR HIW"%10.10f     %2s"HIY"%15s\n"NOR, CITY_D->query_city_idname(city), unit, ex, trend, NUMBER_D->number_symbol(CITY_D->query_city_info(city, "totalflourish")));
+			msg += sprintf("%-24s "HIG"%-5s    "NOR HIW"%10.10f   "HIY"%15s\n"NOR, CITY_D->query_city_idname(city), unit, ex, NUMBER_D->number_symbol(CITY_D->query_city_info(city, "totalflourish")));
 	}
 
 	msg += NOR WHT"────────────────────────────────\n"NOR;
@@ -328,32 +336,77 @@ void do_list(object me, string arg)
 	me->more(msg);
 }
 
+void do_transferdata(object me, string arg)
+{
+	int num, x, y;
+	object env = environment(me);
+	string city = env->query_city();
+	string file;
+	string old_bank_file = base_name(env);
+	object target;
+	mapping savings = query("savings", env);
+	mapping moneydata;
+
+	if( !CITY_D->is_mayor(city, me) )
+		return tell(me, pnoun(2, me)+"不是本市的市長，無法轉移存檔資料。\n");
+
+	if( !sizeof(savings) )
+		return tell(me, "這裡沒有存款資料。\n");
+		
+	if( !arg || sscanf(arg, "%d %d,%d", num, x, y) != 3 )
+		return tell(me, "請輸入正確的銀行座標格式(例：2 24,59)。\n");
+	
+	file = CITY_ROOM_MODULE(city, (num-1), (x-1), (y-1), "bank");
+	
+	if( !objectp(target = load_module(file)) || query("function", target) != "lobby"  )
+		return tell(me, "座標"+loc_short(city, num-1, x-1, y-1)+"並不是銀行大廳。\n");
+		
+	if( target == env )
+		return tell(me, "無法轉移存款資料到一位置。\n");
+
+	foreach(string id, mapping data in savings)
+	{
+		moneydata = MONEY_D->query_moneydata(id);
+
+		if( mapp(data["money"]) )
+		foreach(string unit, string money in data["money"])
+		{
+			set("savings/"+id+"/money/"+unit, count(money, "+", query("savings/"+id+"/money/"+unit, target)), target);
+		}
+		
+		MONEY_D->set_bank(id, "set", file, moneydata["bank"][old_bank_file]);
+		MONEY_D->set_bank(id, "delete", old_bank_file);
+	}
+	
+	delete("savings", env);
+	env->save();
+	
+	target->save();
+	
+	msg("$ME將所有存款資料轉移至"+target->query_room_name()+"。\n", me, 0, 1);
+	
+	MONEY_D->save();
+}
+
+
 void heart_beat(object env)
 {
-	int time = time();
+	int timetick = addn("timetick", 1, env);
 
 	// 因為 heart_beat 不準, 用 time_precision 來校正
-	if( time % 3600 < 5 && time - query_temp("time_precision", env) > 100 )
+	if( !(timetick % 3600) )
 	{
-		string city = env->query_city();
 		mapping savings = query("savings", env);
 		
 		// 只有連鎖主店可以發放利息
 		if( env->query_master() != env ) return;
 
-		set_temp("time_precision", time, env);
-		
 		if( sizeof(savings) )
 		foreach( string id, mapping data in savings )
 			count_rate(env, id);
-		
-		set("city", city, env);
 
 		env->save();
 	}
-	
-	if( !(time % 600) )
-		env->save();
 }
 
 // 設定建築物內房間型態種類
@@ -392,6 +445,13 @@ HELP,
 查詢目前銀行所有存款資料，用法如下：[管理指令]
   info			- 顯示所有存款資料
 HELP,
+
+"transferdata":
+@HELP
+轉移目前銀行所有存款資料，用法如下：[管理指令]
+  transferdata 2 50,50	- 將這裡所有的存款資料轉移至第二都市的 50,50 銀行大廳中(會自動累加金錢)
+HELP,
+
 			]),
 		"heartbeat":1,	// 實際時間 1 秒為單位
 		"master":1,
@@ -403,6 +463,7 @@ HELP,
 	    		"information"	: (: do_information :),
 	    		"autotransfer"	: (: do_autotransfer :),
 	    		"rob"		: (: do_rob :),
+	    		"transferdata"	: (: do_transferdata :),
 		]),
     	]),
     	"exchange":
@@ -454,7 +515,7 @@ nosave array building_info = ({
 	,COMMERCE_REGION
 
 	// 開張儀式費用
-	,"5000000"
+	,5000000
 	
 	// 建築物關閉測試標記
 	,0

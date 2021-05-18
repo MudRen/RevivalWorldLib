@@ -25,9 +25,9 @@ void create()
 	if( this_object()->set_shadow_ob() ) return;
 
 	set("long","可作為一般的主食。\n");
-	set("unit", "株");
+	set("unit", "袋");
 	set("mass", 10);	// 重量
-	set("value", 3);	// 價錢
+	set("value", 40);	// 價錢
 	set("badsell", 1);
 
 	// 種子資訊
@@ -45,13 +45,13 @@ void create()
 	       	//每單位種子或秧苗需要的原料數量
 	       	"material":
 	       	([
-	       		"/obj/materials/water":5,
+	       		"/obj/materials/water":7,
 	       	]),
 			
 	       	//收割產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/farming/product/rice":50,
+	       		"/obj/farming/product/rice":30,
 	       	]),
 
 		//成熟收割時的訊息
@@ -60,7 +60,7 @@ void create()
 		//種植此類產品所需要的技能與其等級
 		"skill":
 		([
-			"farming":0,
+			"farming":20,
 		]),
 
 		//成長時的訊息
@@ -69,8 +69,8 @@ void create()
 			5:	"稻田上小小的幼苗已經漸漸長大了。\n",
 			50:	"只見稻田一片綠意盎然，充滿了生氣。\n",
 			150:	"稻田上的稻米已經漸漸成熟了。\n",
-			250:	"只見一整片金黃色的稻田，已經不用再灌溉了，耐心等一陣子便可以收割。\n",
-			300:	"這片農田上的稻米已經全部成熟了，終於可以收割了。\n",
+			300:	"只見一整片金黃色的稻田，已經不用再灌溉了，耐心等一陣子便可以收割。\n",
+			400:	"這片農田上的稻米已經全部成熟了，終於可以收割了。\n",
 		]),
 	
 		// 天氣影響敘述

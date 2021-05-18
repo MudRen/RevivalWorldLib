@@ -1,0 +1,18 @@
+bufferp(3)            LPC ╰参ㄧ计            bufferp(3)
+
+嘿
+     bufferp() - 耞把计┮倒跑计琌琌 buffer 篈跑计
+
+粂猭
+     int bufferp( mixed arg );
+
+磞瓃
+     安 <arg> 琌 buffer 篈戈, 玥肚 1, 玥肚 0.
+
+叫把σ
+     mapp(3), stringp(3), pointerp(3), objectp(3), intp(3),  buf-
+     ferp(3),  floatp(3),  functionp(3), nullp(3), undefinedp(3),
+     errorp(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

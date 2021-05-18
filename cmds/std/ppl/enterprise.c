@@ -17,7 +17,7 @@
 
 inherit COMMAND;
 
-#define REGISTER_ENTERPRISE_MONEY	"10000000"
+#define REGISTER_ENTERPRISE_MONEY	10000000
 
 string help = @HELP
 企業管理指令，用法如下：
@@ -90,9 +90,9 @@ private void do_command(object me, string arg)
 		foreach(string memberid, mapping data in ENTERPRISE_D->query_enterprise_info(arg, "member"))
 		{
 			if( memberid == president )
-				membermsg = sprintf("  %-13s%-12s%-20s%-20s%s\n"NOR, capitalize(memberid), CITY_D->query_city_id(CITY_D->query_player_city(memberid)), NUMBER_D->number_symbol(data["invest"]), NUMBER_D->number_symbol(MONEY_D->query_lazy_assets(memberid)), TIME_D->replace_ctime(data["jointime"])[0..9]) + membermsg;
+				membermsg = sprintf("  %-13s%-12s%-20s%-20s%s\n"NOR, capitalize(memberid), CITY_D->query_city_id(CITY_D->query_player_city(memberid))||"無市籍", NUMBER_D->number_symbol(data["invest"]), NUMBER_D->number_symbol(MONEY_D->query_lazy_assets(memberid)), TIME_D->replace_ctime(data["jointime"])[0..9]) + membermsg;
 			else
-				membermsg += sprintf("  %-13s%-12s%-20s%-20s%s\n"NOR, capitalize(memberid), CITY_D->query_city_id(CITY_D->query_player_city(memberid)), NUMBER_D->number_symbol(data["invest"]), NUMBER_D->number_symbol(MONEY_D->query_lazy_assets(memberid)), TIME_D->replace_ctime(data["jointime"])[0..9] );
+				membermsg += sprintf("  %-13s%-12s%-20s%-20s%s\n"NOR, capitalize(memberid), CITY_D->query_city_id(CITY_D->query_player_city(memberid))||"無市籍", NUMBER_D->number_symbol(data["invest"]), NUMBER_D->number_symbol(MONEY_D->query_lazy_assets(memberid)), TIME_D->replace_ctime(data["jointime"])[0..9] );
 		}
 
 		msg += membermsg;

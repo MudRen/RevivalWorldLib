@@ -4,7 +4,7 @@
  * File   : tear wild ginseng.c
  * Author : Clode@RevivalWorld
  * Date   : 2005-12-13
- * Note   : 野山人蔘
+ * Note   : 野山人參
  * Update :
  *  o 2000-00-00
  *

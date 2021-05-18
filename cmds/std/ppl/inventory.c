@@ -25,51 +25,61 @@ Mud 裡都會有它的簡寫。這裡也不例外，只要用 i 就有跟這指令相同的結果出現。
 
 HELP;
 
-#define MAX_SHOW_SIZE	50
+#define MAX_SHOW_SIZE	150
 
 string loading_buff_description(object ob)
 {
 	int buff = ob->query_all_buff(BUFF_LOADING_MAX);
 	
 	if( buff > 0 )
-		return sprintf(HIG"%.1f"NOR"("CYN"+"HIC"%d"NOR")", ob->query_max_loading()/1000., buff);
+		return sprintf(HIY"%.1f"NOR"("CYN"+"HIC"%d"NOR")", ob->query_max_loading()/1000., buff);
 	else if( buff < 0 )
-		return sprintf(HIG"%.1f"NOR"("RED"-"HIR"%d"NOR")", ob->query_max_loading()/1000., -buff);
+		return sprintf(HIY"%.1f"NOR"("RED"-"HIR"%d"NOR")", ob->query_max_loading()/1000., -buff);
 	else
-		return sprintf(HIG"%.1f"NOR, ob->query_max_loading()/1000.);
+		return sprintf(HIY"%.1f"NOR, ob->query_max_loading()/1000.);
+}
+
+string slot_buff_description(object ob)
+{
+	int buff = ob->query_all_buff(BUFF_SLOT_MAX);
+	
+	if( buff > 0 )
+		return sprintf(HIY"%d"NOR"("CYN"+"HIC"%d"NOR")", ob->query_inventory_slot(), buff);
+	else if( buff < 0 )
+		return sprintf(HIY"%d"NOR"("RED"-"HIR"%d"NOR")", ob->query_inventory_slot(), -buff);
+	else
+		return sprintf(HIY"%d"NOR, ob->query_inventory_slot());
 }
 
 private void show_inventory(object ob, object me, int show_filename)
 {
-	string msg = "";
+	string *msg = allocate(0);
+
 	object *obs = all_inventory(ob);
 	
 	if( !sizeof(obs) )
-		msg = sprintf("%s身上並沒有攜帶任何物品("NOR GRN"%d"NOR"/"HIG"%d"NOR" 空間、"NOR GRN"%.1f"NOR"/"HIG"%.1f"NOR" 負重)。\n", (ob==me?pnoun(2, ob):ob->query_idname()), sizeof(obs), ob->query_inventory_slot(), ob->query_loading()/1000.,  ob->query_max_loading()/1000.);
+		msg = ({ sprintf("%s身上並沒有攜帶任何物品("NOR GRN"%d"NOR"/"HIG"%d"NOR" 空間、"NOR GRN"%.1f"NOR"/"HIG"%.1f"NOR" 負重)。", (ob==me?pnoun(2, ob):ob->query_idname()), sizeof(obs), ob->query_inventory_slot(), ob->query_loading()/1000.,  ob->query_max_loading()/1000.) });
 	
 	else
 	{
-		foreach( object obj in obs[0..MAX_SHOW_SIZE-1] )
-		{
-			msg += sprintf(" %s%s ",  obj->is_keeping() ? HIR"#"NOR : " ", obj->is_equipping() ? HIG"#"NOR : " " );
-			
-			msg += (obj->is_equipping() ? HIW"["NOR+obj->query_part_name()+HIW"] "NOR : "")+remove_fringe_blanks(obj->short(1))+ (show_filename ? " -> "NOR WHT+file_name(obj)+NOR:"")+"\n";
-		}
 
 		if( sizeof(obs) > MAX_SHOW_SIZE )
-			msg += HIG"    身上共有 "+sizeof(obs)+" 件物品，數量太多一時看不清楚...\n"NOR;
+			msg += ({ HIG"\n    身上共有 "+sizeof(obs)+" 件物品，數量太多一時看不清楚..."NOR });
+		else
+		foreach( object obj in sort_objects(obs)[0..MAX_SHOW_SIZE-1] )
+			msg += ({ sprintf(" %s%s ",  obj->is_keeping() ? HIR"#"NOR : " ", obj->is_equipping() ? HIG"#"NOR : " " ) + (obj->is_equipping() ? (HIW"["NOR+obj->query_part_name()+HIW"] "NOR):"")+trim(obj->short(1))+ (show_filename ? " -> "NOR WHT+file_name(obj)+NOR:"") });	
 
-		msg = sprintf("%s身上攜帶著以下物品：("NOR GRN"%d"NOR"/"HIG"%d"NOR" 空間、"NOR GRN"%.1f"NOR"/%s 負重)\n%s\n",
+		msg = ({ sprintf("%s身上攜帶著以下物品：("NOR YEL"%d"NOR"/"HIY"%s"NOR" 空間、"NOR YEL"%.1f"NOR"/%s 負重)",
 			(ob==me?pnoun(2, ob):ob->query_idname()),
 			sizeof(obs), 
-			ob->query_inventory_slot(),
+			slot_buff_description(ob),
 			ob->query_loading()/1000.,
-			loading_buff_description(ob),
-			msg,
-		);
+			loading_buff_description(ob)
+		) }) + msg
+		;
 	}
 	
-	me->more(msg);
+	me->more(implode(msg, "\n"));
 }
 
 void do_command(object me, string arg)
@@ -90,7 +100,7 @@ void do_command(object me, string arg)
 	
 	if( objectp(target) )
 	{
-		if( userp(target) || target->is_npc() )
+		if( target->is_user_ob() || target->is_npc() )
 		{
 			if( query("boss", target) == me->query_id(1) || wizardp(me) )
 				show_inventory(target, me, show_filename);

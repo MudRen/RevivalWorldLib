@@ -17,3 +17,4 @@
 inherit STANDARD_ROOM;
 
 inherit ROOM_MOD;
+inherit INVENTORY_ROOM;

@@ -14,6 +14,7 @@
 #include <ansi.h>
 #include <daemon.h>
 #include <status.h>
+#include <npc.h>
 
 #define ID	0
 #define NAME	1
@@ -51,7 +52,10 @@ int id(string arg)
 	
 	arg = lower_case(remove_ansi(arg));
 	
-	idarray = explode(lower_case(remove_ansi(id_name[ID])), " ");
+	if( this_object()->is_dead() )
+		idarray = explode(lower_case(remove_ansi("corpse of "+id_name[ID])), " ");
+	else
+		idarray = explode(lower_case(remove_ansi(id_name[ID])), " ");
 	
 	size = sizeof(idarray);
 	
@@ -86,7 +90,11 @@ varargs string query_name(int raw)
 varargs string query_idname(int raw)
 {
 	if( !arrayp(id_name) ) return 0;
-	return undefinedp(raw) ? id_name[NAME]+"("+ansi_capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"("+capitalize(remove_ansi(id_name[ID]))+")";
+		
+	if( this_object()->is_dead() )
+		return copy(undefinedp(raw) ? id_name[NAME]+"的屍體(Corpse of "+capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"的屍體(Corpse of "+capitalize(remove_ansi(id_name[ID]))+")");
+	else
+		return undefinedp(raw) ? id_name[NAME]+"("+capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"("+capitalize(remove_ansi(id_name[ID]))+")";
 }
 
 varargs string *set_idname(string id, string name)
@@ -97,18 +105,10 @@ varargs string *set_idname(string id, string name)
 		id_name = allocate(2);
 	
 	if( stringp(id) )
-	{
-		id = kill_repeat_ansi(remove_fringe_blanks(id)+NOR);
- 
 		id_name[ID] = id;
-	}
 	
 	if( stringp(name) )
-	{
-		name = kill_repeat_ansi(remove_fringe_blanks(name)+NOR);
-		
 		id_name[NAME] = name;
-	}
 
 	return id_name;
 }
@@ -159,11 +159,19 @@ varargs string query_status(int flag)
 			status += key+NOR" ";
 
 	if( this_object()->is_module_npc() )
+	{
 		status += HIM"雇"NOR MAG"用 "NOR;
+		
+		if( query("job/type") == SPORTER )
+			status += BASEBALL_D->query_player_status(this_object());
+	}
 	
 	if( query("faint") ) 
 		status += HIR"昏"NOR RED"倒 "NOR;
 	
+	if( query("die") )
+		status += HIR"死"NOR RED"亡 "NOR;
+
 	if( !(flag & STATUS_NO_OBBUFF) )
 	foreach(object ob in this_object()->query_equipment_objects())
 	{
@@ -181,21 +189,19 @@ varargs string short(int need_quantity)
 {
 	string ret = "";
 	string status = query_status();
-	string position = query("position");
+	string jobname = query("job/name");
 	string nickname = query("nickname");
 
-	if( position )
-		ret += position+(nickname?"":" ");
+	if( jobname )
+		ret += jobname+(nickname?"":" ");
 
 	if( nickname )
 		ret += "「"+nickname+"」";
 
 	if( need_quantity && !this_object()->is_living() )
 	{
-		mixed amount = query_temp("amount") || 1;
-		
-		if( !query("flag/no_amount") )
-			ret += " "+NUMBER_D->number_symbol(amount)+" "+(query("unit")||"個");
+		if( !this_object()->no_amount() )
+			ret += " "+NUMBER_D->number_symbol(this_object()->query_amount())+" "+(query("unit")||"個");
 	}
 	
 	ret += query_idname();
@@ -203,7 +209,7 @@ varargs string short(int need_quantity)
 	if( status  )
 		ret += " "+status;
 
-	return kill_repeat_ansi(ret+NOR);
+	return ret+NOR;
 }
 
 varargs string long(int need_quantity)

@@ -16,9 +16,9 @@
 #include <message.h>
 #include <npc.h>
 
-int over_capacity(object env, string database, string amount, mixed capacity);
-void input_object(object env, string database, string basename, string amount);
-void output_object(object env, string database, string basename, string amount);
+int over_capacity(object env, string database, int amount, int capacity);
+void input_object(object env, string database, string basename, int amount);
+void output_object(object env, string database, string basename, int amount);
 
 #define STORE_CAPACITY		100000
 #define WAREHOUSE_CAPACITY	-1
@@ -29,10 +29,11 @@ void do_transport(object me, string arg, string database)
 	int i, which = 1, size, capacity;
 	object master, product, delivery, delivery_master;
 	mapping products;
-	string tmp, amount = "1", env_city, cost, productname;
+	string tmp, env_city, productname, option, basename;
+	int cost, amount = 1, pamount; 
 	string delivery_owner;
 	int delivery_x, delivery_y, num;
-	string *productlist, pamount, basename;
+	array productlist;
 	array loc;
 	
 	master = environment(me)->query_master();
@@ -95,12 +96,12 @@ void do_transport(object me, string arg, string database)
 		return tell(me, pnoun(2, me)+"欲運送的物品地點不能與此地相同或有相同連鎖中心。\n");
 
 		
-	sscanf(arg, "%s %s", amount, productname);
+	sscanf(arg, "%s %s", option, productname);
 	
-	if( !productname || (amount != "all" && !(amount = big_number_check(amount))) )
+	if( !productname || (option != "all" && !(amount = to_int(option))) )
 	{
 		productname = arg;
-		amount = "1";
+		amount = 1;
 	}
 	
 	if( sscanf( productname, "%s %d", tmp, which ) == 2 )
@@ -119,32 +120,39 @@ void do_transport(object me, string arg, string database)
 	for(i=0;i<size;i+=2)
 	{
 		basename = productlist[i];
-		pamount = productlist[i+1];
+		pamount = to_int(productlist[i+1]);
 
-		catch(product = load_object(basename));
+		if( catch(product = load_object(basename)) )
+			continue;
 
-		// 若產品已經消失
-		if( !objectp(product) )
+		// 檔案已經消失, 刪除資料
+		if( !objectp(product) && !file_exists(basename) )
 		{
-			error(basename+" 商品資料錯誤。");
+			output_object(master, database, basename, -3);
 			continue;
 		}
-
+		
 		if( (i+2)/2 == to_int(big_number_check(productname)) || (product->query_id(1) == lower_case(productname) && !(--which)) )
 		{
-			if( amount == "all" )
+			if( option == "all" )
 				amount = pamount;
-			else if( count(amount,">",pamount) )
+			else if( amount > pamount )
 				return tell(me, "這裡並沒有這麼多"+(query("unit", product)||"個")+product->query_idname()+"。\n");
-			else if( count(amount, "<", 1) )
+			else if( amount < 1 )
 				return tell(me, "請輸入正確的運輸數量。\n");
+
+			if( query("flag/no_give", product) && delivery_owner != me->query_id(1) )
+				return tell(me, product->query_idname()+"無法運輸給其他玩家。\n");
 			
-			
-			cost = count(amount,"*",copy(query("setup/price/"+replace_string(basename, "/", "#"), master)||query("value", product)));
+			cost = amount * to_int(query("setup/price/"+replace_string(basename, "/", "#"), master)||query("value", product));
 			
 			// 數量超過可上架數量
 			if( over_capacity(delivery_master, database, amount, capacity) )
+			{
+				master->delay_save(300);
+				delivery_master->delay_save(300);
 				return tell(me, delivery->query_room_name()+"無法再容納這麼多的物品了。\n");
+			}
 				
 			input_object(delivery_master, database, basename, amount);
 
@@ -155,8 +163,11 @@ void do_transport(object me, string arg, string database)
 			else
 				msg("$ME將"+QUANTITY_D->obj(product, amount)+"運輸至"+delivery->query_room_name()+"。\n", me, find_player(delivery_owner), 1);
 			
-			master->save();
-			delivery->save();
+			if( me->query_id(1) != delivery_owner )
+				log_file("command/transport", me->query_idname()+"將"+QUANTITY_D->obj(product, amount)+"運輸給 "+delivery_owner+"。");
+			
+			master->delay_save(300);
+			delivery_master->delay_save(300);
 			return;
 		}
 	}

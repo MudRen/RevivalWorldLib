@@ -44,48 +44,52 @@ private void do_command(object me, string arg)
 	if( !arg || sscanf(arg, "%s %s", target, msg) != 2 )  
 	{
 		if( !(target = query_temp("reply_teller", me)) )
-			return tell(me, "剛才並沒有任何人跟你講過話。\n", CMDMSG);
+			return tell(me, "剛才並沒有任何人跟你講過話。\n");
 
 		target_ob = find_player(target);
 
-		return tell(me, "上位跟你講話的使用者為: " + (target_ob ? target_ob->query_idname():target + " [已離線]") + "\n", CMDMSG);
+		return tell(me, "上位跟你講話的使用者為: " + (target_ob ? target_ob->query_idname():target + " [已離線]") + "\n");
 	}
 
 	if( target == "-r" )
 	{
 		if( !(target = query_temp("reply_teller", me)) )
-			return tell(me, "剛才並沒有任何人跟你講過話。\n", CMDMSG);
+			return tell(me, "剛才並沒有任何人跟你講過話。\n");
 		reply = 1;
 	}
 
+	target = lower_case(target);
+
 	if( !target_ob = find_player(target) )
-		return tell(me, "目前線上沒有 " + target + " 這位使用者。\n", CMDMSG);
+		return tell(me, "目前線上沒有 " + target + " 這位使用者。\n");
 
-	ignore = query("deny_user", target_ob);
+	ignore = query("ignore", target_ob);
 
-	if( arrayp(ignore) )
-	{
-		if( member_array( me->query_id(1), ignore ) >= 0 )
-			return tell( me, HIG + target_ob->query_idname()+ "現在拒絕跟你說話 .\n"NOR);
-	}
+	if( arrayp(ignore) && member_array( me->query_id(1), ignore ) != -1 && !wizardp(me) )
+		return tell(me, HIY + target_ob->query_idname()+ "目前拒絕跟"+pnoun(2, me)+"說話。\n"NOR);
 
 	if( target_ob == me )
-		return tell(me, pnoun(2, me)+"對著自己喃喃的自言自語。\n", CMDMSG);
+		return tell(me, pnoun(2, me)+"對著自己喃喃的自言自語。\n");
 
 	msg("$ME告訴$YOU："HIY+msg+NOR+"\n", me, target_ob, 0, TELLMSG);
-	target_ob->add_last_msg(me->query_idname()+"告訴"+pnoun(2, target_ob)+"："HIY+msg+NOR+"\n");
-	me->add_last_msg(pnoun(2, me)+"告訴"+target_ob->query_idname()+"："HIY+msg+NOR+"\n");
+
+	target_ob->add_msg_log("tell", me->query_idname()+"告訴"+pnoun(2, target_ob)+"："HIY+msg+NOR+"\n");
+	me->add_msg_log("tell", pnoun(2, me)+"告訴"+target_ob->query_idname()+"："HIY+msg+NOR+"\n");
 
 	if( !interactive(target_ob) ) 
-		return tell(me, target_ob->query_idname()+"已經斷線了，聽不到"+pnoun(2, me)+"講話。\n", CMDMSG);
+		return tell(me, target_ob->query_idname()+"已經斷線了，聽不到"+pnoun(2, me)+"講話。\n");
 
 	if( !wizardp(me) && !wizardp(target_ob) )
 	{
-		log_file("command/tell", me->query_idname(1)+"告訴"+target_ob->query_idname()+": "+msg, -1);
-		//CHANNEL_D->channel_broadcast("nch", me->query_idname(1)+"告訴"+obj->query_idname()+"："+msg+"\n");
+		foreach(object wiz in filter_array(users(), (: wizardp($1) && query("env/notify_tell", $1) :)))
+			if( strsrch(lower_case(msg), wiz->query_id(1)) != -1 )
+				tell(wiz, NOR BLU"["HIB"攔截"NOR BLU"]"NOR+me->query_idname()+"告訴"+target_ob->query_idname()+"："HIY+msg+NOR"\n");
+				
+		log_file("command/tell", me->query_idname()+"告訴"+target_ob->query_idname()+"："+msg, -1);
 	}
+
 	if( query_idle(target_ob) > WARNING_IDLE_TIME )
-		tell(me, target_ob->query_idname()+"已經發呆超過 "+(WARNING_IDLE_TIME/60)+" 分鐘，可能暫時不會回應"+pnoun(2, me)+"。\n", CMDMSG);
+		tell(me, target_ob->query_idname()+"已經發呆超過 "+(WARNING_IDLE_TIME/60)+" 分鐘，可能暫時不會回應"+pnoun(2, me)+"。\n");
 
 	set_temp("reply_teller", me->query_id(1), target_ob);
 }

@@ -36,6 +36,12 @@ mixed query_quest_data(string quest, string key)
 	return query("quest/"+quest+"/data/"+key);
 }
 
+// 刪除 quest
+void delete_quest_data(string quest)
+{
+	delete("quest/"+quest);
+}
+
 // 設定 quest 步驟
 void set_quest_step(string quest, int step)
 {

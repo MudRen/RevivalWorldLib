@@ -18,26 +18,28 @@
 
 nomask void move_to_object(object where);
 
-varargs int move(mixed where, mixed amount)
-{	
-	mixed originalamount;
+varargs int move(mixed where, int amount)
+{
+	object me = this_object();
+	int originalamount;
 	array originalloc;
 	object env, new_env;
 	string basename;
+	object *nearby_objects;
 
-	originalloc = query_temp("location");
-	originalamount = query_temp("amount")||1;
+	originalloc = copy(query_temp("location"));
+	originalamount = me->query_amount();
 	new_env = env = environment();
-	basename = base_name(this_object());
+	basename = base_name(me);
 
-	//if( !clonep(this_object()) )
+	//if( !clonep(me) )
 	//{
-		//CHANNEL_D->channel_broadcast("nch", sprintf("main ob %O move call: %O \n",this_object(), call_stack(1)));	
+		//CHANNEL_D->channel_broadcast("nch", sprintf("main ob %O move call: %O \n",me, call_stack(1)));	
 	//}
 
 	if( !where ) return 0;
-	
-	if( !undefinedp(amount) && count(amount, "<=", 0) )
+
+	if( !undefinedp(amount) && amount <= 0 )
 		return 0;
 
 	switch(typeof(where))
@@ -54,56 +56,58 @@ varargs int move(mixed where, mixed amount)
 					new_env = MAP_D->query_maproom(where);
 
 				// 非組合物件移動
-				if( query("flag/no_amount") )
+				if( me->no_amount() )
 				{
 					// leave()
-					present_objects(this_object())->leave(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->leave(me);
 
-					MAP_D->leave_coordinate(originalloc, this_object());
-					
+					MAP_D->leave_coordinate(originalloc, me);
 
 					//若原始環境為生物
 					if( objectp(env) && env->is_living() )
 					{				
 						// 去除動作
-						env->remove_action(this_object());
+						env->remove_action(me);
 					}
 
-					while(count((amount = count(amount, "-", 1)), ">", 0))
+					while(--amount > 0)
 						new( basename )->move(where);
 					
 					if( env != new_env )
 					{
 						if( objectp(env) && !env->is_maproom() )
-							env->leave(this_object());
+							env->leave(me);
 
 						move_object(new_env);
 					}
 					
-					MAP_D->enter_coordinate(where, this_object());
+					MAP_D->enter_coordinate(where, me);
 					
 					// init()
-					present_objects(this_object())->init(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->init(me);
 					
 					set_temp("location", copy(where));
 				}
 				// 組合物件全數移動
-				else if( undefinedp(amount) || count(amount, "==", originalamount) )
+				else if( undefinedp(amount) || amount == originalamount )
 				{
 					// leave()
-					present_objects(this_object())->leave(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->leave(me);
 
-					MAP_D->leave_coordinate(originalloc, this_object());
+					MAP_D->leave_coordinate(originalloc, me);
 					
 					// 檢查座標處是否已有相同物件
 					foreach( object ob in MAP_D->coordinate_inventory(where) )
 					if( base_name(ob) == basename )
 					{
-						set_temp("amount", count(copy(query_temp("amount", ob))||1, "+", originalamount), ob);
+						ob->add_amount(originalamount);
 							
-						MAP_D->leave_coordinate(originalloc, this_object());
+						MAP_D->leave_coordinate(originalloc, me);
 
-						destruct(this_object());
+						destruct(me);
 						return 1;
 					}
 
@@ -111,43 +115,44 @@ varargs int move(mixed where, mixed amount)
 					if( objectp(env) && env->is_living() )
 					{	
 						// 去除動作
-						env->remove_action(this_object());
+						env->remove_action(me);
 					}
 
 					if( env != new_env )
 					{
 						if( objectp(env) && !env->is_maproom() )
-							env->leave(this_object());
+							env->leave(me);
 
 						move_object(new_env);
 					}
 					
-					MAP_D->enter_coordinate(where, this_object());
+					MAP_D->enter_coordinate(where, me);
 
 					// init()
-					present_objects(this_object())->init(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->init(me);
 					set_temp("location", copy(where));
 				}
 				// 若傳入之移動數量參數小於總數
-				else if( count(amount, "<", originalamount) )
+				else if( amount < originalamount )
 				{
 					object newob;
 
 					// 減去移動數量
-					set_temp("amount", count(originalamount, "-", amount));
+					me->add_amount(-amount);
 					
 					// 檢查座標處是否已有相同物件
 					foreach( object ob in MAP_D->coordinate_inventory(where) )
 					if( base_name(ob) == basename )
 					{
-						set_temp("amount", count(copy(query_temp("amount",ob))||1, "+", amount), ob);
+						ob->add_amount(amount);
 						return 1;
 					}
 					
 					// 產生新物件移往目標座標
 					newob = new(basename);
 
-					set_temp("amount", amount, newob);
+					newob->set_amount(amount);
 					
 					MAP_D->enter_coordinate(where, newob);
 					set_temp("location", copy(where), newob);
@@ -166,12 +171,13 @@ varargs int move(mixed where, mixed amount)
 				new_env = where;
 
 				// 非組合物件移動
-				if( query("flag/no_amount") )
+				if( me->no_amount() )
 				{
 					// leave()
-					present_objects(this_object())->leave(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->leave(me);
 
-					MAP_D->leave_coordinate(originalloc, this_object());
+					MAP_D->leave_coordinate(originalloc, me);
 
 					//若有原始環境
 					if( objectp(env) )
@@ -179,54 +185,56 @@ varargs int move(mixed where, mixed amount)
 						if( env->is_living() )
 						{
 							// 去除動作
-							env->remove_action(this_object());
+							env->remove_action(me);
 						}
 						else if( env->is_maproom() )
 							delete_temp("location");
 					}
 
-					while(count((amount = count(amount, "-", 1)), ">", 0))
+					while(--amount > 0)
 						new( basename )->move(where);
 					
 					if( env != new_env )
 					{
 						if( objectp(env) && !env->is_maproom() )
-							env->leave(this_object());
+							env->leave(me);
 
 						move_object(new_env);
 						
 						if( objectp(env) && new_env->is_npc() )
-							call_out((: call_other :), 0, new_env, "reply_get_object", this_player(), this_object(), 1);
+							call_out((: call_other :), 0, new_env, "reply_get_object", this_player(), me, 1);
 
-						new_env->init(this_object());
+						new_env->init(me);
 					}
 					
 					if( new_env->is_living() )	
-						new_env->add_action(this_object());
+						new_env->add_action(me);
 					
 					// init()
-					present_objects(this_object())->init(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->init(me);
 				}
 				// 組合物件全數移動
-				else if( undefinedp(amount) || count(amount, "==", originalamount) )
+				else if( undefinedp(amount) || amount == originalamount )
 				{
 					// leave()
-					present_objects(this_object())->leave(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->leave(me);
 
-					MAP_D->leave_coordinate(originalloc, this_object());
+					MAP_D->leave_coordinate(originalloc, me);
 
 					foreach( object ob in all_inventory(new_env) )
 					if( base_name(ob) == basename )
 					{
-						set_temp("amount", count(copy(query_temp("amount", ob))||1, "+", originalamount), ob);
+						ob->add_amount(originalamount);
 								
-						MAP_D->leave_coordinate(originalloc, this_object());
+						MAP_D->leave_coordinate(originalloc, me);
 						
 						if( objectp(env) && new_env->is_npc() )
 							call_out((: call_other :), 0, new_env, "reply_get_object", this_player(), ob, originalamount);
 						
 						// 銷毀物件時 destruct() 自己會做生物負重調整, 因此原始環境負重處理放在後面
-						destruct(this_object());
+						destruct(me);
 
 						return 1;
 					}
@@ -235,44 +243,46 @@ varargs int move(mixed where, mixed amount)
 					if( objectp(env) )
 					{
 						if( env->is_living() )
+						{
 							// 去除動作
-							env->remove_action(this_object());
+							env->remove_action(me);
+						}
 						else if( env->is_maproom() )
 							delete_temp("location");
 					}
 		
 					if( new_env->is_living() )
-						new_env->add_action(this_object());
+						new_env->add_action(me);
 					
 					if( env != new_env )
 					{
 						if( objectp(env) )
-							env->leave(this_object());
+							env->leave(me);
 
 						move_object(new_env);
 						
 						if( objectp(env) && new_env->is_npc() )
-							call_out((: call_other :), 0, new_env, "reply_get_object", this_player(), this_object(), originalamount);
+							call_out((: call_other :), 0, new_env, "reply_get_object", this_player(), me, originalamount);
 						
-						new_env->init(this_object());
+						new_env->init(me);
 					}
 					
 					// init()
-					present_objects(this_object())->init(this_object());
+					nearby_objects = present_objects(me) - ({ me });
+					nearby_objects->init(me);
 				}
-				else if( count(amount, "<", originalamount) )
+				else if( amount < originalamount )
 				{
 					object newob;
 			
 					// 減去移動數量
-					set_temp("amount", count(query_temp("amount")||1, "-", amount));
-
+					me->add_amount(-amount);
 
 					// 檢查物件內部是否已有相同物件
 					foreach( object ob in all_inventory(new_env) )
 					if( base_name(ob) == basename )
 					{
-						set_temp("amount", count(copy(query_temp("amount", ob))||1, "+", amount), ob);
+						ob->add_amount(amount);
 						
 						if( objectp(env) )
 							call_out((: call_other :), 0, new_env, "reply_get_object", this_player(), ob, amount);
@@ -283,7 +293,7 @@ varargs int move(mixed where, mixed amount)
 					// 產生新物件移往目標物件
 					newob = new(basename);
 						
-					set_temp("amount", amount, newob);
+					newob->set_amount(amount);
 						
 					if( new_env->is_living() )
 						new_env->add_action(newob);
@@ -306,7 +316,7 @@ varargs int move(mixed where, mixed amount)
 }
 
 
-varargs int move_to_environment(object ob, mixed amount)
+varargs int move_to_environment(object ob, int amount)
 {
 	object env;
 	
@@ -317,9 +327,9 @@ varargs int move_to_environment(object ob, mixed amount)
 	if( env->is_maproom() )
 	{
 		if( undefinedp(amount) )
-			move(query_temp("location", ob));
+			move(copy(query_temp("location", ob)));
 		else
-			move(query_temp("location", ob), amount);
+			move(copy(query_temp("location", ob)), amount);
 	}
 	else
 	{

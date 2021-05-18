@@ -11,8 +11,8 @@
  *	    o object *query_all_maproom()                      // 回傳所有地圖物件
  *          o int move(object ob, string dir)                  // 使用者移動
  *          o varargs array query_map(array loc, int realtime) // 回傳地圖陣列
- *	    o void remove_player_icon(object me, array loc)    // 若想有人形圖像請設計此函式
- *          o void set_player_icon(object me, array loc)       // 若想有人形圖像請設計此函式
+ *	    o void remove_living_icon(object me, array loc)    // 若想有人形圖像請設計此函式
+ *          o void set_living_icon(object me, array loc)       // 若想有人形圖像請設計此函式
  * mapping query_coor_range(array loc, string prop, int radius)// look.c
  *	      int valid_move(object me,string direction)	// combat_d 逃跑用 in go.c
  * string coor_short_name(array loc)
@@ -32,6 +32,10 @@
 #include <location.h>
 
 #define DATA_PATH	"/data/daemon/mapload.o"
+#define LOG		"daemon/map_d"
+
+#define AMOUNT		0
+#define DECORATED	1
 
 private mapping mapload;
 private mapping worldmap;
@@ -92,7 +96,7 @@ varargs int valid_move(object me, string direction, array loc)
 	string map_system;
 	
 	if( !arrayp(loc) )
-		loc = query_temp("location", me);
+		loc = copy(query_temp("location", me));
 
 	if( !arrayp(loc) ) return 0;
 	
@@ -124,7 +128,7 @@ void move(object ob, string dir)
 	if( !objectp(ob) )
 		return;
 
-	loc = query_temp("location", ob);
+	loc = copy(query_temp("location", ob));
 
 	if( !arrayp(loc) ) return;
 	
@@ -171,6 +175,91 @@ varargs mixed query_coor_data(array loc, mixed prop)
 	return 0;
 }
 
+mixed set_coor_data(array loc, mixed prop, mixed value)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+		return map_system->set_coor_data(loc, prop, value);
+		
+	return 0;
+}
+
+void set_coor_icon(array loc, string icon)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+		map_system->set_coor_icon(loc, icon);
+}
+
+varargs string query_coor_icon(array loc, int raw)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+	{
+		if( undefinedp(raw) )
+			return map_system->query_coor_icon(loc);
+		else
+			return map_system->query_coor_icon(loc, raw);
+	}
+	return 0;
+}
+
+void reset_coor_icon(array loc)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+		map_system->reset_coor_icon(loc);
+}
+
+void delete_coor_icon(array loc)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+		map_system->delete_coor_icon(loc);
+}
+
+varargs void delete_coor_data(array loc, mixed prop)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+	{
+		if( undefinedp(prop) )
+			map_system->delete_coor_data(loc);
+		else
+			map_system->delete_coor_data(loc, prop);
+	}
+}
+
+int valid_coordinate(array loc)
+{
+	string map_system;
+	
+	map_system = query_map_system(loc);
+	
+	if( map_system )
+		return map_system->valid_coordinate(loc);
+	
+	return 0;
+}
+
 varargs array query_map(array loc, int realtime)
 {
 	string map_system;
@@ -212,7 +301,7 @@ string query_raw_map(array loc)
 	 	return 0;
 }
 
-void remove_player_icon(object me, array loc)
+void remove_living_icon(object me, array loc)
 {
 	string map_system;
 	
@@ -221,10 +310,10 @@ void remove_player_icon(object me, array loc)
 	map_system = query_map_system(loc);
 	
 	if( map_system )
-		map_system->remove_player_icon(me, loc);
+		map_system->remove_living_icon(me, loc);
 }
 
-void set_player_icon(object me, array loc)
+void set_living_icon(object me, array loc)
 {
 	string map_system;
 	
@@ -233,7 +322,7 @@ void set_player_icon(object me, array loc)
 	map_system = query_map_system(loc);
 	
 	if( map_system )
-		map_system->set_player_icon(me, loc);
+		map_system->set_living_icon(me, loc);
 }
 
 mapping query_action(array loc)
@@ -317,17 +406,33 @@ mapping query_coordinates()
 
 void restore_map_object()
 {
+	int total;
 	array loc;
 	object ob;
-	string basename, amount;
+	array d;
+	string basename;
 
 	// 重新掃瞄所有物件座標
-	foreach( ob in objects((: environment($1) && environment($1)->is_maproom() :)) )
+	foreach( ob in objects((: !$1->is_module_room() :)) )
 	{
-		if( ob->query_database() )
-			enter_coordinate(query_temp("location", ob), ob);
-	}
+		reset_eval_cost();
 
+		if( ob->query_database() )
+		{
+			loc = copy(query_temp("location", ob));
+			
+			if( arrayp(loc) )
+			{
+				enter_coordinate(loc, ob);
+				ob->move_to_object(query_maproom(loc));
+				
+				total++;
+			}
+		}
+	}
+	log_file(LOG, "載入地圖原有物件，共 "+total+" 件");
+	total = 0;
+	
 	if( mapp(mapload) )
 	foreach( string sloc, mapping data in mapload )
 	{
@@ -335,7 +440,7 @@ void restore_map_object()
 		
 		if( !arrayp(loc) || sizeof(coordinate_inventory(loc)) ) continue;
 
-		foreach( basename, amount in data )
+		foreach( basename, d in data )
 		{
 			reset_eval_cost();
 			
@@ -343,18 +448,25 @@ void restore_map_object()
 			
 			if( objectp(ob) )
 			{
-				if( !query("flag/no_amount", ob) )
-					set_temp("amount", amount, ob);
+				if( !ob->no_amount() )
+					ob->set_amount(to_int(d[AMOUNT]));
 
-				ob->move(loc, amount);
+				if( d[DECORATED] )
+					set_temp("decorated", 1, ob);
+
+				set_temp("location", copy(loc), ob);
+				enter_coordinate(loc, ob);
+
+				ob->move_to_object(query_maproom(loc));
 			}
 			else
-				CHANNEL_D->channel_broadcast("sys", "無法載入地圖座標物件 "+sloc+" "+basename);
+				log_file(LOG, "無法載入地圖座標物件 "+sloc+" "+basename);
+				
+			total++;
 		}
 	}
 	
-	mapload = allocate_mapping(0);
-
+	log_file(LOG, "載入地圖儲存物件，共 "+total+" 件");
 }
 
 void create()
@@ -367,10 +479,10 @@ void create()
 		if( !mapp(worldmap) )
 			worldmap = allocate_mapping(0);
 	
-		call_out((: restore_map_object :), 30);
+		call_out((: restore_map_object :), 3);
 	}
 	else
-		CHANNEL_D->channel_broadcast("sys", "無法載入地圖座標物件存檔");
+		log_file(LOG, "無法載入地圖座標物件存檔");
 }
 
 mapping query_range_inventory(array loc, int radius)
@@ -390,7 +502,7 @@ mapping query_range_inventory(array loc, int radius)
 
 	foreach( object ob in all_inventory(query_maproom(loc)) )
 	{
-		loc = query_temp("location", ob);
+		loc = copy(query_temp("location", ob));
 		
 		if( !arrayp(loc) ) continue;
 		
@@ -469,17 +581,17 @@ array delete_world_map(int x, int y)
 
 int save()
 {
+	int total;
 	string sloc;
 	array loc;
+	string basename;
 
 	mapload = allocate_mapping(0);
 
 	// 只儲存城市裡的物品
-	foreach( object ob in objects((: environment($1) && environment($1)->is_maproom() :)) )
+	foreach( object ob in objects((: environment($1) && environment($1)->is_maproom() && $1->query_database() && (!$1->is_living() || $1->is_module_npc()) :)) )
 	{
-		if( !ob->query_database() || !(loc = query_temp("location", ob)) || userp(ob) ) continue;
-		
-		if( !CITY_D->valid_coordinate(loc) ) continue;
+		if( !(loc = copy(query_temp("location", ob))) || !CITY_D->valid_coordinate(loc) ) continue;
 
 		reset_eval_cost();
 
@@ -487,9 +599,21 @@ int save()
 		
 		if( !mapp(mapload[sloc]) )
 			mapload[sloc] = allocate_mapping(0);
+
+		basename = base_name(ob);
 		
-		mapload[sloc][base_name(ob)] = count(mapload[sloc][base_name(ob)], "+", query_temp("amount", ob) || 1);
+		if( !mapp(mapload[sloc][basename]) )
+			mapload[sloc][basename] = allocate(2);
+
+		mapload[sloc][basename][AMOUNT] += ob->query_amount();
+		
+		if( query_temp("decorated", ob) )
+			mapload[sloc][basename][DECORATED] = 1;
+
+		total++;
 	}
+
+	log_file(LOG, "儲存地圖物件，共 "+total+" 件");
 	
 	return save_object(DATA_PATH);
 }

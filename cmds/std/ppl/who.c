@@ -37,7 +37,7 @@ string help = @HELP
 -d		列出目前在線上斷線但還未離開遊戲的使用者
 -c		列出同城市的使用者
 -m		列出線上所有的新手指導員
--e		列出和您在同一個城市中的玩家
+-e		列出和您在同一個地圖中的玩家
 -n		顯示暱稱
 
 選項可混合使用，如 who -lw
@@ -84,7 +84,6 @@ string who(object me, string arg)
 	function filter;
 	object *users;
 
-
 	users = users();
 
 	// 加入斷線中的使用者
@@ -94,7 +93,7 @@ string who(object me, string arg)
 
 	sizeof_users = sizeof(users);
 
-	users = filter_array(users, (: !$1->is_login_ob() && !$1->is_client_ob() :));
+	users = filter_array(users, (: objectp($1) && !$1->is_login_ob() && !$1->is_client_ob() :));
 
 	sizeof_logining_users = sizeof_users - sizeof(users);
 	sizeof_wizards = sizeof(filter_array(users, (: wizardp($1) :)));
@@ -131,7 +130,7 @@ string who(object me, string arg)
 			break;
 		case 'e':
 			flag |= LIST_FILTER;
-			filter = (: environment($1) && environment($1)->query_city() ? environment($1)->query_city() == environment($(me))->query_city() : 0 :);
+			filter = (: environment($1) && environment($1)->is_maproom() ? (environment($1) == environment($(me) || environment($1)->query_city() == environment($(me))->query_city()) ) : 0 :);
 			break;
 		case 'c':
 			if( objectp(me) )
@@ -173,7 +172,7 @@ string who(object me, string arg)
 			if( wizardp(user) || flag & LIST_NO_STATUS )
 				status = user->query_status(STATUS_NO_IDLE | STATUS_NO_OBBUFF);
 			else
-				status = user->query_status(STATUS_NO_IDLE);
+				status = user->query_status(STATUS_NO_IDLE | STATUS_NO_OBBUFF);
 
 			city = CITY_D->query_city_name(query("city", user))||"無國藉";
 			enterprise = ENTERPRISE_D->query_enterprise_color_id(query("enterprise", user)) || "";
@@ -213,7 +212,7 @@ string who(object me, string arg)
 		msg += " ──────────── "NOR WHT"共有 "+sizeof(users)+" 位符合搜尋條件\n"NOR;
 	}
 
-	msg += HIG" 人數統計："NOR GRN"共 "+(sizeof_users)+" 位使用者，包括 "+sizeof_wizards+" 位巫師、"+(sizeof_users-sizeof_wizards-sizeof_logining_users)+" 位玩家，以及 "+sizeof_logining_users+" 人正在進入遊戲。\n"HIG" 系統負載："NOR GRN+query_load_average()+"。\n"NOR;
+	msg += HIG" 人數統計："NOR GRN"共 "+(sizeof_users)+" 位使用者，包括 "+sizeof_wizards+" 位巫師、"+(sizeof_users-sizeof_wizards-sizeof_logining_users)+" 位玩家，以及 "+sizeof_logining_users+" 人正在進入遊戲。\n"HIG" 系統負載："NOR GRN+query_load_average()+"。\n"HIG" 網路負載："NOR GRN+NETWORK_D->query_network_volume_stats()+"。\n"NOR;
 
 	return msg;
 }

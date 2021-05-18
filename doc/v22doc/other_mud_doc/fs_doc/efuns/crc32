@@ -1,0 +1,13 @@
+crc32(3)              LPC ╰参ㄧ计              crc32(3)
+
+嘿
+     crc32() - 璸衡把计跑计碻吏緇絏(cycle redundancy code)
+
+粂猭
+     int crc32( buffer | string x );
+
+磞瓃
+     璸衡把计跑计 <x> 碻吏緇絏(CRC-32)
+
+MudOS                Last change: 5 Sep 1994                    1
+

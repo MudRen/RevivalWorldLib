@@ -20,6 +20,8 @@
 
 inherit STANDARD_OBJECT;
 
+#define STATUS_NAME	HIY"踩"NOR YEL"地雷"NOR
+
 void do_join(object me, string arg);
 void do_start(object me, string arg);
 void do_show(object me, string arg);
@@ -154,7 +156,10 @@ private varargs void player_flying(object me, int i)
 
 private varargs object query_player(int i)	// 查詢目前輪到的玩家
 {
-	return players[(player_turn+i)%(sizeof(players)||1)];
+	if( !sizeof(players) )
+		return 0;
+
+	return players[(player_turn+i)%(sizeof(players))];
 }
 
 private void next_player()	// 下一位玩家
@@ -175,7 +180,9 @@ private void kick_player(object me, int x, int y)	// 出局玩家
 	players -= ({ me });
 	me->faint();
 	player_flying(me);
-	delete_temp("status", me);
+	
+	me->remove_status(STATUS_NAME);
+
 	set_temp("status", HIY + sizeof(players) + " 人亂鬥中"NOR);
 	tell(me, HIY"\n█ "YEL"遊戲結束，你輸了。\n\n"NOR);
 }
@@ -183,7 +190,8 @@ private void kick_player(object me, int x, int y)	// 出局玩家
 private void reset_mine()	// 重置遊戲
 {
 	foreach(object ob in (players - ({ 0 })))
-		delete_temp("status", ob);
+		ob->remove_status(STATUS_NAME);
+
 	set_temp("status", HIY"亂鬥受付中"NOR);
 	mine_map = 0;
 	player_turn = 0;
@@ -313,7 +321,8 @@ void do_start(object me, string arg)
 	{
 		object ob = players[random(i)];
 
-		set_temp("status", HIY"踩"NOR YEL"地雷"NOR, ob);
+		ob->add_status(STATUS_NAME, 999);
+
 		msg(HIC + (sizeof(players)-i+1) + ". " + ob->query_idname() + HIC", "NOR, me, 0, 1);
 		players -= ({ ob });
 		players += ({ ob });
@@ -466,5 +475,5 @@ void create()
 	set("unit", "台");
 	set("mass", -1);
 	reset_mine();
-	set_heart_beat(10);
+	set_heart_beat(1);
 }

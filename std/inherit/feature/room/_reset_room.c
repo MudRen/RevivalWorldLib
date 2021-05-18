@@ -17,38 +17,53 @@ void reset_objects()
 {
 	string basename;
 	mixed amount;
-	mapping objects, default_objects;
-	
-	if( !this_object()->query_database() )
-		return;
+	mapping objects;
+	string *decorated_objects;
 
-	objects = copy(query("temp_objects")) || allocate_mapping(0);
-	
-	default_objects = copy(query("objects"));
+	if( !this_object()->query_database() )	return;
 
-	if( sizeof(default_objects) )
-		foreach( basename, amount in default_objects )
-			objects[basename] = count(objects[basename],"+",amount);
-			
+	objects = (copy(query("objects")) || allocate_mapping(0)) + (copy(query("temp_objects")) || allocate_mapping(0));
+	decorated_objects = copy(query("decorated_objects")) || allocate(0);
+
 	if( sizeof(objects) )
 	{
 		object ob;
-		
-		// 清除房間中原有已紀錄之物件
-		destruct(filter_array(all_inventory(), (: $(objects)[base_name($1)] :)));
-		
+		object tmp_ob;
+		int index;
+
 		foreach( basename, amount in objects )
 		{
+			amount = to_int(amount);
+
 			catch { ob = new(basename) || load_object(basename); };
 
 			if( !objectp(ob) ) continue;
 			
-			if( !query("flag/no_amount", ob) )
-				set_temp("amount", amount, ob);
+			if( !ob->no_amount() )
+				ob->set_amount(amount);
 			else
-				while((amount = count(amount,"-",1)) != "0") 
-					(new(basename)||load_object(basename))->move(this_object());
+			while(--amount > 0)
+			{
+				tmp_ob = new(basename) || load_object(basename);
 				
+				index = member_array(basename, decorated_objects);
+				
+				if( index != -1 )
+				{
+					decorated_objects = decorated_objects[0..index-1] + decorated_objects[index+1..];
+					set_temp("decorated", 1, tmp_ob);
+				}
+
+				tmp_ob->move(this_object());
+			}
+			
+			index = member_array(basename, decorated_objects);
+			if( index != -1 )
+			{
+				decorated_objects = decorated_objects[0..index-1] + decorated_objects[index+1..];
+				set_temp("decorated", 1, ob);
+			}
+
 			ob->move(this_object());
 		}
 	}

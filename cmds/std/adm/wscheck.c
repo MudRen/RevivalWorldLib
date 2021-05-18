@@ -44,6 +44,9 @@ void show_result()
 
 void read_callback(int socket, mixed info) 
 {
+	if( undefinedp(data["result"]) )
+		return;
+
 	data["result"] += ({ data["socket"][socket] });
 	socket_close(socket);
 }
@@ -88,7 +91,7 @@ void heart_beat()
 					tell(ob, "整理結果中...。\n");
 			}
 			set_heart_beat(0);
-			call_out( (: show_result :), 5);
+			call_out( (: show_result :), 10);
 		}
 	}
 	else

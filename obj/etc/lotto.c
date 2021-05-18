@@ -19,15 +19,15 @@
 #include <secure.h>
 
 #define MAX_LOTTO_AMOUNT                10000
-#define MAX_SINGLE_TIME_LOTTO		10000
+#define MAX_SINGLE_TIME_LOTTO			10000
 
-#define MAX_LOTTO_OPEN_PER_ROUND	2500
-#define MAX_LOTTO_PER_ROUND		2500
+#define MAX_LOTTO_OPEN_PER_ROUND		2500
+#define MAX_LOTTO_PER_ROUND				2500
 
-#define MONEY_PER_LOTTO			500
-#define RECYCLE_PERCENT			80	// RECYCLE_PERCENT% 作為獎金, 剩下的錢系統回收
+#define MONEY_PER_LOTTO					500
+#define RECYCLE_PERCENT					80	// RECYCLE_PERCENT% 作為獎金, 剩下的錢系統回收
 
-#define FIFTH_REWARD			2000	// 第 5 獎獎金
+#define FIFTH_REWARD					2000	// 第 5 獎獎金
 inherit STANDARD_OBJECT;
 
 private nosave mapping table;
@@ -88,16 +88,17 @@ void lotto_open_finish(int *open_num, int open_spec_num, mapping prize, int *tot
 {
 	string id;
 	mapping map;
-	string msg, *money = allocate(5);
+	string msg;
+	int *money = allocate(5);
 	object ppl;
 
 	// 頭獎彩金為本期彩金 38% + 上期剩餘所有彩金
 
-	money[0] = count(count(count(lotto_info["total_prize"],"*",38),"/",100), "+", lotto_info["first_prize"]);
-	money[1] = count(count(lotto_info["total_prize"],"*",12),"/",100);
-	money[2] = count(count(lotto_info["total_prize"],"*",15),"/",100);
-	money[3] = count(count(lotto_info["total_prize"],"*",35),"/",100);
-	money[4] = FIFTH_REWARD+"";
+	money[0] = lotto_info["total_prize"] * 38 / 100 + lotto_info["first_prize"];
+	money[1] = lotto_info["total_prize"] * 12 / 100;
+	money[2] = lotto_info["total_prize"] * 15 / 100;
+	money[3] = lotto_info["total_prize"] * 35 / 100;
+	money[4] = FIFTH_REWARD;
 
 	msg =  HIY"\n第 "+lotto_info["time"]+" 期樂透彩的七顆彩球已經全部開出了！！\n"NOR;
 	msg += HIW"開獎號碼為："HIC+open_num[0]+","+open_num[1]+","+open_num[2]+","+open_num[3]+","+open_num[4]+","+open_num[5]+HIW" 特別號為："HIC+open_spec_num+"\n"NOR;
@@ -105,33 +106,33 @@ void lotto_open_finish(int *open_num, int open_spec_num, mapping prize, int *tot
 	msg += HIG"────────────────────────\n"NOR;
 
 	msg += "總共投注："	+sprintf("%18s",NUMBER_D->number_symbol(total_lotto))+" 注\n";
-	msg += "總彩金為："	+sprintf("%18s",NUMBER_D->number_symbol(count(lotto_info["total_prize"],"+",lotto_info["first_prize"])))+" 元\n";
+	msg += "總彩金為："	+sprintf("%18s",NUMBER_D->number_symbol(lotto_info["total_prize"] + lotto_info["first_prize"]))+" 元\n";
 	msg += "頭彩彩金："	+HIR+sprintf("%18s",NUMBER_D->number_symbol(money[0]))+" 元"HIC"(上期累積 "+NUMBER_D->number_symbol(lotto_info["first_prize"])+" 元)\n"NOR;
 	msg += "二獎彩金："	+HIG+sprintf("%18s",NUMBER_D->number_symbol(money[1]))+" 元\n"NOR;
 	msg += "三獎彩金："	+HIG+sprintf("%18s",NUMBER_D->number_symbol(money[2]))+" 元\n"NOR;
 	msg += "四獎彩金："	+HIG+sprintf("%18s",NUMBER_D->number_symbol(money[3]))+" 元\n"NOR;
-	msg += "五獎彩金："	+HIG+sprintf("%18s",money[4])+" 元\n"NOR;
+	msg += "五獎彩金："	+HIG+sprintf("%18s",NUMBER_D->number_symbol(money[4]))+" 元\n"NOR;
 
 	msg += HIG"────────────────────────\n"NOR;
 
 	msg += "本期樂透彩統計中獎人數如下：\n";
-	msg += "頭獎： "HIM+sprintf("%6d",total_prize[0])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(count(money[0],"/",total_prize[0]||1)))+NOR" 元\n";
-	msg += "二獎： "HIM+sprintf("%6d",total_prize[1])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(count(money[1],"/",total_prize[1]||1)))+NOR" 元\n";
-	msg += "三獎： "HIM+sprintf("%6d",total_prize[2])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(count(money[2],"/",total_prize[2]||1)))+NOR" 元\n";
-	msg += "四獎： "HIM+sprintf("%6d",total_prize[3])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(count(money[3],"/",total_prize[3]||1)))+NOR" 元\n";
-	msg += "五獎： "HIM+sprintf("%6d",total_prize[4])+NOR"人，每注可得 "HIG+sprintf("%18s",FIFTH_REWARD+"")+NOR" 元\n";
+	msg += "頭獎： "HIM+sprintf("%6d",total_prize[0])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(money[0] / (total_prize[0]||1)))+NOR" 元\n";
+	msg += "二獎： "HIM+sprintf("%6d",total_prize[1])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(money[1] / (total_prize[1]||1)))+NOR" 元\n";
+	msg += "三獎： "HIM+sprintf("%6d",total_prize[2])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(money[2] / (total_prize[2]||1)))+NOR" 元\n";
+	msg += "四獎： "HIM+sprintf("%6d",total_prize[3])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(money[3] / (total_prize[3]||1)))+NOR" 元\n";
+	msg += "五獎： "HIM+sprintf("%6d",total_prize[4])+NOR"人，每注可得 "HIG+sprintf("%18s",NUMBER_D->number_symbol(FIFTH_REWARD))+NOR" 元\n";
 
 	msg += HIG"────────────────────────\n"NOR;
 
-	lotto_info["total_prize"] = total_prize[0] ? count(count(lotto_info["total_prize"],"*",62),"/",100) : lotto_info["total_prize"];
-	lotto_info["total_prize"] = count(lotto_info["total_prize"], "-", total_prize[1]?money[1]:"0");
-	lotto_info["total_prize"] = count(lotto_info["total_prize"], "-", total_prize[2]?money[2]:"0");
-	lotto_info["total_prize"] = count(lotto_info["total_prize"], "-", total_prize[3]?money[3]:"0");
+	lotto_info["total_prize"] = total_prize[0] ? lotto_info["total_prize"] * 62 / 100 : lotto_info["total_prize"];
+	lotto_info["total_prize"] = lotto_info["total_prize"] - (total_prize[1] ? money[1] : 0);
+	lotto_info["total_prize"] = lotto_info["total_prize"] - (total_prize[2] ? money[2] : 0);
+	lotto_info["total_prize"] = lotto_info["total_prize"] - (total_prize[3] ? money[3] : 0);
 
-	lotto_info["first_prize"] = total_prize[0] ? lotto_info["total_prize"] : count(lotto_info["total_prize"],"+",lotto_info["first_prize"]);
+	lotto_info["first_prize"] = total_prize[0] ? lotto_info["total_prize"] : lotto_info["total_prize"] + lotto_info["first_prize"];
 
-	if( count(lotto_info["first_prize"],"<",0) )
-		lotto_info["first_prize"] = "0";
+	if( lotto_info["first_prize"] < 0 )
+		lotto_info["first_prize"] = 0;
 
 	msg += "本期剩餘獎金："+HIC+NUMBER_D->number_symbol(lotto_info["first_prize"])+" 元"NOR"，將累積至下期頭獎獎金。\n";
 
@@ -141,7 +142,7 @@ void lotto_open_finish(int *open_num, int open_spec_num, mapping prize, int *tot
 
 	foreach(id, map in prize)
 	{
-		string ppl_money;
+		int ppl_money;
 
 		if( !sizeof(map) ) continue;
 
@@ -161,18 +162,18 @@ void lotto_open_finish(int *open_num, int open_spec_num, mapping prize, int *tot
 
 		if( !objectp(ppl) ) continue;
 
-		ppl_money = count(map[0],"*",count(money[0],"/",total_prize[0]||1));
-		ppl_money = count(ppl_money,"+",count(map[1],"*",count(money[1],"/",total_prize[1]||1)));
-		ppl_money = count(ppl_money,"+",count(map[2],"*",count(money[2],"/",total_prize[2]||1)));
-		ppl_money = count(ppl_money,"+",count(map[3],"*",count(money[3],"/",total_prize[3]||1)));
-		ppl_money = count(ppl_money,"+",count(map[4],"*",FIFTH_REWARD));
+		ppl_money = map[0] * money[0] / (total_prize[0]||1);
+		ppl_money = ppl_money + map[1] * money[1] / (total_prize[1]||1);
+		ppl_money = ppl_money + map[2] * money[2] / (total_prize[2]||1);
+		ppl_money = ppl_money + map[3] * money[3] / (total_prize[3]||1);
+		ppl_money = ppl_money + map[4] * FIFTH_REWARD;
 
 		if( userp(ppl) )
 			tell(ppl, "\n共得中獎獎金 "HIG"$"+MONEY_D->query_default_money_unit()+" "+NUMBER_D->number_symbol(ppl_money)+NOR" 元！！\n\n");
 
 		if( map[0] )
 		{
-			shout("\n"+repeat_string(HIY"樂透開獎："+ppl->query_idname()+HIY"獲得頭獎 "+map[0]+" 注共 "+NUMBER_D->number_symbol(count(map[0],"*",count(money[0],"/",total_prize[0]||1)))+" 元！！！！\n",5)+"\n"NOR);
+			shout("\n"+repeat_string(HIY"樂透開獎："+ppl->query_idname()+HIY"獲得頭獎 "+map[0]+" 注共 "+NUMBER_D->number_symbol(map[0] * money[0] / (total_prize[0]||1))+" 元！！！！\n",5)+"\n"NOR);
 
 			ppl->add_title( random(2) ? HIC"樂透"NOR CYN"大帝"NOR : HIC"樂透"NOR CYN"之星"NOR );
 		}
@@ -192,12 +193,12 @@ void lotto_open_finish(int *open_num, int open_spec_num, mapping prize, int *tot
 	lotto_info["time"]++;
 	table = allocate_mapping(0);
 	lotto_info["lotto_opening"] = 0;
-	lotto_info["total_prize"] = "0";
+	lotto_info["total_prize"] = 0;
 
 	set_temp("status", HIY"頭獎累積獎金："+NUMBER_D->number_symbol(lotto_info["first_prize"])+NOR);
 	save_object(DATA_PATH);
 
-	set_heart_beat(6000);
+	set_heart_beat(600);
 }
 
 void lotto_open_schedule(int *open_num, int *no_sort_open_num, int open_spec_num, mapping prize, int *total_prize, int total_lotto, int sec, int total_sec, int open)
@@ -435,8 +436,8 @@ void add_number()
 
 void do_lotto(object me, string arg)
 {
-	string money, id = me->query_id(1);
-
+	string id = me->query_id(1);
+	int money;
 	int *num = allocate(6), i, count, continuing;
 
 	switch( arg )
@@ -444,7 +445,7 @@ void do_lotto(object me, string arg)
 	case 0:
 		{
 			string msg="";
-			mapping mylotto;
+			array mylotto;
 
 			mylotto = table[id];
 
@@ -522,7 +523,7 @@ void do_lotto(object me, string arg)
 		if( !me->spend_money(MONEY_D->query_default_money_unit(), MONEY_PER_LOTTO) )
 			return tell(me, pnoun(2, me)+"的 $"+MONEY_D->query_default_money_unit()+" 錢買不起任何一張彩券了！\n");
 
-		lotto_info["total_prize"] = count(MONEY_PER_LOTTO*RECYCLE_PERCENT/100, "+", lotto_info["total_prize"]);
+		lotto_info["total_prize"] += MONEY_PER_LOTTO * RECYCLE_PERCENT / 100;
 
 		add_number_schedule[id] = num;
 
@@ -544,27 +545,27 @@ void do_lotto(object me, string arg)
 		if( sizeof(add_number_schedule) )
 			return tell(me, "前一位投注者下注資料還在處理中，請稍後再試。\n");
 
-		money = count(MONEY_PER_LOTTO, "*", i);
+		money = MONEY_PER_LOTTO * i;
 
 		if( !me->spend_money(MONEY_D->query_default_money_unit(), money) )
 			return tell(me, pnoun(2, me)+"身上的 $"+MONEY_D->query_default_money_unit()+" 錢買不起 "+i*(continuing||1)+" 張彩卷！\n");
 
-		lotto_info["total_prize"] = count(count(count(money, "*", RECYCLE_PERCENT),"/",100), "+", lotto_info["total_prize"]);
+		lotto_info["total_prize"] += money * RECYCLE_PERCENT / 100;
 
-		set_temp("status", HIY"頭獎累積獎金："+NUMBER_D->number_symbol(count( copy(count(count(lotto_info["total_prize"],"*",38),"/",100)), "+", lotto_info["first_prize"])))+NOR;
+		set_temp("status", HIY"頭獎累積獎金："+NUMBER_D->number_symbol(lotto_info["total_prize"] * 38 / 100 + lotto_info["first_prize"])+NOR);
 		save_object(DATA_PATH);
 		add_number_schedule[id] = i;
 
 		add_number();
 
-		msg("$ME利用電腦選號下了 "+NUMBER_D->number_symbol(i)+" 注，共花了 $"+MONEY_D->query_default_money_unit()+" "+NUMBER_D->number_symbol(count(i,"*",MONEY_PER_LOTTO))+" 元。\n",me,0,1);
+		msg("$ME利用電腦選號下了 "+NUMBER_D->number_symbol(i)+" 注，共花了 $"+MONEY_D->query_default_money_unit()+" "+NUMBER_D->number_symbol(money)+" 元。\n",me,0,1);
 	}
 	else return tell(me, "投注指令錯誤，請詳細閱讀 help lotto。\n");
 }
 
 void heart_beat()
 {
-	// 若尚有下注資料為處理則 set_heart_beat(50); 5 秒後再開獎
+	// 若尚有下注資料為處理則 set_heart_beat(5); 5 秒後再開獎
 	if( !sizeof(add_number_schedule) )
 	{
 		if( lotto_info["total_prize"] == "0" )
@@ -575,7 +576,7 @@ void heart_beat()
 		lotto_open();
 	}
 	else
-		set_heart_beat(50);
+		set_heart_beat(5);
 }
 
 void create()
@@ -584,15 +585,17 @@ void create()
 
 	if( !mapp(lotto_info) )
 		lotto_info = ([ 
-		    "first_prize":"0",
-		    "total_prize":"0", 
+		    "first_prize":0,
+		    "total_prize":0, 
 		    "history":allocate_mapping(0),
 		    "time":1,
 		    "lotto_opening":0,
 		]);
 
+	lotto_info["first_prize"] = to_int(lotto_info["first_prize"]);
+	lotto_info["total_prize"] = to_int(lotto_info["total_prize"]);
+	
 	set_idname("lotto machine",HIC"樂透彩"NOR CYN"簽注機"NOR);
-
 
 	set_temp("status", HIY"頭獎累積獎金："+NUMBER_D->number_symbol(lotto_info["first_prize"])+NOR);
 	set("flag/no_amount", 1);
@@ -608,5 +611,5 @@ void create()
 	if( file_size(DATA_PATH) < 0 ) save_object(DATA_PATH);
 
 	// 十分鐘 open 一次
-	set_heart_beat(6000);
+	set_heart_beat(600);
 }

@@ -15,11 +15,12 @@
 varargs string obj(object ob, mixed amount, int no_blank)
 {
 	if( undefinedp(amount) )
-		amount = query_temp("amount", ob) || 1;
+		amount = ob->query_amount();
 	
-	if( count(amount, "==", 1) )
+	amount = to_int(amount);
+	
+	if( amount == 1 )
 		return ob->short();
-	
 	
 	return (no_blank?"":" ")+NUMBER_D->number_symbol(amount)+" "+(query("unit",ob)||"­Ó")+ob->short();
 }
@@ -28,7 +29,8 @@ varargs string obj_info(string idname, string unit, mixed amount, int no_blank)
 {
 	if( !unit ) unit = "­Ó";
 	
-	if( count(amount, "==", 1) )
+	amount = to_int(amount);
+	if( amount == 1 )
 		return idname;
 
 	return (no_blank?"":" ")+NUMBER_D->number_symbol(amount)+" "+unit+idname;		
@@ -40,7 +42,7 @@ varargs string money(object ob, mixed amount, int no_blank)
 	
 	if( undefinedp(amount) )
 		amount = query("money", ob) || 1;
-		
+
 	return (no_blank?"":" ")+"$"+unit+" "+NUMBER_D->number_symbol(amount)+"("+unit+" money)";
 }
 

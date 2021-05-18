@@ -18,11 +18,15 @@
 
 //#define ESC	"\e"
 
-#define CURSOR_UP	ESC"[A"
-#define CURSOR_DOWN	ESC"[B"
+#define CURSOR_UP		ESC"[A"
+#define CURSOR_DOWN		ESC"[B"
 #define CURSOR_RIGHT	ESC"[C"
-#define CURSOR_LEFT	ESC"[D"
-#define BACKSPACE	ESC"U"
+#define CURSOR_LEFT		ESC"[D"
+#define CHR_DELETE		ESC"[3~"
+
+#define BACKSPACE		ESC"U"
+#define ERASE_LINE		ESC"[1K" 
+#define CHA				ESC"[0G"
 //#define CLR		ESC"[2J"	// [J      Clear from current position to bottom of screen
 
 inherit COMMAND;
@@ -30,73 +34,174 @@ inherit COMMAND;
 string help = @HELP
         標準 realgo 指令。
 HELP;
+void command_shell(string arg, object me);
 
 nosave string msg_buffer = "";
-void command_shell(string arg, object me, int h, int w);
+nosave string command = "";
+nosave string *commands = ({
+    "apple",
+    "banana",
+    "cake",
+    "disk",
+    "elephant",
+    "fish",
+    "gun",
+    "hello",
+});
+nosave int index = 0, h_index = 0;
 
-string cursor_home(int h, int w)
+string *get_commands()
 {
-	return sprintf(CSI"%d;%dH", h, w);
+        string *res = allocate(0);
+        mixed cmds = COMMAND_D->query_commands();
+        foreach(string type, string *type_cmds in cmds)
+        {
+                if( arrayp(type_cmds) ) res = res | type_cmds;
+        }
+        return res;
 }
-void print_command(object me, string arg, int h, int w)
-{
-	arg = replace_string(arg, "\e", "");
-	tell(me, sprintf("%s"HBMAG"%-" + w + "s"NOR"%s",
-		cursor_home(h, 0),
-		arg,
-		cursor_home(h-1, 0),
-		));
-}
-
 void command(object me, string arg)
 {
-	int h = query_temp("windowsize/height", me);
-	int w = query_temp("windowsize/width", me);
+        //int h = query_temp("windowsize/height", me);
+        //int w = query_temp("windowsize/width", me);
+        msg_buffer = "";
+        command = "";
+        commands = get_commands();
+        index=0; h_index=0;
+        get_commands();
+        tell(me, "進入 Command Shell (離開 CTRL+C, 送出 CTRL+D, TAB 自動完成指令)\n");
+        tell(me, ERASE_LINE + CHA);
 
-	tell(me, CLR"進入 Command Shell (離開請按 'q')\n");
-	
-	print_command(me, "", h, w);
-	get_char((: command_shell :), 0, me, h, w);
+        //print_command(me, "", h, w);
+        get_char((: command_shell :), 1, me, 0);
 }
-/*
-get_char:
-字元模式，取得使用者輸入的每個字元，每個字元皆會傳如指定的函式中
-的參數第一個字元
-
-*/
-
-void command_shell(string arg, object me, int h, int w)
+void command_shell(string arg, object me)
 {
-	if( !arg ) arg = "";
-	/*if( strlen(arg) >= 2 && arg[0..1] == BACKSPACE )
-		msg_buffer = msg_buffer[0..<2];
-	else*/
-		msg_buffer += sprintf("%c", arg[0]); // 將輸入的每個字元存入緩衝區中
+        /*
+        tell(me, "Arg Code: ");
+        for(int i=0;i<strlen(arg); i++)
+                tell(me, sprintf("%d, ", arg[i]));
+        tell(me, "\n");
+        */
+        if( strlen(msg_buffer) == 0 )
+        {
+                if( arg[0] == 27 )
+                {
+                        msg_buffer += " ";
+                        msg_buffer[<1] = arg[0];
+                }
+        }
+        else
+        {
+                msg_buffer += " ";
+                msg_buffer[<1] = arg[0];
+        }
 
-	if( msg_buffer[<1] == '\n' ) // 判斷輸入的訊息是否含有換行字元
-	{
-		string msg;
+        // Special chars from ascii 1 ~ 31
+        if( arg[0] == 3 )// CTRL-C
+        {
+                tell(me, "\n離開 Command Shell。\n");
+                return; 
+        }
+        if( arg[0] == 4 )// CTRL-D
+        {
+                tell(me, "\n\n離開 Command Shell。\n");
+                tell(me, sprintf("送出指令: %s\n", command));
 
-		msg = msg_buffer[0..<2];
-		if( msg[<1] == '\r' ) msg = msg[0..<2];
-		// 判斷輸入的命令
-		switch(msg)
-		{
-		case "q":
-			tell(me, "\n離開 Command Shell。\n");
-			return;	
-		default:
-			tell(me, msg + "\n");
-			me->force_me(msg);
-		}
-		msg_buffer = "";
-	}
-/*
-	if( msg_buffer == CURSOR_UP || msg_buffer == CURSOR_DOWN  )
-	{
-		msg_buffer = "保留功能鍵";
-	}
-*/
-	print_command(me, msg_buffer, h, w);
-	get_char((: command_shell :), 0, me, h, w);
-}                                       
+                if( !me->force_me(command) )
+                        tell(me, "執行失敗\n");
+                return; 
+        }
+        if( arg[0] == 9 ) // TAB
+        {
+                // Auto-complete command
+
+                string *res;
+                res = regexp(commands, "^" + command);
+                if( sizeof(res) )
+                {
+                        command = res[0];
+                        h_index = strlen(command);
+                        tell(me, ERASE_LINE + CHA);
+                        tell(me, command);
+                }
+        }
+        else
+                // Control chars start with ESC + [
+        if( strlen(msg_buffer) > 2 && strlen(msg_buffer) < 5 && msg_buffer[1] == '[' )
+        {
+                if( msg_buffer == CURSOR_UP )
+                {
+                        index--;
+                        if( index < 0 ) index = sizeof(commands) + index;
+                        command = commands[index];
+                        h_index = strlen(command);
+                        tell(me, ERASE_LINE + CHA);
+                        tell(me, command);
+                        msg_buffer = "";
+                }
+                else if( msg_buffer == CURSOR_DOWN )
+                {
+                        index++;
+                        if( index >= sizeof(commands) ) index = 0;
+                        command = commands[index];
+                        h_index = strlen(command);
+                        tell(me, ERASE_LINE + CHA);
+                        tell(me, command);
+                        msg_buffer = "";
+                }
+                else if( msg_buffer == CURSOR_LEFT )
+                {
+                        h_index--;
+                        if( h_index < 0 ) h_index = 0;
+                        else tell(me, CURSOR_LEFT);
+                        msg_buffer = "";
+                }
+                else if( msg_buffer == CURSOR_RIGHT )
+                {
+                        h_index++;
+                        if( h_index > strlen(command) ) h_index = strlen(command);
+                        else tell(me, CURSOR_RIGHT);
+                        msg_buffer = "";
+                }
+                else if( msg_buffer == CHR_DELETE )
+                {
+                        command = command[0..h_index-1] + command[h_index+1..];
+                        tell(me, ESC"[1P");
+                        msg_buffer = "";
+                }
+                else
+                {
+                        // do nothing...
+                        /*
+                        tell(me, "Unknown msg buffer code: ");
+                        for(int i=0;i<strlen(msg_buffer); i++)
+                                tell(me, sprintf("%d, ", msg_buffer[i]));
+                        tell(me, "\n");
+                        */
+                }
+        }
+        // Normal input chars
+        else if( strlen(msg_buffer) == 0 )
+        {
+                if( arg[0] == 8 ) // BACKSPACE
+                {
+                        h_index--;
+                        if( h_index < 0 ) h_index = 0;
+                        command = command[0..h_index-1] + command[h_index..];
+                        tell(me, BACKSPACE);
+                }
+                else
+                {
+                        // Do insert commands
+                        tell(me, sprintf(ESC"[@%c", arg[0])); 
+                        command = command[0..h_index-1] + sprintf("%c", arg[0]) + command[h_index..];
+                        h_index++;
+                }
+        }
+        // redraw
+        tell(me, ERASE_LINE + CHA);
+        tell(me, command);
+        tell(me, ESC"["+(h_index+1)+"G");
+        get_char((: command_shell :), 1, me);
+}

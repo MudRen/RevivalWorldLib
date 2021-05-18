@@ -43,6 +43,6 @@ void create()
 	set("value", 40000);
 	set("badsell", 1);
 
-	actions = ([ "readnote" : (: do_readnote :) ]);
+	actions = ([ "readnote" : (: do_readnote($1, $2) :) ]);
 
 }

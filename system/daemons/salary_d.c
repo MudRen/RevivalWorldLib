@@ -22,14 +22,15 @@
 #define UNIT	0
 #define MONEY	1
 
-#define LEVEL_SALARY	"50"
-#define BASE_SALARY	"20000"
+#define LEVEL_SALARY	50
+#define BASE_SALARY		20000
 
 int in_paying_salary = 0;
 int current_call_out = 0;
+
 string *ids;
 
-string query_labor_salary(object labor)
+int query_labor_salary(object labor)
 {
 	int level;
 
@@ -43,10 +44,10 @@ string query_labor_salary(object labor)
 		if( !SKILL_D->skill_exists(sk) )
 			continue;
 
-                level += data["level"]/(SKILL(sk))->exp_multiple();
+        level += data["level"]/(SKILL(sk))->exp_multiple();
 	}
 	
-	return count(BASE_SALARY, "+", count(LEVEL_SALARY, "*", to_int(pow(level, 1.1))));
+	return BASE_SALARY + LEVEL_SALARY * to_int(pow(level, 1.2));
 }
 
 // 一個月付一次薪水
@@ -55,8 +56,8 @@ private int pay_salary(object boss)
 	int leadership_exp;
 	object labor;
 	string bossid, *labor_files, labor_file, msg, moneyunit;
-	string salary, salary_paid;
-	string total_salary_pay;
+	int salary, salary_paid;
+	int total_salary_pay = 0;
 
 	labor_files = query("hirelabors", boss);
 	
@@ -73,11 +74,11 @@ private int pay_salary(object boss)
 		if( !objectp(labor = load_object(labor_file)) ) continue;
 	
 		salary = query_labor_salary(labor);
-		salary_paid = query("salary_paid", boss);
+		salary_paid = to_int(query("salary_paid", boss));
 
 		// 若有薪資預付
-		if( count(salary_paid, ">=", salary) )
-			set("salary_paid", count(salary_paid, "-", salary), boss);
+		if( salary_paid >= salary )
+			set("salary_paid", salary_paid - salary, boss);
 
 		// 沒薪資預付且付不起現金
 		else if( !(boss->spend_money(moneyunit, salary, BANK_PAYMENT)) )
@@ -111,7 +112,7 @@ private int pay_salary(object boss)
 			}
 		}
 
-		total_salary_pay = count(total_salary_pay, "+", salary);
+		total_salary_pay += salary;
 
 		// 增加員工對老闆親密度
 		if( addn("relationship/"+bossid, 30, labor) >= 10000 )

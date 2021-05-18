@@ -54,7 +54,7 @@ private string *unremovable_dir_list =
 #define SUCCESS		0
 #define FAIL		1
 
-array f_rmtree(string dir, array &res)
+array f_rmtree(string dir, array ref res)
 {	
 	if( dir[<1] != '/' ) dir += "/";
 	
@@ -64,7 +64,7 @@ array f_rmtree(string dir, array &res)
 	foreach(string file in get_dir(dir))
 	{
 		if( file_size(dir+file) == -2 )
-			f_rmtree(dir+file, &res);
+			f_rmtree(dir+file, ref res);
 		else if( rm(dir+file) )
 			res[SUCCESS] += ({ dir+file });
 		else
@@ -81,13 +81,13 @@ array rmtree(string dir)
 {
 	array res = allocate(2, allocate(0));
 	
-	f_rmtree(dir, &res);
+	f_rmtree(dir, ref res);
 	
 	return res;
 	
 }	
 
-array f_cptree(string dir, string dst, array &res)
+array f_cptree(string dir, string dst, array ref res)
 {
 	if( dir[<1] != '/' ) dir += "/";
 	
@@ -116,7 +116,7 @@ array cptree(string dir, string dst)
 {
 	array res = allocate(2, allocate(0));
 	
-	f_cptree(dir, dst, &res);
+	f_cptree(dir, dst, ref res);
 	
 	return res;
 	

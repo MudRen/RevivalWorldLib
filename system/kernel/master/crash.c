@@ -19,7 +19,6 @@
 /* 當發生了 driver segmentation fault 或 bus error 等錯誤時, 將呼叫此函式 */
 private void crash(string error, object command_giver, object current_object)
 {	
-	/*
 	log_file(LOG, MUD_ENGLISH_NAME + " crashed on: " + ctime(time()) +", error: " + error + "\n");
 	log_file(LOG, "command_giver: " + (command_giver ? file_name(command_giver) : "none") + "\n");
 	log_file(LOG, "current_object: " + (current_object ? file_name(current_object) : "none") + "\n");
@@ -36,32 +35,30 @@ private void crash(string error, object command_giver, object current_object)
 	{
 		reset_eval_cost();
 
-		log_file(LOG, " last command :"+ob->query_id(1)+save_variable(query_temp("command", ob)));
-		
-		catch(ob->save());
+		if( objectp(ob) && objectp(environment(ob)) )
+			ob->save();
 	}
 
-	log_file(LOG, "玩家資料備份完畢");
+	MONEY_D->save();
+	reset_eval_cost();
 
+	MAP_D->save();
+	reset_eval_cost();
 
-	foreach( object ob in objects() )
-	{
-		reset_eval_cost();
-		catch(ob->remove());
-	}
+	CITY_D->save_all();
+	reset_eval_cost();
 
 	log_file(LOG, "系統資料備份完畢");
 
-	catch(shout(MUD_FULL_NAME+HIR"系統發生了前所未有的錯誤，要 CRASH 了，系統資料備份完畢!!\n"NOR));
+	shout(MUD_FULL_NAME+HIR"系統發生了前所未有的錯誤，要倒閉了！重要資料備份完畢！\n"NOR);
 	
 	foreach( object ob in users() )
-		catch(flush_messages(ob));
-		*/
+		flush_messages(ob);
 }
 
 /* mud 緩慢關閉的過程 */
 private int slow_shutdown( int min )
 {
-	shout("system",MUD_FULL_NAME"系統記憶體不足，再過 "+min+" 分鐘要 CRASH 了!!\n");
+	shout("system", MUD_FULL_NAME"系統記憶體不足，再過 "+min+" 分鐘就要倒閉了!!\n");
 	return 1;
 }

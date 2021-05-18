@@ -22,9 +22,7 @@
 #define MAX_EXCHANGE		5.0
 #define MAX_CHANGE_PERCENT	50.0
 #define DEFAULT_GNP		"50000000000"
-
-// 匯率轉換精度, 最高 2147483647
-#define CONVERT_PRECISION	10000000
+#define DEFAULT_EXCHANGE	0.9
 
 /*
 	一國家需建立"國家外匯管理局"方可與國外進行貨幣交易與貿易
@@ -51,14 +49,14 @@ nomask int save()
 }
 
 // 建立新的匯率資訊
-nomask int create_new_exchange(string money_unit, float exchange)
+nomask int create_new_exchange(string money_unit)
 {
-	if( !stringp(money_unit) || !floatp(exchange) ) return 0;
+	if( !stringp(money_unit) ) return 0;
 	
 	if( floatp(IET[money_unit]) )
 		return -1;
 	
-	IET[money_unit] = exchange;
+	IET[money_unit] = DEFAULT_EXCHANGE;
 	
 	return save();
 }
@@ -158,8 +156,8 @@ varargs nomask mixed query_exchange_data(string money_unit)
 	return IET[money_unit];
 }
 
-/* 貨幣兌換, CONVERT_PRECISION:轉換精度 */
-string convert(string money, string unit_from, string unit_to)
+/* 貨幣兌換 */
+int convert(int money, string unit_from, string unit_to)
 {
 	float ex1, ex2;
 
@@ -168,7 +166,7 @@ string convert(string money, string unit_from, string unit_to)
 	
 	if( !floatp(ex1) || !floatp(ex2) ) return 0;
 
-	return count(count(money,"*",(ex1/ex2)*CONVERT_PRECISION), "/", CONVERT_PRECISION);
+	return to_int(money * ex1 / ex2);
 }
 
 // 比較幣值或是做四則運算
@@ -210,11 +208,11 @@ void process_per_hour()
 		city = MONEY_D->money_unit_to_city(money_unit);
 		flourish = CITY_D->query_city_info(city, "totalflourish");
 
-		base_ex = 0.7 + pow(flourish, 0.6)/900.;
+		base_ex = DEFAULT_EXCHANGE + pow(flourish, 0.5)/1000.;
 		
 		exchange_trend[money_unit] = base_ex;
 
-		shift_ex = (base_ex - ori_ex)/1000.;		
+		shift_ex = (base_ex - ori_ex)/500.;		
 
 		if( random(10) )
 			IET[money_unit] += shift_ex;

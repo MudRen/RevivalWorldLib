@@ -24,6 +24,6 @@ void create()
         
         set("long","作為飼養草食性動物的飼料。\n");
         set("unit", "把");
-        set("mass", 400);
-        set("value", 100);
+        set("mass", 200);
+        set("value", 50);
 }

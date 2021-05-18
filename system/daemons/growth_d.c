@@ -116,9 +116,15 @@ void grow_up(string sloc)
 {
 	int localtick;
 	string weather;
-	array loc = restore_variable(sloc);	
-	mapping coor_data = CITY_D->query_coor_data(loc);
-	mapping data = coor_data["growth"];
+	array loc = restore_variable(sloc);
+	mapping coor_data;
+	mapping data;
+	
+	if( !CITY_D->city_exist(loc[CITY]) )
+		return;
+
+	coor_data = CITY_D->query_coor_data(loc);
+	data = coor_data["growth"];
 
 	switch(coor_data[TYPE])
 	{
@@ -248,10 +254,10 @@ void remove_growth(array loc)
 	CITY_D->delete_coor_data(loc, "growth");
 }
 
-void create()
+void refresh_growth()
 {
 	int num, x, y, type;
-	array coordata;
+	mapping coordata;
 	string sloc;
 
 	growth = allocate_mapping(0);	
@@ -285,7 +291,13 @@ void create()
 			}
 		}
 	}
-	set_heart_beat(10);
+}
+
+void create()
+{
+	refresh_growth();
+
+	set_heart_beat(1);
 }
 
 mapping query_growth_data()

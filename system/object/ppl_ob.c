@@ -13,8 +13,13 @@
 
 #include <daemon.h>
 #include <inherit.h>
+#include <feature.h>
 
-inherit INTERACTIVE_PPL;
+/* 基本互動 */
+inherit INTERACTIVE;
+
+/* 玩家指令 */
+inherit COMMAND_PPL;
 
 int is_user_ob()
 {

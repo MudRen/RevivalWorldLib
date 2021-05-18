@@ -23,6 +23,20 @@ int remove()
 	return this_object()->save();
 }
 
+void init(object ob)
+{
+	if( ob->is_living() ) return;
+
+	this_object()->delay_save(300);
+}
+
+void leave(object ob)
+{
+	if( ob->is_living() ) return;
+
+	this_object()->delay_save(300);
+}
+
 // 由 Virtual_D 呼叫並送入虛擬物件名稱 file
 varargs void create(string file)
 {
@@ -37,6 +51,5 @@ varargs void create(string file)
 	}
 	
 	this_object()->restore_inventory();
-
-	//set_heart_beat(1);
+	this_object()->startup_living();
 }

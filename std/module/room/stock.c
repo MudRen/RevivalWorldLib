@@ -20,73 +20,93 @@
 
 inherit ROOM_ACTION_MOD;
 
-#define PROCEDURE_FUND	50		// 2/100 的手續費
-#define MAX_OWN_STOCK_TYPE 10		// 最大可同時持有的股票種類
+#define PROCEDURE_FUND	0.02		// 2/100 的手續費
+#define STOCK_VALUE	10000		// 一張股票價值
 
-string stockvalue_change_description(float change)
+varargs string stockvalue_change_description(float change, string type)
 {
+	string bgcolor;
+	
+	switch(type)
+	{
+		case "t3g2":
+			bgcolor = BGRN;
+			break;
+		case "t3r2":
+			bgcolor = BRED;
+			break;
+		default:
+			bgcolor = "";
+			break;
+	}
+
 	change = to_float(change);
 
 	if( change > 0 )
-		return sprintf(HIR"▲%5.2f"NOR, change);
+		return bgcolor+sprintf(HIR"▲%5.2f", change);
 	else if( change < 0 )
-		return sprintf(HIG"▼%5.2f"NOR, -change);
+		return bgcolor+sprintf(HIG"▼%5.2f", -change);
 	else
-		return sprintf(HIW"  %5.2f"NOR, change);
+		return bgcolor+sprintf(HIW"  %5.2f", change);
 }
 
 
 void do_list(object me, string arg)
 {
-	int i, sort;
-	string amount, totalvalue;
-	float value;
-	string enterprise;
-	string sortdesc;
+	int count;
+	mapping stocks = STOCK_D->query_stocks();
+	int *stock_sort = sort_array(keys(stocks), 1);
 	mapping data;
-	string *enterprise_stockvalue_sort;
-	string msg = "企業名稱                   股價 排名 最新漲跌   可購張數   目前持股  持股股價  持股總值 \n";
-	msg += "─────────────────────────────────────────────\n";
+	string *msg = allocate(0);
+	int min, max;
+	float percent = PROCEDURE_FUND - me->query_skill_level("stock")/10000.;
 
-	enterprise_stockvalue_sort = sort_array(ENTERPRISE_D->query_all_enterprises(), (: ENTERPRISE_D->query_enterprise_info($2, "stockvalue") > ENTERPRISE_D->query_enterprise_info($1, "stockvalue") ? 1 : -1 :));
-		
-	foreach(enterprise in ENTERPRISE_D->query_all_enterprises())
+	if( arg )
 	{
-		data = ENTERPRISE_D->query_enterprise_info(enterprise);
-		
-		value = to_float(query("stock/"+enterprise+"/value", me));
-		amount = query("stock/"+enterprise+"/amount", me);
-		totalvalue = count(count(amount, "*", to_int(value*1000000)), "/", 100);
-		
-		sort = member_array(enterprise, enterprise_stockvalue_sort)+1;
-		
-		switch(sort)
-		{
-			case 1: 	sortdesc = HIY BLINK + sort + NOR; break;
-			case 2..10: 	sortdesc = HIY+ sort + NOR; break;
-			default: 	sortdesc = NOR YEL + sort +NOR; break;
-		}
-				
-		msg += sprintf("%-3d %-20s%7.2f %-4s %-8s %10s %10s   %7.2f  %s\n",
-			++i,
-			data["color_id"], 
-			data["stockvalue"], 
-			sortdesc,
-			stockvalue_change_description(data["stockvalue_change"]),
-			NUMBER_D->number_symbol(data["available_stockamount"]),
-			NUMBER_D->number_symbol(amount),
-			value,
-			NUMBER_D->number_symbol(totalvalue)
-			);
+		if( sscanf(arg, "%d %d", min, max) != 2 )
+			sscanf(arg, "%d", min);
 	}
-	msg += "─────────────────────────────────────────────\n";
-	msg += "股票單位為 10,000 元/張，交易手續費為 2%，股市每 10 分鐘變動一次\n\n";
 	
-	
-	return me->more(msg);
+	msg = ({"代號  股票名稱 今日收盤 今日漲跌 漲跌幅度 開盤價 最高價 最低價 成交張數 \n"});
+	msg += ({"─────────────────────────────────────────────\n"});
+
+	foreach(int stock in stock_sort)
+	{
+		count++;
+
+		if( max )
+		{
+			if( stock < min || stock > max ) continue;
+		}
+		else
+		{
+			if( min && stock != min ) continue;
+		}
+
+		data = stocks[stock];
+		
+		if( !data["股票名稱"] ) continue;
+		
+		msg += ({sprintf(HIM"%-4d"HIW"  %-8s "HIY"%8.2f"NOR" %-8s %7.2f%% "NOR WHT"%6.2f "HIB"%6.2f %6.2f "NOR BYEL HIY"%s\n"NOR,
+			stock,
+			data["股票名稱"], 
+			data["收盤"], 
+			stockvalue_change_description(data["漲跌"], data["狀態"]), 
+			data["漲跌幅"],
+			data["開盤"],
+			data["最高"],
+			data["最低"],
+			data["成交張數"]
+		)});
+	}
+	msg += ({"─────────────────────────────────────────────\n"});
+	msg += ({MAG"共 "HIM+count+NOR MAG" 檔上市上櫃股票，"YEL"股票單位為 "HIY"10,000"NOR YEL" 元/張，"NOR RED"交易手續費為 "HIR+sprintf("%.2f%%", percent*100.)+NOR RED"，"HIC"收盤資料一天更新一次\n"NOR});
+	msg += ({WHT"因數據並非即時更新，因此週一至週五的早上九點至下午四點之間的盤中與資料更新期間禁止交易\n\n"NOR});
+
+	return me->more(implode(msg, ""));
 }
 
-void confirm_buystock(object me, string enterprise, string cost, string cost_extra, string new_amount, float new_value, float cur_value, int amount, string new_available_stockamount, float percent, string arg)
+void confirm_buystock(object me, int num, int totalcost, int new_amount, float new_value, float cur_value, int amount, string stock_name, string arg)
 {
 	if( !arg )
 		return me->finish_input();
@@ -99,105 +119,93 @@ void confirm_buystock(object me, string enterprise, string cost, string cost_ext
 		return me->finish_input();
 	}
 
-	if( !me->spend_money(MONEY_D->query_default_money_unit(), count(cost, "+", cost_extra)) )
+	if( !me->spend_money(MONEY_D->query_default_money_unit(), totalcost) )
 	{
-		tell(me, pnoun(2, me)+"身上沒有 "+money(MONEY_D->query_default_money_unit(), count(cost, "+", cost_extra))+"。\n");
+		tell(me, pnoun(2, me)+"身上的錢不足 "+money(MONEY_D->query_default_money_unit(), totalcost)+"。\n");
 		return me->finish_input();
 	}
 	
-	set("stock/"+enterprise+"/amount", new_amount, me);
-	set("stock/"+enterprise+"/value", new_value, me);
+	set("stock/"+num+"/amount", new_amount, me);
+	set("stock/"+num+"/value", new_value, me);
 		
-	ENTERPRISE_D->set_enterprise_info(enterprise, "available_stockamount", new_available_stockamount);
-	CHANNEL_D->channel_broadcast("stock", me->query_idname()+"以 "+sprintf("%.2f", cur_value)+" 股價購入"+ENTERPRISE_D->query_enterprise_color_id(enterprise)+"股票 "+NUMBER_D->number_symbol(amount)+" 張，持股比例升為 "+sprintf("%.2f", percent)+"%");
+	CHANNEL_D->channel_broadcast("stock", me->query_idname()+"以 "HIY+sprintf("%.2f", cur_value)+NOR" 股價購入「"HIW+stock_name+NOR"」股票 "+NUMBER_D->number_symbol(amount)+" 張。");
 	me->finish_input();
 	
-	TOP_D->update_top_stock(me);
+	TOP_D->update_top_rich(me);
 	me->save();
 }
 
 void do_buystock(object me, string arg)
 {
-	int i, num, amount;
-	string enterprise;
-	mapping data;
+	mapping stocks = STOCK_D->query_stocks();
+	int num, amount;
 	float old_value;
 	float new_value;
 	float cur_value;
-	string old_amount;
-	string new_amount;
-	string new_available_stockamount;
+	int old_amount;
+	int new_amount;
+	int cost;
+	int cost_extra;
+	int *nowtime = TIME_D->query_realtime_array();
 	float percent;
-	string cost;
-	string cost_extra;
-	
+
+	return tell(me, "股票系統目前無法處理重新掛牌、除權、除息等問題，短期內將無法購買股票。\n");
+
+	if( !wizardp(me) && nowtime[2] >= 1 && nowtime[2] <= 5 && nowtime[1] >= 9 && nowtime[1] <= 16 )
+		return tell(me, "週一至週五的早上九點至下午四點禁止交易。\n");
+
+	if( STOCK_D->query_last_update_time() < time() - 24*60*60 )
+		return tell(me, "股票資料尚未更新，無法進行交易。\n");
+
 	if( !arg || sscanf(arg, "%d %d", num, amount) != 2 )
-		return tell(me, "請輸入正確的格式。\n");
+		return tell(me, "請輸入正確的格式，例：buy 1101 1。\n");
 
-	if( num <= 0 || amount <= 0 )
-		return tell(me, "請輸入大於 0 的數字。\n");
+	if( amount < 1 )
+		return tell(me, pnoun(2, me)+"至少必須購買一張股票。\n");
 
-	i=0;
-	foreach(enterprise in ENTERPRISE_D->query_all_enterprises())
-	{
-		if( ++i != num ) continue;
-		
-		data = ENTERPRISE_D->query_enterprise_info(enterprise);
-		
-		if( wizardp(me) )
-		{
-			if( !SECURE_D->is_wizard(data["president"]) )
-				return tell(me, "購買股票會導致某企業獲利造成市場干預，巫師只能購買巫師所建立的企業股票。\n");
-		}
-		else if( SECURE_D->is_wizard(data["president"]) )
-			return tell(me, "無法購買巫師建立的企業股票。\n");
-		
-		if( count(amount, ">", data["available_stockamount"]) )
-			return tell(me, "目前可購買的張數只有 "+NUMBER_D->number_symbol(data["available_stockamount"])+" 張。\n");
-			
-		new_available_stockamount = count(data["available_stockamount"], "-", amount);
+	if( !mapp(stocks[num]) || !stocks[num]["股票名稱"] )
+		return tell(me, "沒有 "+num+" 這一檔股票。\n");
 
-		cost = count(count(amount, "*", to_int(data["stockvalue"]*1000000)), "/", 100);
-		cost_extra = count(cost, "/", PROCEDURE_FUND);
+	if( stocks[num]["狀態"] == "t3r2" )
+		return tell(me, "這檔股票已經漲停，無法再買了。\n");
 
-		old_amount = query("stock/"+enterprise+"/amount", me);
-		new_amount = count(amount, "+", old_amount);
-		
-		cur_value = data["stockvalue"];
-		old_value = to_float(query("stock/"+enterprise+"/value", me));
-		new_value = to_float(count(count(count(to_int(old_value*1000000), "*", old_amount), "+", count(to_int(cur_value*1000000), "*", amount)), "/", new_amount))/1000000.;
-		
-		percent = to_float(count(count(new_amount, "*", 10000), "/", data["stockamount"]))/100.;
-		
-		if( !wizardp(me) && percent > 20 )
-			return tell(me, "個人的持股比例不得超過 20%。\n");
-		
-		if( sizeof(query("stock", me)) >= MAX_OWN_STOCK_TYPE )
-		{
-			if( undefinedp(query("stock/"+enterprise, me)) )
-				return tell(me, "同時持股種類不得超過 "+MAX_OWN_STOCK_TYPE+" 種。\n");
-		}
-		tell(me,
-			HIY"股票目前股價  "NOR YEL+sprintf("%.2f", cur_value)+"\n"
-			HIY"持股買入價格  "NOR YEL+sprintf("%.2f", old_value)+"\n"
-			HIY"平均之後價格  "NOR YEL+sprintf("%.2f", new_value)+"\n"
-			HIY"欲購股票張數  "NOR YEL+NUMBER_D->number_symbol(amount)+"\n"
-			HIY"欲購股票總值  "NOR YEL+money(MONEY_D->query_default_money_unit(), cost)+"\n"
-			HIY"交易手續費用  "NOR YEL+money(MONEY_D->query_default_money_unit(), cost_extra)+" (2%)\n"
-			HIY"購入總共花費  "NOR YEL+money(MONEY_D->query_default_money_unit(), count(cost, "+", cost_extra))+"\n"
-			HIY"持股比例升為  "NOR YEL+sprintf("%.2f", percent)+"%\n"
-			HIY"是否確定購入股票?"NOR YEL"(Yes/No)"NOR
-		);
+	old_amount = query("stock/"+num+"/amount", me);
+	new_amount = amount + old_amount;
 
-		input_to((: confirm_buystock, me, enterprise, cost, cost_extra, new_amount, new_value, cur_value, amount, new_available_stockamount, percent :));
-			
-		return;
-	}
-	
-	tell(me, "並沒有這個編號的股票。\n");
+	if( new_amount > 1000000 )
+		return tell(me, "每檔股票最多只能購買 1,000,000 張。\n");
+		
+	old_value = to_float(query("stock/"+num+"/value", me));
+	cur_value = stocks[num]["收盤"];
+	new_value = (old_value * old_amount + cur_value * amount) / (amount + old_amount);
+
+	percent = PROCEDURE_FUND - me->query_skill_level("stock")/10000.;
+
+	cost = to_int(to_int(cur_value*100) * STOCK_VALUE * amount / 100);
+	cost_extra = to_int(cost * percent);
+
+	if( cost + cost_extra < 1 )
+		return tell(me, "資料計算錯誤，請通知巫師處理。\n");
+
+	tell(me,
+		WHT"股票名稱      "NOR HIW+num+" "+stocks[num]["股票名稱"]+NOR"\n"
+		"───────────────────\n"
+		YEL"今日收盤價格  "HIY+sprintf("%.2f", cur_value)+"\n"NOR
+		GRN"欲購股票張數  "HIG+NUMBER_D->number_symbol(amount)+"\n"NOR
+		GRN"目前持股價格  "HIG+sprintf("%.2f", old_value)+"\n"NOR
+		GRN"目前持股張數  "HIG+NUMBER_D->number_symbol(old_amount)+"\n"NOR
+		CYN"平均之後價格  "HIC+sprintf("%.2f", new_value)+"\n"NOR
+		CYN"欲購股票總值  "HIC+money(MONEY_D->query_default_money_unit(), cost)+"\n"NOR
+		CYN"交易手續費用  "HIC+money(MONEY_D->query_default_money_unit(), cost_extra)+HIR"("+sprintf("%.2f", percent*100.)+"%)\n"NOR
+		CYN"購入總共花費  "HIC+money(MONEY_D->query_default_money_unit(), cost + cost_extra)+"\n"NOR
+		"───────────────────\n"
+		HIY"是否確定購入股票?"NOR YEL"(Yes/No)"NOR
+	);
+
+	input_to((: confirm_buystock, me, num, cost + cost_extra, new_amount, new_value, cur_value, amount, num+" "+stocks[num]["股票名稱"] :));
 }
 
-void confirm_sellstock(object me, string enterprise, string earn, string earn_extra, string new_amount, float old_value, float cur_value, int amount, string new_available_stockamount, float percent, string arg)
+void confirm_sellstock(object me, int num, int totalearn, int new_amount, float old_value, float cur_value, int amount, string stock_name, string arg)
 {
 	if( !arg )
 		return me->finish_input();
@@ -210,84 +218,107 @@ void confirm_sellstock(object me, string enterprise, string earn, string earn_ex
 		return me->finish_input();
 	}
 	
-	me->earn_money(MONEY_D->query_default_money_unit(), count(earn, "-", earn_extra));
+	me->earn_money(MONEY_D->query_default_money_unit(), totalearn);
 	
-	if( count(new_amount, "<=", 0) )
-		delete("stock/"+enterprise, me);
+	if( new_amount <= 0 )
+		delete("stock/"+num, me);
 	else
-		set("stock/"+enterprise+"/amount", new_amount, me);
-		
-	ENTERPRISE_D->set_enterprise_info(enterprise, "available_stockamount", new_available_stockamount);
-	CHANNEL_D->channel_broadcast("stock", me->query_idname()+"以 "+sprintf("%.2f", cur_value)+" 股價售出"+ENTERPRISE_D->query_enterprise_color_id(enterprise)+"股票 "+NUMBER_D->number_symbol(amount)+" 張，持股比例降為 "+sprintf("%.2f", percent)+"%");	
-	me->finish_input();
+		set("stock/"+num+"/amount", new_amount, me);
 	
-	TOP_D->update_top_stock(me);
+	if( cur_value == old_value )
+		CHANNEL_D->channel_broadcast("stock", me->query_idname()+"以 "HIY+sprintf("%.2f", cur_value)+NOR" 股價售出「"HIW+stock_name+NOR"」股票 "+NUMBER_D->number_symbol(amount)+" 張。");
+	else if( cur_value > old_value )
+		CHANNEL_D->channel_broadcast("stock", me->query_idname()+"以 "HIY+sprintf("%.2f", cur_value)+NOR" 股價售出「"HIW+stock_name+NOR"」股票 "+NUMBER_D->number_symbol(amount)+" 張，獲利 "HIY+money(MONEY_D->query_default_money_unit(), to_int(to_int((cur_value-old_value)*100)*STOCK_VALUE/100*amount))+NOR"。");
+	else
+		CHANNEL_D->channel_broadcast("stock", me->query_idname()+"以 "HIY+sprintf("%.2f", cur_value)+NOR" 股價售出「"HIW+stock_name+NOR"」股票 "+NUMBER_D->number_symbol(amount)+" 張，認賠 "HIY+money(MONEY_D->query_default_money_unit(), to_int(to_int((old_value-cur_value)*100)*STOCK_VALUE/100*amount))+NOR"。");
+	
+	me->finish_input();
+	TOP_D->update_top_rich(me);
 	me->save();
 }
 
 void do_sellstock(object me, string arg)
 {
-	int i, num, amount;
-	string old_amount;
-	string new_amount;
+	mapping stocks = STOCK_D->query_stocks();
+	int num, amount;
+	int old_amount;
+	int new_amount;
 	float cur_value;
 	float old_value;
-	string earn;
-	string earn_extra;
-	float percent;
-	string enterprise;
-	mapping data;
-	string new_available_stockamount;
+	int earn;
+	int *nowtime = TIME_D->query_realtime_array();
+
+	if( !wizardp(me) && nowtime[2] >= 1 && nowtime[2] <= 5 && nowtime[1] >= 9 && nowtime[1] <= 16 )
+		return tell(me, "週一至週五的早上九點至下午四點禁止交易。\n");
+
+	if( STOCK_D->query_last_update_time() < time() - 24*60*60 )
+		return tell(me, "股票資料尚未更新，無法進行交易。\n");
 
 	if( !arg || sscanf(arg, "%d %d", num, amount) != 2 )
-		return tell(me, "請輸入正確的格式。\n");
+		return tell(me, "請輸入正確的格式，例：sell 1101 1。\n");
 
-	if( num <= 0 || amount <= 0 )
-		return tell(me, "請輸入大於 0 的數字。\n");
+	if( amount < 1 )
+		return tell(me, pnoun(2, me)+"至少必須出售一張股票。\n");
 	
-	i=0;
-	foreach(enterprise in ENTERPRISE_D->query_all_enterprises())
-	{
-		if( ++i != num ) continue;
-		
-		data = ENTERPRISE_D->query_enterprise_info(enterprise);
-		
-		old_amount = copy(query("stock/"+enterprise+"/amount", me));
-		new_amount = count(old_amount, "-", amount);
-		
-		if( count(amount, ">", old_amount) )
-			return tell(me, pnoun(2, me)+"目前擁有"+data["color_id"]+"的股票張數只有 "+NUMBER_D->number_symbol(old_amount)+" 張。\n");
-			
-		new_available_stockamount = count(data["available_stockamount"], "+", amount);
-		
-		cur_value = data["stockvalue"];
-		old_value = to_float(query("stock/"+enterprise+"/value", me));
-		earn = count(count(amount, "*", to_int(cur_value*1000000)), "/", 100);
-		earn_extra = count(earn, "/", PROCEDURE_FUND);
-		
-		percent = to_float(count(count(new_amount, "*", 10000), "/", data["stockamount"]))/100.;
+	if( !mapp(stocks[num]) || !stocks[num]["股票名稱"] )
+		return tell(me, "沒有 "+num+" 這一檔股票。\n");
 
-		tell(me,
-			HIY"股票目前股價  "NOR YEL+sprintf("%.2f", cur_value)+"\n"
-			HIY"持股平均價格  "NOR YEL+sprintf("%.2f", old_value)+"\n"
-			HIY"欲售股票張數  "NOR YEL+NUMBER_D->number_symbol(amount)+"\n"
-			HIY"欲售股票總值  "NOR YEL+money(MONEY_D->query_default_money_unit(), earn)+"\n"
-			HIY"交易手續費用  "NOR YEL+money(MONEY_D->query_default_money_unit(), earn_extra)+" (2%)\n"
-			HIY"售出總共獲得  "NOR YEL+money(MONEY_D->query_default_money_unit(), count(earn, "-", earn_extra))+"\n"
-			HIY"持股比例降為  "NOR YEL+sprintf("%.2f", percent)+"%\n"
-			HIY"是否確定售出股票?"NOR YEL"(Yes/No)"NOR
-		);
-		
-		//tell(me, "是否確定以 "+sprintf("%.2f", cur_value)+" 股價售出"+data["color_id"]+"股票 "+NUMBER_D->number_symbol(amount)+" 張\n得金 "+money(MONEY_D->query_default_money_unit(), earn)+"，持股比例將為 "+sprintf("%.2f", percent)+"%(Yes/No)：");
-		
-		input_to((: confirm_sellstock, me, enterprise, earn, earn_extra, new_amount, old_value, cur_value, amount, new_available_stockamount, percent :));
-			
-		return;
-	}
+	if( stocks[num]["狀態"] == "t3g2" )
+		return tell(me, "這檔股票已經跌停，無法再賣了。\n");
+
+	old_amount = query("stock/"+num+"/amount", me);
+	new_amount = old_amount - amount;
 	
-	tell(me, "並沒有這個編號的股票。\n");
+	old_value = to_float(query("stock/"+num+"/value", me));
+	cur_value = stocks[num]["收盤"];
+
+	if( old_amount < 1 )
+		return tell(me, pnoun(2, me)+"手上並沒有 "+num+" 這檔股票。\n");
+
+	if( new_amount < 0 )
+		return tell(me, "這檔股票"+pnoun(2, me)+"手上只有 "+old_amount+" 張。\n");
+
+	earn = to_int(to_int(cur_value*100) * amount * STOCK_VALUE / 100);
+	
+	if( earn < 1 )
+		return tell(me, "資料計算錯誤，請通知巫師處理。\n");
+
+	tell(me,
+		WHT"股票名稱      "NOR HIW+num+" "+stocks[num]["股票名稱"]+NOR"\n"
+		"───────────────────\n"
+		YEL"今日收盤價格  "HIY+sprintf("%.2f", cur_value)+"\n"NOR
+		GRN"目前持股價格  "HIG+sprintf("%.2f", old_value)+"\n"NOR
+		GRN"目前持股利潤  "HIG+sprintf("%.2f%%", (cur_value - old_value) * 100. / old_value)+"\n"NOR
+		GRN"欲售股票張數  "HIG+NUMBER_D->number_symbol(amount)+"\n"NOR
+		CYN"售出總共獲得  "HIC+money(MONEY_D->query_default_money_unit(), earn)+"\n"NOR
+		"───────────────────\n"
+		HIY"是否確定售出股票?"NOR YEL"(Yes/No)"NOR
+	);
+
+	input_to((: confirm_sellstock, me, num, earn, new_amount, old_value, cur_value, amount, num+" "+stocks[num]["股票名稱"] :));
 }
 
+/*
+void do_clearstock(object me, string arg)
+{
+	mapping stockdata = query("stock", me);
+	
+	if( !sizeof(stockdata) )
+		return tell(me, pnoun(2, me)+"的手中未持有任何股票。\n");
+
+	foreach( string enterprise, mapping data in stockdata )	
+	{
+		if( !ENTERPRISE_D->enterprise_exists(enterprise) )
+		{
+			tell(me, "清除 "+enterprise+" 的股票資料。\n");
+			delete("stock/"+enterprise, me);
+			me->save();
+		}
+	}
+	
+	tell(me, "完成下市股票清理。\n");
+}
+*/
 
 // 設定建築物內房間型態種類
 nosave mapping action_info =
@@ -305,20 +336,29 @@ HELP,
 "list":
 @HELP
 顯示股市資訊
-list		列出所有股市資料
+list		列出所有臺灣上市上櫃股票市場資料
+list 1101	列出代號 1101 股票的資料
+list 1100 1300  列出代號 1100 至 1300 之間所有的股票資料
 HELP,
 
 "buy":
 @HELP
 買入股票的指令
-buy 2 300	買入第 2 個股票 300 張
+buy 1101 300	買入 1101(台泥) 股票 300 張
 HELP,
 
 "sell":
 @HELP
 賣出股票的指令
-sell 3 100	賣出第 3 個股票 100 張
+sell 1101 100	賣出 1101(台泥) 股票 100 張
 HELP,
+
+"clear":
+@HELP
+請除已下市股票
+clear		清除已下市股票資料(廢紙)
+HELP,
+
 			]),
 		"heartbeat":0,	// 實際時間 1 秒為單位
 		"job": 0,
@@ -327,6 +367,7 @@ HELP,
 				"list" : (: do_list :),
 				"buy" : (: do_buystock :),
 				"sell" : (: do_sellstock :),
+				//"clear" : (: do_clearstock :),
 			]),
 	]),
 ]);
@@ -351,7 +392,7 @@ nosave array building_info = ({
 	,COMMERCE_REGION
 
 	// 開張儀式費用
-	,"75000000"
+	,75000000
 	
 	// 建築物關閉測試標記
 	,0

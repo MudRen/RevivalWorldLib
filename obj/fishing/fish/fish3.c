@@ -2,7 +2,7 @@
  * See /doc/help/copyright for more info
  -----------------------------------------
  * File   : Fish.c
- * Author :
+ * Author : 
  * Date   : 2003-5-3
  * Note   : ³½
  * Update :
@@ -23,7 +23,7 @@ void create()
 	if( this_object()->set_shadow_ob() ) return;
 
         set("unit", "±ø");
-        set("value", 250);
+        set("value", 2500);
         set("mass", 30);
 }
 

@@ -26,3 +26,8 @@ array query_building_info()
 {
 	return fetch_variable("building_info");
 }
+
+mapping query_action_info()
+{
+	return fetch_variable("action_info");
+}

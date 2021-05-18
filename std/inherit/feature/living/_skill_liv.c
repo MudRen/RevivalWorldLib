@@ -38,12 +38,19 @@ int skill_level_up(string skill)
 {
 	int new_lv;
 	object me = this_object();
-	
+	mixed boss = query("boss");
+
 	new_lv = addn(SKILL_LV(skill), 1);
 
+	if( stringp(boss) ) boss = find_player(boss);
+
 	// 顯示升級訊息
-	tell(me, sprintf(NOR YEL"%s的"HIY"%s"NOR YEL"等級提升為 "HIY"%d"NOR YEL" 級。\n"NOR,
-		pnoun(2, me), (SKILL(skill))->query_idname(), new_lv));
+	if( objectp(boss) )
+		tell(boss, sprintf(NOR YEL"%s的"HIY"%s"NOR YEL"等級提升為 "HIY"%d"NOR YEL" 級。\n"NOR,
+			me->query_idname(), (SKILL(skill))->query_idname(), new_lv));
+	else
+		tell(me, sprintf(NOR YEL"%s的"HIY"%s"NOR YEL"等級提升為 "HIY"%d"NOR YEL" 級。\n"NOR,
+			pnoun(2, me), (SKILL(skill))->query_idname(), new_lv));
 	
 	// 執行升級相關動作, 先升級再產生升級事件
 	(SKILL(skill))->after_level_up(me, new_lv);
@@ -59,7 +66,8 @@ int skill_level_down(string skill)
 {
 	int new_lv, cur_lv;
 	object me = this_object();
-	
+	mixed boss = query("boss");
+
 	cur_lv = query_skill_level(skill);
 	
 	// 執行降級相關動作, 先產生降級事件再降級
@@ -70,9 +78,15 @@ int skill_level_down(string skill)
 
 	new_lv = addn(SKILL_LV(skill), -1);
 	
+	if( stringp(boss) ) boss = find_player(boss);
+
 	// 顯示降級訊息
-	tell(me, sprintf(NOR YEL"%s的"HIY"%s"NOR YEL"等級退步為 "HIY"%d"NOR YEL" 級。\n"NOR,
-		pnoun(2, me), (SKILL(skill))->query_idname(), new_lv));
+	if( objectp(boss) )
+		tell(boss, sprintf(NOR YEL"%s的"HIY"%s"NOR YEL"等級退步為 "HIY"%d"NOR YEL" 級。\n"NOR,
+			me->query_idname(), (SKILL(skill))->query_idname(), new_lv));
+	else
+		tell(me, sprintf(NOR YEL"%s的"HIY"%s"NOR YEL"等級退步為 "HIY"%d"NOR YEL" 級。\n"NOR,
+			pnoun(2, me), (SKILL(skill))->query_idname(), new_lv));
 
 	return new_lv;
 }
@@ -113,9 +127,11 @@ int exp_calculate(string skill)
 
 	if( level_change )
 	{
-		if( userp(me) && !SECURE_D->is_wizard(me->query_id(1)) )
+		if( me->is_user_ob() && !SECURE_D->is_wizard(me->query_id(1)) )
 			TOP_D->update_top("skill/"+skill, me->query_id(1), cur_lv, me->query_idname(), query("city"));
-		
+		else if( me->is_module_npc() && (SKILL(skill))->allowable_learn() == NPC_SKILL && !SECURE_D->is_wizard(query("boss")) )
+			TOP_D->update_top("skill/"+skill, base_name(me), cur_lv, me->query_idname(), query("boss"));
+
 		me->save();
 	}
 }

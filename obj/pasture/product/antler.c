@@ -22,7 +22,7 @@ void create()
 	if( this_object()->set_shadow_ob() ) return;
 	
 	set("long", "²Ê§§°íµwªº³À¯ñ¡C\n");
-	set("unit", "°¦");
-	set("mass", 300);
-	set("value", 25000);
+	set("unit", "¤ä");
+	set("mass", 500);
+	set("value", 24000);
 }

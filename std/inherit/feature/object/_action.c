@@ -13,5 +13,5 @@
  
 mapping query_actions()
 {
-	return copy(fetch_variable("actions"));
+	return fetch_variable("actions");
 }

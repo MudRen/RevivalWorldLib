@@ -24,6 +24,7 @@ void create()
 
 	set("long", "政府大量生產的廉價物品，用來採集原石，品質低落，損壞率相當高。");
 	set("endurance", 100);
+	set("quality", 100);
 	set("unit", "具");
 	set("value", 100);
 	set("mass", 500);

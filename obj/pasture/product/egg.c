@@ -23,6 +23,6 @@ void create()
 	
 	set("long", "略微透明的白黃色雞蛋。\n");
 	set("unit", "顆");
-	set("mass", 50);
-	set("value", 100);
+	set("mass", 100);
+	set("value", 500);
 }

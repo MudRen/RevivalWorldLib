@@ -18,4 +18,7 @@
 
 #define REST_DELAY_KEY		"rest"
 #define FISHING_DELAY_KEY	"fishing"
-#define MINING_DELAY_KEY	"mining"
+#define BATTLE_GLORY_DELAY_KEY	"battle_glory"
+#define BATTLE_FEAR_DELAY_KEY	"battle_fear"
+#define COMBAT_DELAY_KEY	"combat"
+#define MISSILE_DELAY_KEY	"missile"

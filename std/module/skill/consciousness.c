@@ -32,6 +32,12 @@ void create()
 	
 	// 技能註解
 	set("note",		"昏迷後可在更低的能力值時便恢復意識");
+	
+	// 文明時代
+	set("age",		1);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL | COMBAT_SKILL);
 }
 
 // 限制可學習對象, 可用來設定各種學習條件

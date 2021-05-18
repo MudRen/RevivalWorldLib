@@ -32,13 +32,19 @@ void create()
 	
 	// 技能註解
 	set("note",		"魅力屬性神之鍛鍊");
+	
+	// 文明時代
+	set("age",		1);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL | COMBAT_SKILL);
 }
 
 // 限制可學習對象, 可用來設定各種學習條件
 varargs int allowable_learn(object ob)
 {
 	if( undefinedp(ob) )
-		return PLAYER_SKILL | NPC_SKILL;
+		return 0;
 	else
 	{
 		if( ob->is_npc() )

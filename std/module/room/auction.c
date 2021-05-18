@@ -4,7 +4,7 @@
  * File   : auction.c
  * Author : Clode@RevivalWorld
  * Date   : 2006-03-11
- * Note   : 模組 - 拍賣所
+ * Note   : 模組 - 貿易市場
  * Update :
  *  o 2000-00-00  
  *
@@ -20,9 +20,9 @@
 
 inherit ROOM_ACTION_MOD;
 
-void do_list(object me, string arg)
+void do_auction_list(object me, string arg)
 {
-	AUCTION_D->do_list(me, arg);
+	AUCTION_D->do_auction_list(me, arg);
 }
 
 void do_bid(object me, string arg)
@@ -30,9 +30,29 @@ void do_bid(object me, string arg)
 	AUCTION_D->do_bid(me, arg);
 }
 
-void do_receive(object me, string arg)
+void do_auction_receive(object me, string arg)
 {
-	AUCTION_D->do_receive(me, arg);
+	AUCTION_D->do_auction_receive(me, arg);
+}
+
+void do_request_list(object me, string arg)
+{
+	AUCTION_D->do_request_list(me, arg);
+}
+
+void do_request_receive(object me, string arg)
+{
+	AUCTION_D->do_request_receive(me, arg);
+}
+
+void do_request(object me, string arg)
+{
+	AUCTION_D->do_request(me, arg);
+}
+
+void do_support(object me, string arg)
+{
+	AUCTION_D->do_support(me, arg);
 }
 
 // 設定建築物內房間型態種類
@@ -40,7 +60,7 @@ nosave mapping action_info =
 ([
 	"hall"	:
 	([
-		"short"	: HIB"拍賣"NOR BLU"大廳"NOR,
+		"short"	: HIG"拍賣"NOR GRN"大廳"NOR,
 		"help"	: 
 			([ 
 "topics":
@@ -68,11 +88,20 @@ receive '編號' to 1 50,50	- 收取得標物品與付款並直接將物品運輸到第 1 衛星都市的 
 註2：領取得標物品一律收取得標價的 1% 手續費
 HELP,
 
+"request":
+@HELP
+提出商品訂單
+
+request '數量' '物品名稱' per '單價'	- 提出某物品的訂單
+request '編號' cancel			- 取消某筆訂單
+HELP,
+
 "list":
 @HELP
 列出拍賣物品
 
-list			- 列出目前正在拍賣的物品
+list			- 列出目前正在拍賣的物品(僅列出未結案物品)
+list all		- 列出目前正在拍賣的物品(含已結案物品)
 list '編號'		- 查詢某個編號拍賣物品的詳細拍賣資料
 
 HELP,
@@ -81,12 +110,68 @@ HELP,
 		"master":1,
 		"action":
 			([
-				"list"		: (: do_list($1, $2) :),
+				"list"		: (: do_auction_list($1, $2) :),
+				"receive"	: (: do_auction_receive($1, $2) :),
 				"bid"		: (: do_bid($1, $2) :),
-				"receive"	: (: do_receive($1, $2) :),
 			]),
 	]),
 
+	"trade"	:
+	([
+		"short"	: HIC"交易"NOR CYN"大廳"NOR,
+		"help"	: 
+			([ 
+"topics":
+@HELP
+    交易大廳是下訂單的地方。
+HELP,
+
+"support":
+@HELP
+供貨指令
+
+support '編號'				- 從身上供貨
+support '編號' from 1 50,50		- 從第 1 衛星都市的 50,50 座標倉庫供給貨物
+					  (必須將供貨物品放置在倉庫的「訂單供貨」分類中)
+HELP,
+
+"receive":
+@HELP
+訂單物品收件
+
+receive '編號'				- 將供貨收到身上
+receive '編號' to 1 50,50		- 收取供貨並直接將物品運輸到第 1 衛星都市的 50,50 座標處
+
+HELP,
+
+"request":
+@HELP
+提出商品訂單
+
+request '數量' '物品名稱' per '單價'	- 提出某特定物品或工業產品的訂單(需手續費 10000)
+request '編號' cancel			- 取消某筆訂單
+HELP,
+
+"list":
+@HELP
+列出訂單
+
+list			- 列出目前正在拍賣的物品(僅列出未結案物品)
+list all		- 列出目前正在拍賣的物品(含已結案物品)
+list '編號'		- 查詢某個編號拍賣物品的詳細拍賣資料
+
+HELP,
+
+			]),
+		"master":1,
+		"action":
+			([
+				"list"		: (: do_request_list($1, $2) :),
+				"receive"	: (: do_request_receive($1, $2) :),
+				"support"	: (: do_support($1, $2) :),
+				"request"	: (: do_request($1, $2) :),
+			]),
+	]),
 ]);
 
 // 設定建築物資料
@@ -108,7 +193,7 @@ nosave array building_info = ({
 	,COMMERCE_REGION
 
 	// 開張儀式費用
-	,"5000000"
+	,5000000
 	
 	// 建築物關閉測試標記
 	,0
@@ -117,7 +202,7 @@ nosave array building_info = ({
 	,20
 	
 	// 最高可加蓋樓層
-	,1
+	,2
 	
 	// 最大相同建築物數量(0 代表不限制)
 	,0

@@ -92,7 +92,6 @@ string generate_building_list()
         array data;
         string msg, buildingtype, buildingregion, *sortid;
         mapping building_table = BUILDING_D->query_building_table();
-        string age;
 	string *manual_sort = ({
 		"cityhall",
 		"recycle",
@@ -100,8 +99,11 @@ string generate_building_list()
 		"trading_post",
 		"bank",
 		"postoffice",
+		"hospital",
 		"jail",
 		"auction",
+		"futures",
+		"church",
 		"trainstation",
 		"airport",
 		"space",
@@ -121,6 +123,7 @@ string generate_building_list()
 		"expedition",
 		"research",
 		"resource",
+		"baseball",
 		0,
 		
 		"metal",
@@ -133,29 +136,34 @@ string generate_building_list()
 		"food",
 		"drink",
 		"clothing",
-		"instrument",
 		"furniture",
 		"hardware",
 		"chemical",
 		"machinery",
 		"electrics",
-		"transportation",
-		"entertainment",
+		"transportation",		
 		"medicine",
 		"adventure",
 		"shortrange",
-		"longrange",
 		"armor",
+		"perfume",
+
+		0,
+		"defendtower",
+		"instrument",
+		"entertainment",
+		"longrange",
 		"heavyarmor",
 		"magic",
+		"aircraft",
 	});
 
         sortid = manual_sort | keys(building_table);
        
        	msg = "建築列表，目前共可建造 "+sizeof(manual_sort-({0}))+" 種建築：\n";
-        msg += NOR WHT"─────────────────────────────────────────\n"NOR;
-        msg +=        "建築種類       名稱   最少房間 屬 規劃區 繁榮 樓層     花費/每房 個限 城限 時代 開\n";
-        msg += NOR WHT"─────────────────────────────────────────\n"NOR;
+        msg += NOR WHT"───────────────────────────────────────────\n"NOR;
+        msg +=        "建築種類       名稱   最少房間 屬 規劃區 繁榮 樓層        花費/每房 個限 城限 時代 開\n";
+        msg += NOR WHT"───────────────────────────────────────────\n"NOR;
         
         
         foreach( string id in sortid )
@@ -168,7 +176,7 @@ string generate_building_list()
 
                 data = building_table[id];
                 
-                if( !data || !data[ROOMMODULE_OPENCOST] ) continue;
+                if( !data || data[ROOMMODULE_OPENCOST] == -1 ) continue;
                 
                 if( data[ROOMMODULE_BUILDINGTYPE] & GOVERNMENT )
                         buildingtype = MAG"政"NOR;
@@ -177,24 +185,14 @@ string generate_building_list()
                 else if( data[ROOMMODULE_BUILDINGTYPE] & INDIVIDUAL )
                         buildingtype = CYN"個"NOR;
 		
-		switch(data[ROOMMODULE_AGE])
-		{
-			case 0: age = WHT"史前"NOR; break;
-			case 1: age = HIG"農"NOR GRN"業"NOR; break;
-			case 2: age = HIY"工"NOR YEL"業"NOR; break;
-			case 3:	age = HIC"知"NOR CYN"識"NOR; break;
-			case 4: age = HIB"宇"NOR BLU"宙"NOR; break;
-			case 5: age = HIR"末"NOR RED"日"NOR; break;
-		}
-
 		if( data[ROOMMODULE_REGION] & AREA_REGION )
-			buildingregion = HIW BGRN" 郊區 "NOR;
+			buildingregion = HIW BRED" 郊區 "NOR;
 		else
                 	buildingregion = ( data[ROOMMODULE_REGION] & AGRICULTURE_REGION ? HIG BGRN"農"NOR : "  ")+
 					 ( data[ROOMMODULE_REGION] & INDUSTRY_REGION ? HIY BYEL"工"NOR : "  ")+
 					 ( data[ROOMMODULE_REGION] & COMMERCE_REGION ? HIC BCYN"商"NOR : "  ");
 
-                msg += sprintf("%-15s%-13s%2d %-3s%-7s%-5d%-4d%14s %|4s %|4s %4s %s\n", 
+                msg += sprintf("%-15s%-13s%2d %-3s%-7s%-5d%-4d%17s %|4s %|4s %4s %s\n", 
                         HIY+capitalize(id)+NOR, 
                         data[ROOMMODULE_SHORT],
                         data[ROOMMODULE_ROOMLIMIT],
@@ -205,12 +203,12 @@ string generate_building_list()
                         HIW+NUMBER_D->number_symbol(data[ROOMMODULE_OPENCOST])+NOR,
                         NOR WHT+(data[ROOMMODULE_MAXLIMIT]||""),
                         NOR WHT+(data[ROOMMODULE_MAXBUILDINGLIMIT]||""),
-                       	age,
+                       	CITY_D->query_age_name(data[ROOMMODULE_AGE], 1),
                         data[ROOMMODULE_TESTING] ? HIR"╳"NOR : HIG"○"NOR,
                         );
         }
 
-        msg += NOR WHT"─────────────────────────────────────────\n"NOR;
+        msg += NOR WHT"───────────────────────────────────────────\n"NOR;
         
         
         return msg;

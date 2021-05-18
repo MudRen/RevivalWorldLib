@@ -11,5 +11,7 @@
  -----------------------------------------
  */
 
+#define DEFAULT_MONEY_UNIT	"RW"
+
 #define BANK_PAYMENT		(1<<0)	// 自動轉帳
 #define FORCED_PAYMENT		(1<<1)	// 強迫付費(例如稅收)

@@ -19,19 +19,51 @@
 inherit COMMAND;
 
 string help = @HELP
-    任務查詢，查詢已完成或未完成的各項任務與任務註解
+任務查詢，查詢已完成或未完成的各項任務與任務註解
 
-	quest		顯示任務資訊
+quest		顯示任務資訊
+quest 編號 -d	刪除某項未完成的任務
 
 HELP;
 
 private void do_command(object me, string arg)
 {
-	int i;
+	int i, num;
 	string msg;
 	object ob;
 	mapping quest;
 	int total, totalopen;
+	
+	if( arg && sscanf(arg, "%d -d", num) == 1  && arg[<2..<1] == "-d")
+	{
+		int size;
+		
+		quest = query("quest", me);
+		
+		size = sizeof(quest);
+		
+		if( num <= 0 || num > size )
+			return tell(me, "沒有這個任務。\n");
+
+		i = 0;
+		foreach(string questname, mapping data in quest)
+		{
+			i++;
+			
+			if( i == num )
+			{
+				if( me->query_quest_finish(questname) )
+					return tell(me, "任務「"+questname+"」已經完成，無法刪除。\n");
+					
+				me->delete_quest_data(questname);
+				me->save();
+
+				return tell(me, "刪除任務「"+questname+"」完成。\n");
+			}	
+		}
+		return;
+	}
+		
 	if( arg && wizardp(me) && objectp(ob = find_player(arg)) )
 	{
 		if( !sizeof(quest = query("quest", ob)) )
@@ -59,6 +91,6 @@ private void do_command(object me, string arg)
 	total = QUEST_D->query_total_quests_amount();
 	totalopen = QUEST_D->query_total_opened_quests_amount();
 	
-	//msg += WHT"────────────────────────────\n總任務數："+HIW+total+NOR WHT"、完成開放："+HIW+totalopen+NOR WHT"、測試中："+HIW+(total-totalopen)+"\n"NOR;
+	msg += WHT"────────────────────────────\n總任務數："+HIW+total+NOR WHT"、完成開放："+HIW+totalopen+NOR WHT"、測試中："+HIW+(total-totalopen)+"\n"NOR;
 	me->more(msg);
 }

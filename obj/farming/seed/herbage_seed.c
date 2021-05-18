@@ -25,9 +25,9 @@ void create()
         if( this_object()->set_shadow_ob() ) return;
         
         set("long","作為飼養草食性動物的飼料。\n");
-        set("unit", "粒");
-        set("mass", 1);
-        set("value", 3);
+        set("unit", "袋");
+        set("mass", 10);
+        set("value", 10);
         set("badsell", 1);
 
 	// 種子資訊
@@ -51,7 +51,7 @@ void create()
 	       	//收割產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/farming/product/herbage":50,
+	       		"/obj/farming/product/herbage":80,
 	       	]),
 
 		//成熟收割時的訊息

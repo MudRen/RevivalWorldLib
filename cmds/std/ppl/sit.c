@@ -17,6 +17,7 @@
 #include <feature.h>
 #include <daemon.h>
 #include <message.h>
+#include <condition.h>
 
 inherit COMMAND;
 
@@ -132,6 +133,14 @@ private void do_command(object me, string arg)
 				tell(me, "¥ð®§§¹²¦¡C\n");
 			else
 			{
+				if( me->in_condition(EXTREME_SILENCE) )
+				{
+					time /= 2;
+					
+					if( time < 1 )
+						time = 1;
+				}
+				
 				set_temp("rest_regen/stamina", REGEN, me);
 				me->start_delay(REST_DELAY_KEY, time, pnoun(2, me)+"¥¿¦b"+(map_system->query_coor_data(loc, "short")||"²D«F")+"¤º¥ð®§¡C\n", "¥ð®§§¹²¦¡C\n", bind((: delete_temp("rest_regen", $(me)), $(me)->set_stamina_full() :), me));
 			}
@@ -148,6 +157,14 @@ private void do_command(object me, string arg)
 				tell(me, "¥ð®§§¹²¦¡C\n");
 			else
 			{
+				if( me->in_condition(EXTREME_SILENCE) )
+				{
+					time /= 2;
+					
+					if( time < 1 )
+						time = 1;
+				}
+				
 				set_temp("rest_regen/health", REGEN, me);
 				me->start_delay(REST_DELAY_KEY, time, pnoun(2, me)+"¥¿§¤¦b¾ð¤U¥ð®§¡C\n", "¥ð®§§¹²¦¡C\n", bind((: delete_temp("rest_regen", $(me)), $(me)->set_health_full() :), me));
 			}
@@ -164,6 +181,14 @@ private void do_command(object me, string arg)
 				tell(me, "¥ð®§§¹²¦¡C\n");
 			else
 			{
+				if( me->in_condition(EXTREME_SILENCE) )
+				{
+					time /= 2;
+					
+					if( time < 1 )
+						time = 1;
+				}
+		
 				set_temp("rest_regen/energy", REGEN, me);
 				me->start_delay(REST_DELAY_KEY, time, pnoun(2, me)+"¥¿½ö¦b"+(map_system->query_coor_data(loc, "short")||"¯ó¥Ö")+"¤W¥ð®§¡C\n", "¥ð®§§¹²¦¡C\n", bind((: delete_temp("rest_regen", $(me)), $(me)->set_energy_full() :), me));
 			}

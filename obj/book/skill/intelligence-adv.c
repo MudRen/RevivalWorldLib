@@ -11,13 +11,13 @@
  -----------------------------------------
  */
 
+inherit __DIR__"_skill_book.c";
+
 #include <ansi.h>
 #include <skill.h>
 
 #define BOOK_SKILL 	"intelligence-adv"
 #define BASE_SKILL	([ "intelligence" : 100 ])
-
-inherit __DIR__"_skill_book.c";
 
 void create()
 {

@@ -53,9 +53,12 @@ private nosave mapping ENV_VARS =
 	"rumor"		: ({ TYPE_INTEGER, "[0-2]", 	LV_PLAYER, "謠言頻道匿名模式 (0: 匿名, 1: 冒名, 2: 玩家編號)" }),
 	"invis"		: ({ TYPE_BOOLEAN, "[0-1]", 	LV_WIZARD, "隱形模式 (0: 出現, 1: 隱形)" }),
 	"no_weather"	: ({ TYPE_BOOLEAN, "[0-1]", 	LV_WIZARD, "不受天氣影響 (0: 受影響, 1: 不受影響)" }),
+	"notify_finger"	: ({ TYPE_BOOLEAN, "[0-1]", 	LV_WIZARD, "Finger 通報 (0: 不顯示, 1: 顯示)" }),
+	"notify_tell"	: ({ TYPE_BOOLEAN, "[0-1]", 	LV_WIZARD, "Tell 提及通報 (0: 不顯示, 1: 顯示)" }),
         "timezone"	: ({ TYPE_STRING,  "[a-zA-Z]", 	LV_PLAYER, "時區" }),
         "edit_prompt"	: ({ TYPE_BOOLEAN, "[0-1]", 	LV_PLAYER, "使用文字編輯器時顯示命令提示字元 (0: 不顯示, 1: 顯示)" }),
         "no_player_city": ({ TYPE_BOOLEAN, "[0-1]", 	LV_PLAYER, "玩家名稱之前的城市名稱顯示 (0: 顯示, 1:不顯示)" }),
+        "no_dodge_msg"	: ({ TYPE_BOOLEAN, "[0-1]",		LV_PLAYER, "戰鬥時是否顯示閃避訊息 (0: 顯示, 1: 不顯示)" }),
  //       "no_id_color"	: ({ TYPE_BOOLEAN, "[0-1]",	LV_PLAYER, "角色名稱之彩色顯示(0: 彩色, 1: 黑白)" }),
  //       "no_color"	: ({ TYPE_BOOLEAN, "[0-1]",	LV_PLAYER, "所有文字之彩色顯示(0: 彩色, 1: 黑白)" }),
 ]);

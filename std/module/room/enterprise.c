@@ -24,7 +24,8 @@ inherit ROOM_ACTION_MOD;
 
 void do_invest(object me, string arg)
 {
-	string moneyunit, money, enterprise, default_moneyunit;
+	string moneyunit, enterprise, default_moneyunit;
+	int money;
 	
 	if( !arg )
 		return tell(me, pnoun(2, me)+"想要投資或是退資多少錢？\n");
@@ -32,17 +33,17 @@ void do_invest(object me, string arg)
 	enterprise = query("enterprise", me);
 	default_moneyunit = MONEY_D->query_default_money_unit();
 	
-	if( sscanf(arg, "$%s %s", moneyunit, money) == 2 )
+	if( sscanf(arg, "$%s %d", moneyunit, money) == 2 )
 	{
 		moneyunit = upper_case(moneyunit);
 
-		if( !(money = big_number_check(money)) )
+		if( !(money = to_int(big_number_check(money))) )
 			return tell(me, "請輸入正確的數字。\n");
 
 		if( moneyunit != default_moneyunit )
 			return tell(me, "企業集團的增資或退資僅接受 $"+default_moneyunit+" 種類的貨幣。\n");
 				
-		if( count(money, ">", 0) )
+		if( money > 0 )
 		{
 			if( !me->spend_money(moneyunit, money) )
 				return tell(me, pnoun(2, me)+"沒有這麼多的現金。\n");
@@ -52,17 +53,15 @@ void do_invest(object me, string arg)
 			
 			CHANNEL_D->channel_broadcast("ent", me->query_idname()+"增資 "HIY+money(default_moneyunit, money)+NOR" 作為企業資金。\n", me);
 		}
-		else if( count(money, "<", 0) )
+		else if( money < 0 )
 		{
-			money = money[1..];
-
-			if( !ENTERPRISE_D->change_assets(enterprise, "-"+money) )
+			if( !ENTERPRISE_D->change_assets(enterprise, money) )
 				return tell(me, "目前企業組織內並沒有那麼多的資金可供周轉。\n");
 			
-			me->earn_money(default_moneyunit, money);
-			ENTERPRISE_D->change_invest(enterprise, me->query_id(1), "-"+money);
+			me->earn_money(default_moneyunit, -money);
+			ENTERPRISE_D->change_invest(enterprise, me->query_id(1), money);
 
-			CHANNEL_D->channel_broadcast("ent", me->query_idname()+"從企業集團中退資 "HIY+money(default_moneyunit, money)+NOR"。\n", me);
+			CHANNEL_D->channel_broadcast("ent", me->query_idname()+"從企業集團中退資 "HIY+money(default_moneyunit, -money)+NOR"。\n", me);
 		}
 		else 
 			return tell(me, pnoun(2, me)+"想要投資或退資多少錢？\n");
@@ -121,7 +120,12 @@ nosave mapping action_info =
 "topics":
 @HELP
     處理資金的地方。
-invest $WZ 10000	將個人資金投資進入企業集團
+HELP,
+
+"invest":
+@HELP
+注入或取出資金。
+invest $RW 10000	將個人資金投資進入企業集團
 invest $RW -10000	退回個人投資資金
 HELP,
 			]),
@@ -141,6 +145,11 @@ HELP,
 "topics":
 @HELP
     企業內部的圖書室。
+HELP,
+
+"read":
+@HELP
+閱讀書籍。
 read			閱讀書籍
 HELP,
 			]),
@@ -160,6 +169,12 @@ HELP,
 "topics":
 @HELP
     企業董事辦公的地方。
+HELP,
+
+"release":
+@HELP
+釋出股票
+release			釋出股票
 HELP,
 			]),
 		"heartbeat":0,	// 實際時間 1 秒為單位
@@ -208,7 +223,7 @@ nosave array building_info = ({
 	,COMMERCE_REGION
 
 	// 開張儀式費用
-	,"30000000"
+	,30000000
 	
 	// 建築物關閉測試標記
 	,0

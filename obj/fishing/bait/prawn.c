@@ -2,7 +2,7 @@
  * See /doc/help/copyright for more info
  -----------------------------------------
  * File	  : worm.c
- * Author :
+ * Author : 
  * Date	  : 2003-5-27
  * Note	  : ³½»ç
  * Update :

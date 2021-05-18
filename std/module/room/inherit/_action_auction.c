@@ -17,15 +17,15 @@
 
 #define DEFAULT_PAYMENT		10000
 
-void output_object(object env, string database, string basename, string amount);
+void output_object(object env, string database, string basename, int amount);
 
 void do_auction(object me, string arg, string database)
 {
 	int num, i, j;
-	string amount;
+	int amount;
 	int auc_amount;
-	string auc_base_price;
-	string auc_direct_price;
+	mixed auc_base_price;
+	mixed auc_direct_price;
 	int auc_hour;
 	mapping objects;
 	string *shelfsort, shelf;
@@ -48,16 +48,16 @@ void do_auction(object me, string arg, string database)
 	if( auc_amount < 1 || auc_amount > 9999999 )
 		return tell(me, "請輸入正確的數量(1-9999999)。\n");
 		
-	auc_base_price = big_number_check(auc_base_price);
-	auc_direct_price = big_number_check(auc_direct_price);
+	auc_base_price = to_int(big_number_check(auc_base_price));
+	auc_direct_price = to_int(big_number_check(auc_direct_price));
 
-	if( count(auc_base_price, "<", 1) || count(auc_base_price, ">", "999999999999") )
+	if( auc_base_price < 1 || auc_base_price > 999999999999 )
 		return tell(me, "請輸入正確的底標價格(1 - 999999999999)。\n");
 		
-	if( count(auc_direct_price, "<", 1) || count(auc_direct_price, ">", "999999999999") )
+	if( auc_direct_price < 1 || auc_direct_price > 999999999999 )
 		return tell(me, "請輸入正確的直接購買價格(1 - 999999999999)。\n");
 		
-	if( count(auc_direct_price, "<=", auc_base_price) )
+	if( auc_direct_price <= auc_base_price )
 		return tell(me, "直接購買價不得等於或低於底價。\n");
 
 	if( auc_hour < 1 || auc_hour > 7*24 )
@@ -77,7 +77,7 @@ void do_auction(object me, string arg, string database)
 			if( ++j == num )
 			{
 				basename = objects[shelf][i];
-				amount = objects[shelf][i+1];
+				amount = to_int(objects[shelf][i+1]);
 
 				if( catch(ob = load_object(basename)) )
 					continue;
@@ -89,7 +89,10 @@ void do_auction(object me, string arg, string database)
 					continue;
 				}
 				
-				if( count(amount, "<", auc_amount) )
+				if( query("flag/no_give", ob) )
+					return tell(me, ob->query_idname()+"無法設定為訂單。\n");
+		
+				if( amount < auc_amount )
 					return tell(me, ob->query_idname()+"沒有這麼多個。\n");
 
 				if( !me->spend_money(money_unit, DEFAULT_PAYMENT) )
@@ -97,8 +100,9 @@ void do_auction(object me, string arg, string database)
 				else
 					tell(me, pnoun(2, me)+"繳交了拍賣手續費 "+HIY+money(money_unit, DEFAULT_PAYMENT)+NOR"。\n");
 
-				output_object(master, database, basename, ""+auc_amount);
-				
+				output_object(master, database, basename, auc_amount);
+				master->save();
+
 				auc_data["seller"] = me->query_id(1);
 				auc_data["basename"] = basename;
 				auc_data["amount"] = auc_amount;

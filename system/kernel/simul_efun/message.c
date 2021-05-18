@@ -28,7 +28,7 @@ varargs void tell(mixed target, string msg, string classes)
 /* 對所有使用者放出訊息 */
 void shout(string msg)
 {
-	tell(filter_array(users(), (: !$1->is_login_ob() :)), msg, SYSMSG);
+	tell(filter_array(users(), (: objectp($1) && !$1->is_login_ob() :)), msg, SYSMSG);
 }
 
 //
@@ -125,6 +125,9 @@ varargs void msg(string msg, object me, object you, int onlooker, string classes
 	{
 		string onlookers_msg;
 		object *onlookers = present_objects(me) + ({environment(me)})||({});
+
+		if( objectp(me) && wizardp(me) && query("no_msg_looker", me) && objectp(you) ) return;
+		if( objectp(you) && wizardp(you) && query("no_msg_looker", you) ) return;
 
 		if( objectp(you) && environment(me) != environment(you) ) 
 			onlookers += present_objects(you) + ({environment(you)})||({});

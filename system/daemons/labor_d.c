@@ -32,7 +32,7 @@ int save_data()
 	// 清除超過 30 天沒人雇用的員工
 	foreach(string basename, mapping data in labors)
 	{
-		if( time() - data[LABOR_ADDTIME] > 30*24*60*60 )
+		if( !mapp(data) || time() - data[LABOR_ADDTIME] > 30*24*60*60 )
 		{
 			destruct(find_object(basename));
 			rm(basename+".o");
@@ -79,9 +79,9 @@ varargs void add_labor(object npc, int nodestruct_boss)
 		}
 		
 		if( environment(bossob) )
-			bossob->earn_money(environment(bossob)->query_money_unit(), count(query("salary_paid", npc), "*", 15000));
+			bossob->earn_money(environment(bossob)->query_money_unit(), to_int(query("salary_paid", npc)) * 15000);
 		else
-			bossob->earn_money(MONEY_D->query_default_money_unit(), count(query("salary_paid", npc), "*", 15000));
+			bossob->earn_money(MONEY_D->query_default_money_unit(), to_int(query("salary_paid", npc)) * 15000);
 		if( !nodestruct_boss && !userp(bossob) )
 			destruct(bossob);
 	}
@@ -91,6 +91,10 @@ varargs void add_labor(object npc, int nodestruct_boss)
 	delete("job", npc);
 	delete("salary_paid", npc);
 	
+	destruct(all_inventory(npc));
+	npc->save_inventory();
+	npc->save();
+
 	save_data();
 }
 
@@ -124,6 +128,7 @@ void del_labors(string id)
 
 		delete("job", labor);
 		delete("boss", labor);
+		delete("number", labor);
 		add_labor(labor);
 	}
 	
@@ -133,6 +138,28 @@ void del_labors(string id)
 	if( !userp(boss) )
 		destruct(boss);
 }
+
+// 取得員工最大上限
+int get_labor_limit(object me)
+{
+	int leadership_level = me->query_skill_level("leadership");
+	int leadership_adv_level = me->query_skill_level("leadership-adv");
+	int leadership_battle_level = query("battlereward/leadership", me);
+	
+	return (leadership_level + leadership_adv_level)/5 + leadership_battle_level;
+}
+
+// 取得員工物件陣列
+varargs object *get_labors(object me, int labortype)
+{
+	string *hirelabors = query("hirelabors", me) || allocate(0);
+	
+	if( undefinedp(labortype) )
+		return map(hirelabors, (: load_object($1) :));
+	else
+		return filter_array(map(hirelabors, (: load_object($1) :)), (: query("job/type", $1) == $(labortype) :));
+}
+
 void create()
 {
 	if( !restore_data() )

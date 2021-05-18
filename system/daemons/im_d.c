@@ -15,7 +15,6 @@
 
 /* 標頭引入檔 */
 #include <ansi.h>
-#include <message.h>
 #include <feature.h>
 #include <daemon.h>
 
@@ -25,9 +24,9 @@
 
 #define PING_TIME 240
 #define TELL(x) CHANNEL_D->channel_broadcast("nch", "IM 精靈："+(string)x)
-#define BITLBEE_SERVER "62.75.129.41 7777"
+#define BITLBEE_SERVER "127.0.0.1 6667"
 
-#undef DEBUG
+#define DEBUG	1
 
 /* 啟始設定 */
 private mapping users = ([]);
@@ -152,7 +151,7 @@ protected void read_callback(int fd,mixed message)
 #ifdef DEBUG
 	TELL(sprintf("[%s] %d,%s",
 		TIME_D->replace_ctime(time()),fd,message ));
-#endif DEBUG
+#endif
 	if(regexp(message ,"PING :PinglBee") ) //PING :PinglBee
 	{
 		socket_write(fd,"PONG\r\n");

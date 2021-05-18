@@ -99,7 +99,7 @@ void set_owner()
 	if( env && userp(env) )
 	{
 		set_idname(env->query_id()+"'s land dominium", env->query_name()+"的土地所有權狀");
-		set("long", terminal_colour(DECLARATION, (["ID":sprintf("%-12s",ansi_capitalize(env->query_id())), "GENDER":(query("gender", env)=="男"?"你":"妳")])));
+		set("long", terminal_colour(DECLARATION, (["ID":sprintf("%-12s",capitalize(env->query_id())), "GENDER":(query("gender", env)=="男"?"你":"妳")])));
 		set_temp("owner", env->query_id(1));
 	}
 }

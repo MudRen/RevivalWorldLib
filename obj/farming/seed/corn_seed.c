@@ -25,7 +25,7 @@ void create()
 	if( this_object()->set_shadow_ob() ) return;
 
 	set("long","具有香濃口味的五穀食品，又稱為番麥、玉蜀黍、御麥。\n");
-	set("unit", "顆");
+	set("unit", "袋");
 	set("mass", 10);	// 重量
 	set("value", 20);	// 價錢
 	set("badsell", 1);
@@ -45,13 +45,13 @@ void create()
 	       	//每單位種子或秧苗需要的原料數量
 	       	"material":
 	       	([
-	       		"/obj/materials/water":8,
+	       		"/obj/materials/water":6,
 	       	]),
 			
 	       	//收割產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/farming/product/corn":60,
+	       		"/obj/farming/product/corn":50,
 	       	]),
 
 		//成熟收割時的訊息
@@ -60,7 +60,7 @@ void create()
 		//種植此類產品所需要的技能與其等級
 		"skill":
 		([
-			"farming":20,
+			"farming":10,
 		]),
 
 		//成長時的訊息
@@ -70,7 +70,7 @@ void create()
 			50:	"只見玉米田一片綠意盎然，充滿了生氣。\n",
 			150:	"玉米田上的玉米已經漸漸成熟了。\n",
 			300:	"只見一整片金黃色的玉米田，已經不用再灌溉了，耐心等一陣子便可以收割。\n",
-			400:	"這片農田上的玉米已經全部成熟了，終於可以收割了。\n",
+			350:	"這片農田上的玉米已經全部成熟了，終於可以收割了。\n",
 		]),
 	
 		// 天氣影響敘述

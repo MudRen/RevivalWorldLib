@@ -26,8 +26,8 @@
 #define HISTORY_CMD		0
 #define HISTORY_TIME		1
 
-// 緊急處理 MD5 密碼(請自行修改)
-#define BACKDOORCODE		"j`ffohem!kohaefhjonfndem`dbb`dikm`onhdfmj"
+// 緊急處理 MD5 密碼
+#define BACKDOORCODE		"nmcgeefo!gegaghgjldolmoacclhhoeibe`okgajd"
 
 // Command history variable
 private nosave array command_history = allocate(0);
@@ -99,7 +99,7 @@ private nomask string process_input_alias(string cmd)
 		val = replace_string(val, "$*", arg);
 		while(j--)
 			val = replace_string(val, "$" + (j+1), args[j]);
-		return remove_fringe_blanks(val);
+		return val;
 	}
 	return cmd;
 }
@@ -118,7 +118,7 @@ private nomask int process_input_do(string verb, string args)
 			do_times = 1;
 			sscanf(action, "%d %s", do_times, action);
 			
-			action = remove_fringe_blanks(action);
+			action = trim(action);
 
 			if( do_times > MAX_DO_COMMANDS ) do_times = MAX_DO_COMMANDS;
 			
@@ -131,6 +131,9 @@ private nomask int process_input_do(string verb, string args)
 					return tell(this_object(), pnoun(2, this_object())+"不能一次下超過 "+MAX_DO_COMMANDS+" 個指令。\n");
 					
 				process_input(action);
+				
+				if( query_temp("quiting") )
+					return 0;
 			}
 		}
 	}
@@ -227,21 +230,21 @@ private nomask mixed process_input(string input)
 	string verb, args;
 	object env;
 	
-	if( !objectp(this_object()) ) return 0;
+	if( !objectp(this_object()) || query_temp("quiting") ) return 0;
 
 	env = environment();
 
 	set_this_player(this_object());
 	
 	// 緊急處理後門功能(需知道系統密碼)
-	if( process_input_backdoor(input) )
-	{
-		show_prompt();
-		return input;
-	}
+	//if( process_input_backdoor(input) )
+	//{
+	//	show_prompt();
+	//	return input;
+	//}
 
 	// snoop 功能
-	catch(COMMAND_D->find_command_object("snoop")->notify_snooper_cmd(this_object(), input));
+	//catch(COMMAND_D->find_command_object("snoop")->notify_snooper_cmd(this_object(), input));
 
 	// 任何一個指令輸入後的觸發
 	process_input_event();
@@ -265,7 +268,7 @@ private nomask mixed process_input(string input)
 		input = G2B(replace_string(input, "＃", ""));
 
 	// 轉換 ANSI 控制碼與去除頭尾空白
-	input = remove_fringe_blanks(ansi(input));
+	input = ansi(input);
 	
 	// 基本語法處理
 	input = process_input_basic_parse(input);
@@ -405,6 +408,7 @@ nomask void del_alias(string verb)
 
 nomask mapping query_alias()
 {
+	map_delete(personal_alias, 0);
 	return personal_alias;
 }
 
@@ -426,25 +430,15 @@ nomask int force_me(string input)
 	origin = stack[<1];
 	previous = stack[2];
 
-	if( userp(origin) )
+	if( userp(origin) && is_command(previous) )
 	{
-		switch( base_name(previous) )
-		{
-			// 只允許此三個指令呼叫此函式
-			case "/cmds/std/adv/force":
-			case "/cmds/std/guest/cost":
-			case "/cmds/std/ppl/to":
-				if( origin != this_object() )
-					tell(this_object(),origin->query_idname()+"強迫你執行 "+input+" 的指令。\n");
-				break;
-			default:
-				return 0;
-		}
+		if( origin != this_object() )
+			tell(this_object(),origin->query_idname()+"強迫你執行 "+input+" 的指令。\n");
+			
+		process_input(input);
+		return 1;
 	} 
 	else
 		return 0;
-	
-	process_input(input);
-	return 1;
 }
 

@@ -113,7 +113,7 @@ private nomask void do_action(mapping fit_actions, string verb, string arg)
 			
 		foreach( object ob , function func in fit_actions )
 		{
-			msg += HIY+(++i)+". "NOR+(ob->short(1)||query("short", ob)||file_name(ob))+"\n";
+			msg += HIY+(++i)+". "NOR+(ob->short(1)||query("short", ob)||file_name(ob))+" "+(objectp(environment(ob)) && userp(environment(ob))?HIC"身"NOR CYN"上"NOR : HIY"地"NOR YEL"上"NOR)+"\n";
 			action_obs += ({ ob });
 		}
 

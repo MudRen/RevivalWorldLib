@@ -23,6 +23,6 @@ void create()
 	
 	set("long", "肥滿多汁的大閘蟹。\n");
 	set("unit", "隻");
-	set("mass", 400);
-	set("value", 12000);
+	set("mass", 500);
+	set("value", 16000);
 }

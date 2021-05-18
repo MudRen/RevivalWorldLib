@@ -23,6 +23,6 @@ void create()
         
         set("long","向日葵花語：愛慕‧花輝‧忠誠‧尊敬‧顯赫。\n");
         set("unit", "朵");
-        set("mass", 10);
-        set("value", 400);
+        set("mass", 200);
+        set("value", 600);
 }

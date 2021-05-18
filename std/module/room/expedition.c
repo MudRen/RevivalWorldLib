@@ -125,7 +125,7 @@ void do_plan(object me, string arg)
 			if( query("boss", leader_ob) != myid )
 				return tell(me, leader_ob->query_idname()+"的雇主不是"+pnoun(2, me)+"。\n");
 			
-			if( query("job/cur", leader_ob) != ADVENTURER )
+			if( query("job/type", leader_ob) != ADVENTURER )
 				return tell(me, "必須先命令"+leader_ob->query_idname()+"從事探險的工作。\n");
 
 			data["money"] += COST_PER_NPC * data["time"];
@@ -144,7 +144,7 @@ void do_plan(object me, string arg)
 			if( query("boss", prospector_ob) != myid )
 				return tell(me, prospector_ob->query_idname()+"的雇主不是"+pnoun(2, me)+"。\n");
 
-			if( query("job/cur", prospector_ob) != ADVENTURER )
+			if( query("job/type", prospector_ob) != ADVENTURER )
 				return tell(me, "必須先命令"+prospector_ob->query_idname()+"從事探險的工作。\n");
 
 			data["money"] += COST_PER_NPC * data["time"];
@@ -163,7 +163,7 @@ void do_plan(object me, string arg)
 			if( query("boss", explorer_ob) != myid )
 				return tell(me, explorer_ob->query_idname()+"的雇主不是"+pnoun(2, me)+"。\n");
 				
-			if( query("job/cur", explorer_ob) != ADVENTURER )
+			if( query("job/type", explorer_ob) != ADVENTURER )
 				return tell(me, "必須先命令"+explorer_ob->query_idname()+"從事探險的工作。\n");
 
 			data["money"] += COST_PER_NPC * data["time"];
@@ -182,7 +182,7 @@ void do_plan(object me, string arg)
 			if( query("boss", guard_ob) != myid )
 				return tell(me, guard_ob->query_idname()+"的雇主不是"+pnoun(2, me)+"。\n");
 
-			if( query("job/cur", guard_ob) != ADVENTURER )
+			if( query("job/type", guard_ob) != ADVENTURER )
 				return tell(me, "必須先命令"+guard_ob->query_idname()+"從事探險的工作。\n");
 
 			data["money"] += COST_PER_NPC * data["time"];
@@ -201,7 +201,7 @@ void do_plan(object me, string arg)
 			if( query("boss", scout_ob) != myid )
 				return tell(me, scout_ob->query_idname()+"的雇主不是"+pnoun(2, me)+"。\n");
 
-			if( query("job/cur", scout_ob) != ADVENTURER )
+			if( query("job/type", scout_ob) != ADVENTURER )
 				return tell(me, "必須先命令"+scout_ob->query_idname()+"從事探險的工作。\n");
 
 			data["money"] += COST_PER_NPC * data["time"];
@@ -477,7 +477,7 @@ nosave array building_info = ({
 	,AGRICULTURE_REGION
 
 	// 開張儀式費用
-	,"200000"
+	,200000
 	
 	// 建築物關閉測試標記
 	,1

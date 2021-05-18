@@ -19,95 +19,111 @@
 
 inherit ROOM_ACTION_MOD;
 
-#define RECYCLE_MONEY	10
+#define RECYCLE_MONEY	0.7
 
 void do_recycle(object me, string arg)
 {
-	//mixed value;
-	//string money = "0", moneyunit;
-	string msg="", amount;
+	int value;
+	int money = 0;
+	string moneyunit = MONEY_D->query_default_money_unit();
+	int amount;
+	string option;
 	object ob, env = environment(me);
 
 	if( !arg )
-		return tell(me, "目前回收總數："+NUMBER_D->number_symbol(query("numbers", env))+" 個。\n", CMDMSG);
+		return tell(me, "目前回收總數："+NUMBER_D->number_symbol(query("numbers", env))+" 個。\n");
 
-	if( sscanf(arg, "%s %s", amount, arg) == 2 )
+	if( sscanf(arg, "%s %s", option, arg) == 2 )
 	{
-		if( amount == "all" ) ;
-		// 如果 amount 並不是數字單位
-		else if( !big_number_check(amount) )
+		if( option == "all" ) ;
+		// 如果 option 並不是數字單位
+		else if( !big_number_check(option) )
 		{
-			arg = amount + " " + arg;
-			amount = "1";	
+			arg = option + " " + arg;
+			amount = 1;	
 		}	
-		else if( count(amount, "<", 1) ) amount = "1";
+		else if( to_int(option) < 1 ) 
+			amount = 1;
+		else
+			amount = to_int(option);
 	}
-	else amount = "1";
-	
-	//moneyunit = MONEY_D->city_to_money_unit(env->query_city());
+	else amount = 1;
 	
 	if( objectp(ob = present(arg, me)) )
 	{
-		if( amount != "all" && count(amount, ">", query_temp("amount", ob)||1) ) 
-			return tell(me, pnoun(2, me)+"身上只有 "+(query_temp("amount",ob)||1)+" "+(query("unit",ob)||"個")+ob->query_idname()+"。\n", CMDMSG);
-		
-		if( ob->is_keeping() )
-			return tell(me, pnoun(2, me)+"必須先解除"+ob->query_idname()+"的保留(keep)狀態。\n");
-
-		if( amount == "all" )
-			amount = (query_temp("amount", ob)||"1")+"";
-		
-		// 因匯差過大會造成買賣獲利, 暫時 mark
-		//value = query("value", ob);
-		//if( count(value, ">", RECYCLE_MONEY) || count(value, "<=", 0) )
-		//	money = count(amount, "*", RECYCLE_MONEY);
-		//else
-		//	money = count(amount, "*", count(value, "/", 2));
-		
-		//me->earn_money(moneyunit, money);
-
-		set("numbers", count(query("numbers", env), "+", amount), env);
-		msg("$ME把"+QUANTITY_D->obj(ob, amount)+"丟進資源回收桶，目前回收總數："+NUMBER_D->number_symbol(query("numbers", env))+" 個。\n", me, 0, 1);
-		
-		destruct(ob, amount);
-		return;
-	}
-	
-	if( lower_case(arg) == "all" )
-	{
-		object *all_ob = all_inventory(me);
-		
-		if( sizeof(all_ob) )
+		if( ob->no_amount() )
 		{
-			foreach(ob in all_ob)
-			{
-				amount = query_temp("amount",ob)||"1";
-				
-				if( ob->is_keeping() || (count(query("value", ob),">",0) && query_temp("endurance", ob)>=0) ) continue;
-			
-				msg += HIG"．"NOR+QUANTITY_D->obj(ob, amount, 1)+"\n";
-				
-				//value = query("value", ob);
+			string idname = ob->query_idname();
+			string basename = base_name(ob);
+			object *obs = filter_array(all_inventory(me), (: base_name($1) == $(basename) :));
+			int size = sizeof(obs);
 
-				//if( count(value, ">", RECYCLE_MONEY) || count(value, "<=", 0) )
-				//	money = count(money, "+", count(amount, "*", RECYCLE_MONEY));
-				//else
-				//	money = count(money, "+", count(amount, "*", count(value, "/", 2)));
+			if( option == "all" ) 
+				amount = size;
+			else if( amount > size )
+				return tell(me, pnoun(2, me)+"身上只有 "+size+" "+(query("unit",ob)||"個")+ob->query_idname()+"。\n");
+
+			size = amount;
+			
+			value = query("value", ob);
+
+			while(amount--)
+			{
+				if( !objectp(ob = present(arg, me)) )
+				{
+					size--;
+					continue;
+				}
+			
+				if( ob->is_keeping() )
+				{
+					tell(me, pnoun(2, me)+"必須先解除"+ob->query_idname()+"的保留(keep)狀態。\n");
+					size--;
+					continue;
+				}
 				
-				set("numbers", count(query("numbers", env), "+", amount), env);
 				destruct(ob);
 			}
-
-			//me->earn_money(moneyunit, money);
-
-			return msg("$ME把身上能夠回收的東西全部丟進資源回收桶了。目前回收總數："+NUMBER_D->number_symbol(query("numbers", env))+" 個。\n"NOR, me, 0, 1);
+			
+			money = size * RECYCLE_MONEY * value;
+			set("numbers", count(query("numbers", env), "+", size), env);
+			msg("$ME把 "+size+" 個"+idname+"丟進資源回收桶，獲得回收金 "HIY+money(moneyunit, money)+NOR"，目前回收總數："+NUMBER_D->number_symbol(query("numbers", env))+" 個。\n", me, 0, 1);	
+		} 
+		else
+		{
+			if( option == "all" )
+				amount = ob->query_amount();
+			else if( amount > ob->query_amount() ) 
+				return tell(me, pnoun(2, me)+"身上只有 "+ob->query_amount()+" "+(query("unit",ob)||"個")+ob->query_idname()+"。\n");
+				
+			if( ob->is_keeping() )
+				return tell(me, pnoun(2, me)+"必須先解除"+ob->query_idname()+"的保留(keep)狀態。\n");
+			
+			// 因匯差過大會造成買賣獲利, 暫時 mark
+			value = query("value", ob);
+			money = amount * RECYCLE_MONEY * value;
+	
+			if( money < 0 )
+				money = 0;
+			
+			me->earn_money(moneyunit, money);
+	
+			set("numbers", count(query("numbers", env), "+", amount), env);
+			msg("$ME把"+QUANTITY_D->obj(ob, amount)+"丟進資源回收桶，獲得回收金 "HIY+money(moneyunit, money)+NOR"，目前回收總數："+NUMBER_D->number_symbol(query("numbers", env))+" 個。\n", me, 0, 1);
+			
+			destruct(ob, amount);
 		}
-		return tell(me, pnoun(2, me)+"身上沒有東西可以回收！\n", CMDMSG);
+		return;
 	}
-	
-	return tell(me, pnoun(2, me)+"身上沒有 "+arg+" 這件物品。\n", CMDMSG);
+
+	return tell(me, pnoun(2, me)+"身上沒有 "+arg+" 這件物品。\n");
 }
-	
+
+string look_room(object room)
+{
+	if( query("function", room) == "recycle" )
+		return NOR GRN"回收總數 "HIG+NUMBER_D->number_symbol(query("numbers", room))+NOR GRN" 個"NOR"\n";
+}	
 
 // 設定建築物內房間型態種類
 nosave mapping action_info =
@@ -124,11 +140,11 @@ HELP,
 
 "recycle":
 @HELP
-回收資源的指令，用法如下：
+回收資源的指令(可獲得原價 $RW 70% 的回收金)，用法如下：
   recycle		- 顯示目前已回收總數
-  recycle all		- 回收身上所有不具價值的物品
-  recycle garbage	- 回收 1 件 garbage 物品
-  recycle 3 garbage	- 回收 3 件 garbage 物品
+  recycle '物品ID'	- 回收該類物品
+  recycle 3 '物品ID'	- 回收 3 件該類物品
+  recycle all '物品ID'	- 回收所有該類物品
 HELP,
 
 			]),
@@ -159,8 +175,8 @@ nosave array building_info = ({
 	,AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION
 
 	// 開張儀式費用
-	,"5000000"
-
+	,5000000
+	
 	// 建築物關閉測試標記
 	,0
 

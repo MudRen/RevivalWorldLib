@@ -30,90 +30,65 @@ private nosave mapping event = allocate_mapping(0);
 private nosave int *real_time = allocate(6);
 private nosave int *game_time = allocate(6);
 
-void calculate_GNP()
-{
-	foreach( string city in CITY_D->query_cities() )
-		MONEY_D->calculate_NNP(city);
-		
-	MONEY_D->broadcast_GNP();
-}
-
 void happy_game_new_year()
 {
-	//string money;
-	//string dst_unit;
-
-	shout(BEEP"\n"MUD_CHINESE_NAME HIW+CHINESE_D->chinese_number(game_time[YEAR])+HIC"年終於來到，舉世歡騰！！！\n"NOR);
+	string msg = "\n"MUD_CHINESE_NAME HIW+CHINESE_D->chinese_number(game_time[YEAR])+HIC"年終於來到，舉世歡騰！！！\n"NOR;
 	
-	/*
-	shout(HIW"\n線上每人將可獲得個人總資產 1% 的"HIW"紅包"HIW"！！！\n"NOR);
-	shout(HIW"\n線上每人將可獲得個人總資產 1% 的"HIW"紅包"HIW"！！！\n"NOR);
-	shout(HIW"\n線上每人將可獲得個人總資產 1% 的"HIW"紅包"HIW"！！！\n"NOR);
-	foreach( object user in users() )
-	{
-		if( environment(user) && user->is_user_ob() )
-		{
-			money = "0";
-			
-			catch(money = count(count(MONEY_D->query_assets(user->query_id(1)), "*", 1), "/", 100));
-			
-			dst_unit = MONEY_D->city_to_money_unit(query("city", user));
-			
-			if( dst_unit )
-				money = EXCHANGE_D->convert(money, "RW", dst_unit);
-
-			user->earn_money(dst_unit || "RW", money);
-			
-			tell(user, HIC+pnoun(2, user)+"總共獲得了"+HIY+QUANTITY_D->money_info(dst_unit || "RW", money)+HIC"。\n"NOR, ENVMSG);
-		}	
-	}
-	*/
+	shout(msg+msg+msg);
 }
 
 void happy_real_new_year()
 {
-	shout(BEEP WHT"\n西元" HIW+CHINESE_D->chinese_number(real_time[YEAR])+WHT"年終於來到，舉世歡騰！！！\n"NOR);
-	shout(BEEP WHT"\n西元" HIW+CHINESE_D->chinese_number(real_time[YEAR])+WHT"年終於來到，舉世歡騰！！！\n"NOR);
-	shout(BEEP WHT"\n西元" HIW+CHINESE_D->chinese_number(real_time[YEAR])+WHT"年終於來到，舉世歡騰！！！\n"NOR);
+	string msg = WHT"\n西元" HIW+CHINESE_D->chinese_number(real_time[YEAR])+WHT"年終於來到，舉世歡騰！！！\n"NOR;
+	
+	shout(msg+msg+msg);
 }
 
 // 遊戲時間的工作排程
 private nosave array game_crontab = ({
 //"min hour wday mday mon year" : function
 "0 * * * * *"		, (: NATURE_D->game_hour_process() :),			"每小時自然環境變動",
-"0 0 * 0 0 *"		, (: happy_game_new_year :),				"每年發一次紅包",
+"0 0 * 0 0 *"		, (: happy_game_new_year :),					"每年發一次紅包",
 "0 0 * 0 * *"		, (: SALARY_D->game_month_process() :),			"每月處理一次薪資",
 "0 0 * 0 * *"		, (: NATURE_D->game_month_process() :),			"每月處理一次季節變化",
-"30 0 * 0 * *"		, (: calculate_GNP :),					"每月算一次GNP",
-"40 0 * 0 * *"		, (: CITY_D->fund_handler() :),				"每月處理一次政府經費支出與稅收收入",
+"30 0 * 0 * *"		, (: MONEY_D->calculate_all_GNP() :),			"每月算一次GNP",
+"40 0 * 0 * *"		, (: CITY_D->start_fund_handler() :),	"每月處理一次政府經費支出與稅收收入",
 });
 
 // 真實時間的工作排程
 private nosave array real_crontab = ({
 //"min hour wday mday mon year" : function
-"*/5 * * * * *"		, (: CITY_D->time_distributed_save() :),		"每五分鐘城市資料分散儲存",
-//"0,12,24,36,48 * * * * *", (: MNLMUDLIST_D->distributed_connect() :),            "每十二分鐘更新 MNLMUDLIST 紀錄",
-//"1,13,25,37,49 * * * * *", (: MYSQL_SCHEDULE_D->refresh_twmudlist() :),          "每十二分鐘更新 mysql twmudlist",
-"*/10 * * * * *"	, (: NEWS_D->broadcast_news() :),			"每十分鐘廣播新聞",
-"*/10 * * * * *"	, (: save_object(DATA_PATH) :),				"每 10 分鐘紀錄一次 TIME_D 資料",
+"*/4 * * * * *"		, (: CITY_D->time_distributed_save() :),		"每 4 分鐘城市資料分散儲存",
+"*/10 * * * * *"	, (: NEWS_D->broadcast_news() :),			"每 10 分鐘廣播新聞",
+"*/11 * * * * *"	, (: save_object(DATA_PATH) :),				"每 11 分鐘紀錄一次 TIME_D 資料",
+"*/12 * * * * *"	, (: MNLMUDLIST_D->distributed_connect() :),            "每 12 分鐘更新 MNLMUDLIST 紀錄",
+"*/13 * * * * *"	, (: TOP_D->save() :),					"每 13 分鐘紀錄一次 TOP_D 資料",
+"*/14 * * * * *"	, (: MYSQL_SCHEDULE_D->refresh_twmudlist() :),          "每 14 分鐘更新 mysql twmudlist",
 "3 * * * * *"		, (: LOGIN_D->time_schedule() :),			"每小時紀錄與重整登入資料",
 "4 * * * * *"		, (: LABOR_D->save_data() :),				"每小時紀錄失業勞工資料",
 "5 * * * * *"		, (: SYSDATABASE_D->save() :),				"每小時紀錄系統資料庫",
 "6 * * * * *"		, (: MAP_D->save() :),					"每小時紀錄一次地圖上的物品",
 "7 * * * * *"		, (: HTML_D->create_html() :),				"每小時建置一次網頁頁面",
 "8 * * * * *"		, (: LOGIN_D->reset_login_count(real_time[HOUR]) :), 	"每小時計算一次 login count",
-"9 * * * * *"		, (: delete("mnlmudlist/maxusers/hour/"+real_time[HOUR], SYSDATABASE_D->query_ob()) :), "每小時計算一次 maxuser",
-//"10 * * * * *"	, (: MYSQL_SCHEDULE_D->refresh_who() :),		"每小時更新一次 mysql who",
-//"11 * * * * *"	, (: MYSQL_SCHEDULE_D->refresh_city_map() :),		"每小時更新一次 3dmap",
-//"12 * * * * *"	, (: MYSQL_SCHEDULE_D->refresh_top_rich() :),		"每小時更新一次 top_rich",
-"* * * * * *"		, (: CITY_D->allcity_material_growup() :),		"每一分鐘成長一次城市原料",
-"0 */4 * * * *"		, (: SHOPPING_D->pop_product_choose() :),		"每四小時轉變一次流行商品",
-"0 0 * 0 0 *"		, (: happy_real_new_year :),				"真實時間過年",
-"59 22 * * * *"		, (: CITY_D->reset_collection_record() :),		"重設採集資訊",
-"55 5 * * * *"		, (: CLEAN_D->clean_user() :),				"每天清除一次玩家資料",
-"0 3 * * * *"		, (: PPL_LOGIN_D->reset_newchar() :),			"每天重設一次新角色註冊數",
+"9 * * * * *"		, (: MNLMUDLIST_D->reset_maxuser(real_time[HOUR]) :), 	"每小時計算一次 maxuser",
+"10 * * * * *"		, (: MYSQL_SCHEDULE_D->refresh_who() :),		"每小時更新一次 mysql who",
+"11 * * * * *"		, (: MYSQL_SCHEDULE_D->refresh_city_3dmap() :),		"每小時更新一次 3dmap",
+"12 * * * * *"		, (: MYSQL_SCHEDULE_D->refresh_top_rich() :),		"每小時更新一次 top_rich",
 "13 * * * * *"		, (: EXCHANGE_D->process_per_hour() :),			"每小時處理一次匯率變動",
 "14 * * * * *"		, (: EMOTE_D->save() :),				"每小時儲存一次 EMOTE_D 資料",
+"15 * * * * *"		, (: AREA_D->time_distributed_save() :),		"每小時郊區資料分散儲存",
+"16 * * * * *"		, (: PRODUCT_D->save() :),				"每小時儲存一次產品資料",
+"17 * * * * *"		, (: BOSS_D->process_per_hour() :),			"每小時處理一次 BOSS 程序",
+"0 */12 * * * *"	, (: AREA_D->downgrade_section_influence() :),		"每 12 小時下降所有城市 20% 的郊區資源佔領點數",
+"57 2 * * * *"		, (: PPL_LOGIN_D->reset_newchar() :),			"每天重設一次新角色註冊數",
+"57 4 * * * *"		, (: SYSTEM_D->prepare_to_save_all(3) :), 		"每天儲存所有資料一次",
+"57 5 * * * *"		, (: CLEAN_D->clean_user() :),				"每天清除一次玩家資料",
+"50 15 * * * *"		, (: STOCK_D->refresh_stock_data() :),			"每天更新一次台股資料",
+"10 13 * * * *"		, (: BATTLEFIELD_D->start_join() :),			"開放戰場報名",
+"40 20 * * * *"		, (: BATTLEFIELD_D->start_join() :),			"開放戰場報名",
+"40 21 * * * *"		, (: BATTLEFIELD_D->start_join() :),			"開放戰場報名",
+"5 0 * 0 * *"		, (: FUTURES_D->process_per_month() :),			"當月期貨損益結算",
+"0 0 * 0 0 *"		, (: happy_real_new_year :),				"真實時間過年",
 });
 
 private nosave mapping crontab_process = allocate_mapping(0);
@@ -319,7 +294,7 @@ void process_crontab(array crontab, int *timearray)
 
 		timescript = allocate(6);
 		
-		if( sscanf(script, "%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s", 
+		if( sscanf(trim(script), "%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s%*(( |\t)+)%s", 
 			timescript[0],
 			timescript[1],
 			timescript[2],
@@ -356,6 +331,7 @@ void process_crontab(array crontab, int *timearray)
 		if( !fit ) 
 			continue;
 
+		reset_eval_cost();
 		timecost = time_expression {
 			catch(evaluate(fp));
 		};
@@ -372,16 +348,17 @@ void process_per_second()
 	
 }
 
-void reset_gametime()
+int reset_gametime(int time)
 {
-	gametime = -20000000;	
+	gametime = time;
+	return save_object(DATA_PATH);	
 }
 
 /* 遊戲時間每一分鐘(即實際時間每2.5秒)執行一次 process_gametime */
 void process_gametime()
 {
 	game_time = analyse_time(++gametime * 60);
-	game_time[YEAR] -= 1863;
+	game_time[YEAR] -= 1970;
 
 	process_crontab(game_crontab, game_time);
 }
@@ -410,7 +387,12 @@ void process_realtime()
 
 void heart_beat()
 {
-	realtime = time();
+	// 避免因系統延遲而遺失
+	while(realtime < time())
+	{
+		realtime++;
+		process_realtime();
+	}
 
 	// 執行 event 處理
 	if( sizeof(event) )
@@ -421,8 +403,6 @@ void heart_beat()
 	// 每 2 秒相當於遊戲一分鐘, time 每增加 1 代表遊戲一分鐘
 	if( !(++tick % 2) ) 
 		process_gametime();
-
-	process_realtime();
 }
 
 private void create()
@@ -434,8 +414,10 @@ private void create()
 	real_time = allocate(6);
 	event = allocate_mapping(0);
 	
+	realtime = time();
+
 	process_gametime();
-	set_heart_beat(10);
+	set_heart_beat(1);
 }
 
 int remove()

@@ -23,6 +23,13 @@ inherit COMMAND;
 #define LIST_OPT_ALL	(1<<0)
 
 string help = @HELP
+　　這是回報遊戲 BUG 的指令，協助管理者快速掌握問題並加以解決。回報 BUG 之
+前，請先詳閱最新遊戲更新公告，確認其不是新的更新設定。此外為了快速解決問題
+，請於回報 BUG 時盡量詳細註明以下相關資訊，包括：
+
+．問題發生地方、時間、物品、人物、指令資訊
+．就您猜測其問題可能發生的原因
+．您所擷取到前後可能相關的文字 LOG 檔
 
 bug -a				新增 bug 回報
 bug -l				列出 bug 資料
@@ -188,7 +195,7 @@ private void command(object me, string arg)
 		if( !BUG_D->bug_exists(arg) )
 			return tell(me, "並沒有編號 "+arg+" 的 Bug 存在。\n"NOR);
 
-		tell(me, BUG_D->query_bug(arg));
+		tell(me, BUG_D->query_bug(arg, me));
 	}
 	else return tell(me, help);
 }

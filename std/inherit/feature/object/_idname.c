@@ -40,7 +40,7 @@ nomask string noregexp(string arg)
 }*/
 
 // 多段式縮寫判斷
-int id(string arg)
+varargs int id(string arg, int fit)
 {
 	int i, size;
 	string *idarray;
@@ -51,6 +51,9 @@ int id(string arg)
 	
 	arg = lower_case(remove_ansi(arg));
 	
+	if( fit )
+		return arg == lower_case(remove_ansi(id_name[ID]));
+
 	idarray = explode(lower_case(remove_ansi(id_name[ID])), " ");
 	
 	size = sizeof(idarray);
@@ -86,7 +89,7 @@ varargs string query_name(int raw)
 varargs string query_idname(int raw)
 {
 	if( !arrayp(id_name) ) return 0;
-	return undefinedp(raw) ? id_name[NAME]+"("+ansi_capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"("+capitalize(remove_ansi(id_name[ID]))+")";
+	return undefinedp(raw) ? id_name[NAME]+"("+capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"("+capitalize(remove_ansi(id_name[ID]))+")";
 }
 
 varargs string *set_idname(string id, string name)
@@ -97,21 +100,10 @@ varargs string *set_idname(string id, string name)
 		id_name = allocate(2);
 	
 	if( stringp(id) )
-	{
-		id = kill_repeat_ansi(remove_fringe_blanks(id)+NOR);
- 
- 		if( !this_object()->is_living() )
- 			id = replace_string(id, " ", "-");
-
 		id_name[ID] = id;
-	}
 	
 	if( stringp(name) )
-	{
-		name = kill_repeat_ansi(remove_fringe_blanks(name)+NOR);
-		
 		id_name[NAME] = name;
-	}
 
 	return id_name;
 }
@@ -128,10 +120,8 @@ varargs string short(int need_quantity)
 
 	if( need_quantity && !this_object()->is_living() )
 	{
-		mixed amount = query_temp("amount") || 1;
-		
-		if( !query("flag/no_amount") )
-			str = " "+NUMBER_D->number_symbol(amount)+" "+(query("unit")||"個");
+		if( !this_object()->no_amount() )
+			str = " "+NUMBER_D->number_symbol(this_object()->query_amount())+" "+(query("unit")||"個");
 	}
 	
 	str += query_idname();

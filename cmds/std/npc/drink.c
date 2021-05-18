@@ -34,7 +34,17 @@ private void do_command(object me, string arg)
 		else
 			return tell(me, pnoun(2, me)+"想要喝些什麼？\n");
 	}
-	
+
+	//忙碌中不能下指令
+	if( me->is_delaying() )
+	{
+		if( me->is_npc() )
+			return me->do_command("say "+me->query_delay_msg()+"\n");
+
+		tell(me, me->query_delay_msg());
+		return me->show_prompt();
+	}
+
 	ob = present(arg, me) || present(arg, environment(me));
 	
 	if( !objectp(ob) )
@@ -52,21 +62,27 @@ private void do_command(object me, string arg)
 		else
 			return tell(me, ob->query_idname()+"不是飲料，無法飲用。\n");
 	}
-	
+
+	if( query_temp("decorated", ob) )
+		return tell(me, pnoun(2, me)+"必須先取消"+ob->query_idname()+"的裝潢。\n");
+
+	if( query_temp("coldtime/drink", me) > time() )
+		return tell(me, pnoun(2, me)+"還需要等待 "+(query_temp("coldtime/drink", me)-time())+" 秒後才能飲用"+ob->query_idname()+"。\n");
+
 	capacity = query("capacity", ob);
 
-	if( capacity + me->query_drink_cur() > me->query_drink_max() )
+	if( capacity > 0 && !me->add_drink(capacity) )
 	{
 		if( me->is_npc() )
 			return me->do_command("say 我喝不下"+ob->query_idname()+"了！\n");
 		else
 			return tell(me, pnoun(2, me)+"喝不下"+ob->query_idname()+"了！\n");
 	}
-	
-	me->add_drink(capacity);
 
-	msg("$ME把$YOU大口大口地喝了下去。\n", me, ob, 1);
+	ob->do_drink(me);
 
-	ob->drink();
+	if( query("coldtime", ob) )
+		set_temp("coldtime/drink", time() + query("coldtime", ob), me);
+
 	destruct(ob, 1);
 }

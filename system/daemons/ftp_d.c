@@ -11,6 +11,7 @@
  *			- Add -		新增自動更改已使用 port 選項
  *			- Modify -	修正變數命名	
  * 2006/6/30 03:06 AM	- Modify -	修正臨時下載中斷時的錯誤
+ * 2007/9/24 11:09 AM   - Modify -      自動忽略以 '-' 為開頭的參數, 避免誤判為路徑
  * 
  ****************************
  * 流程圖:
@@ -46,13 +47,13 @@
 #define FTPD_VERSION		"1.2.6"
 #define SEC_IN_YEAR		365 * 24 * 60 * 60
 
-#define HOST_IP                 "59.124.167.216"
+#define HOST_IP                 "210.59.236.38"
 #define SOCKET_PORT             4121
 #define MAX_PORT_INCRE		3	// Auto increase port when specific port are using
 #define TRANSFER_MSG_DELAY	3	// The message delay when recevied data 
 
 /* 自動偵測主機 IP */
-#undef AUTO_DETECT_HOSTIP
+#define AUTO_DETECT_HOSTIP
 
 #define MAX_BYTE_TRANSFER	102400	// Specific in MudOS options.h
 #define ERROR_LOG		"ftp_d"
@@ -489,7 +490,14 @@ private void ftp_input(int fd, string str)
 	if( !sizeof(command) ) return;
 	verb = command[0];
 	verb = lower_case(verb);
-	arg = implode(command[1..], " ");
+	//arg = implode(command[1..], " ");
+	arg = "";
+	for(int i=1; i<sizeof(command); i++)
+	{
+		if( command[i][0] == '-' ) continue;
+		arg += command[i] + " ";
+	}
+	if( strlen(arg) && arg[<1] == ' ' ) arg = arg[0..<2];
 
 	/* 未登入前限制使用指令 */
 	if( undefinedp(sockets[fd]["login"]) && member_array(verb, ({ "user", "pass", "quit" })) == -1 )

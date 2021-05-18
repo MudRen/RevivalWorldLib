@@ -10,6 +10,13 @@
  *
  -----------------------------------------
  */
+inherit __DIR__"inherit/_object_database_mod.c";
+inherit __DIR__"inherit/_action_list";
+inherit __DIR__"inherit/_action_import";
+inherit __DIR__"inherit/_action_export";
+inherit __DIR__"inherit/_action_transport";
+inherit __DIR__"inherit/_action_setup";
+inherit __DIR__"inherit/_action_auction";
 
 #include <npc.h>
 #include <ansi.h>
@@ -19,14 +26,6 @@
 #include <message.h>
 
 inherit ROOM_ACTION_MOD;
-
-inherit __DIR__"inherit/_object_database_mod.c";
-inherit __DIR__"inherit/_action_list";
-inherit __DIR__"inherit/_action_import";
-inherit __DIR__"inherit/_action_export";
-inherit __DIR__"inherit/_action_transport";
-inherit __DIR__"inherit/_action_setup";
-inherit __DIR__"inherit/_action_auction";
 
 #define WAREHOUSE_CAPACITY	-1
 
@@ -90,8 +89,17 @@ auction 1 500 $20000 $1000000 5		- 拍賣編號為 1 的物品 500 個，底標價為 $20000，
 
 HELP,
 
+"list":
+@HELP
+列出所有倉庫中的貨品的指令，用法如下：
+  list			- 列出所有倉庫中的貨品
+  list 2		- 列出第二項貨品的詳細資料
+HELP,
+
+
 			]),
 		"master":1,
+		"heartbeat":0,	// 實際時間 1 秒為單位
 		"action":
 			([
 				"import"	: (: do_import($1, $2, "products", WAREHOUSE_CAPACITY) :),
@@ -124,13 +132,13 @@ nosave array building_info = ({
 	,INDUSTRY_REGION
 
 	// 開張儀式費用
-	,"2000000"
+	,2000000
 	
 	// 建築物關閉測試標記
 	,0
 
 	// 繁榮貢獻度
-	,2
+	,1
 	
 	// 最高可加蓋樓層
 	,1

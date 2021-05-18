@@ -26,14 +26,14 @@ string help = @HELP
 在的地方來，以方便命令他做工作或者其他事情。
 
 labor			- 顯示所有員工列表
-labor '員工編號'	- 將該編號之員工呼喚至您的面前
+labor '員工編號'	- 將該編號之員工呼喚至您的面前(請利用 order 指令為員工編號)
 labor salary 1000	- 儲存 1000 元的安全預備薪資(預設為該城市的貨幣)
 
 HELP;
 
 void labor_call(object me, object labor)
 {
-	if( !objectp(me) || !objectp(labor) )
+	if( !objectp(me) || !objectp(labor) || BATTLEFIELD_D->inside_battlefield(me) )
 		return;
 
 	msg("$ME收到了一封來自"+me->query_idname()+"的徵調訊息，立刻出發前往。\n", labor, 0, 1);
@@ -46,145 +46,145 @@ void labor_call(object me, object labor)
 
 string labor_list(object me)
 {
-	int i;
-	object labor, env;
-   	string place, job;
+	object env;
+   	string place;
 	string msg = "";
-    	string salary, salary_paid, totalsalary, *labors = query("hirelabors", me);
-    	string moneyunit = MONEY_D->city_to_money_unit(query("city", me)) || MONEY_D->query_default_money_unit();
-    
-    	if( !sizeof(labors) )
-    		return me->query_idname()+"沒有雇用任何人力。\n";
-    			
-    	msg = pnoun(2, me)+"總共雇用了 "+sizeof(labors)+" 個人力：\n";
+	object *labors = LABOR_D->get_labors(me);
+	int salary, salary_paid, totalsalary;
+	string moneyunit = MONEY_D->city_to_money_unit(query("city", me)) || MONEY_D->query_default_money_unit();
+
+	if( !sizeof(labors) )
+		return me->query_idname()+"沒有雇用任何人力。\n";
+			
+	msg = pnoun(2, me)+"總共雇用了 "+sizeof(labors)+" 個人力：\n";
 	msg += NOR WHT"─────────────────────────────────────\n"NOR;
 	msg +=     HIW"編號 人力名稱          位置                         親密度 工作 月薪($"+moneyunit+")\n"NOR;
 	msg += NOR WHT"─────────────────────────────────────\n"NOR;
 
-    	foreach( string file in labors )
-    	{
-    		if( !file_exist(file+".o") )
-    		{
-    			set("hirelabors", labors - ({ file }), me);
-    			if( !sizeof(query("hirelabors", me)) )
-    				delete("hirelabors", me);
-    			continue;
-    		}
-
-    		if( !objectp(labor = load_object(file)) )
-    			error("Can't load "+file+".");
-    			
-    		if( query("adventure", labor) )
-    			place = AREA_D->query_area_name(query("adventure/area", labor), query("adventure/num", labor));
-    		else if( objectp(env = environment(labor)) )
-    		{
-    			if( env->is_maproom() )
-    			{
-    				array loc = query_temp("location", labor);
-    					
-    				place = loc_short(loc);
-    			}
-    			else
-    				place = env ? HIG+(env->query_room_name()||query("short", env)||"未知名的地方")+NOR : HIR"在宇宙中飄流"NOR;
-    		}
-    		else
-    			place = HIR"虛幻之中"NOR;
-
-		switch( query("job/cur", labor) )
+	foreach( object labor in sort_array(labors, (: query("number", $1) - query("number", $2) :)) )
+	{		
+		if( query("adventure", labor) )
+			place = AREA_D->query_area_name(query("adventure/area", labor), query("adventure/num", labor));
+		else if( objectp(env = environment(labor)) )
 		{
-			case CLERK:
-				job = HIC"店"NOR CYN"員"NOR;
-				break;
-			case WORKER:
-				job = HIY"工"NOR YEL"人"NOR;
-				break;
-			case ENGINEER:
-				job = HIR"研"NOR RED"發"NOR;
-				break;
-			case ADVENTURER:
-				job = HIG"探"NOR GRN"險"NOR;
-				break;
-			default:
-				job = NOR WHT"無"NOR;
-				break;
+			array loc = query_temp("location", labor);
+
+			if( env->is_maproom() )
+				place = loc_short(loc);
+			else
+		{
+			string roomname = env->query_room_name();
+			
+			if( roomname &&  noansi_strlen(roomname) > 30 )
+				place = loc_short(env->query_location());
+			else
+				place = roomname || query("short", env);
 		}
+		}
+		else
+			place = HIR"迷失在閉鎖空間之中"NOR;
+
 		salary = SALARY_D->query_labor_salary(labor);
-		totalsalary = count(salary, "+", totalsalary);
-    		msg += sprintf(HIY" %-3d"NOR" %-18s%-30s%5s %-4s %s\n", ++i, noansi_strlen(labor->query_idname())<=16?labor->query_idname():labor->query_name(), place, HIG+query("relationship/"+me->query_id(1), labor)+NOR, job, HIY+NUMBER_D->number_symbol(salary)+NOR);
-    	}
+		totalsalary += salary;
+	
+		msg += sprintf(HIY" %-3d"NOR" %-18s%-30s%5s %-4s %s\n", query("number", labor), noansi_strlen(labor->query_idname())<=16?labor->query_idname():labor->query_name(), place, HIG+query("relationship/"+me->query_id(1), labor)+NOR, query("job/name", labor)||"無", HIY+NUMBER_D->number_symbol(salary)+NOR);
+	}
     	
-    	salary_paid = query("salary_paid", me);
-    	
-    	msg += sprintf("\n "NOR YEL"每月應付薪水總額 "HIY"$%s %s"NOR YEL"，安全預備薪資 "HIY"$%s %s"NOR YEL" ("HIY"%s"NOR YEL" 個月)\n"NOR,  moneyunit, NUMBER_D->number_symbol(totalsalary), moneyunit, NUMBER_D->number_symbol(salary_paid), count(totalsalary, ">", 0) ? NUMBER_D->number_symbol(count(salary_paid, "/", totalsalary)) : "0");
-    	msg += NOR WHT"─────────────────────────────────────\n"NOR;
-    	
-    	return msg;
+	salary_paid = to_int(query("salary_paid", me));
+	
+	msg += sprintf("\n "NOR YEL"每月應付薪水總額 "HIY"$%s %s"NOR YEL"，安全預備薪資 "HIY"$%s %s"NOR YEL" ("HIY"%s"NOR YEL" 個月)\n"NOR,  moneyunit, NUMBER_D->number_symbol(totalsalary), moneyunit, NUMBER_D->number_symbol(salary_paid), count(totalsalary, ">", 0) ? NUMBER_D->number_symbol(count(salary_paid, "/", totalsalary)) : "0");
+	msg += NOR WHT"─────────────────────────────────────\n"NOR;
+	
+	return msg;
 }
 
 void labor_salary(object me, string arg)
 {
+	int money;
 	string moneyunit = MONEY_D->city_to_money_unit(query("city", me)) || MONEY_D->query_default_money_unit();
 
 	if( !arg )
 		return tell(me, pnoun(2, me)+"想要儲存多少安全預備薪資？\n");
 
-	arg = big_number_check(arg);
+	money = to_int(big_number_check(arg));
 	
-	if( count(arg, "<=", 0) )
+	if( money <= 0 )
 		return tell(me, "請輸入正確的金額數字。\n");
 		
-	if( !me->spend_money(moneyunit, arg) )
+	if( !me->spend_money(moneyunit, money) )
 		return tell(me, pnoun(2, me)+"身上沒那麼多 $"+moneyunit+" 錢了！。\n");
 		
-	set("salary_paid", count(query("salary_paid", me), "+", arg), me);
+	set("salary_paid", to_int(query("salary_paid", me)) + money, me);
 		
-	msg("$ME儲存了 "HIY"$"+moneyunit+" "+NUMBER_D->number_symbol(arg)+NOR" 的安全預備薪資。\n", me, 0, 1);	
+	msg("$ME儲存了 "HIY"$"+moneyunit+" "+NUMBER_D->number_symbol(money)+NOR" 的安全預備薪資。\n", me, 0, 1);	
 	
 	me->save();
 }
 
 private void do_command(object me, string arg)
 {
-	int i, num;
-	object labor;
+	int num;
 	string salary;
 	int waiting_time;
 
-    	if( !arg )
-    		return tell(me, labor_list(me));
-	else if( (num = to_int(arg)) > 0 )
+	if( !arg )
+		return tell(me, labor_list(me));
+
+	else if( sscanf(arg, "%d", num)==1 && num >= 0 )
 	{
-		string *labors = query("hirelabors", me);
-		
-		if( num > sizeof(labors) )
-			return tell(me, "並沒有這麼多位雇用人力。\n");
-		
-		foreach( string file in labors )
+		int count = 0;
+		object *labors = LABOR_D->get_labors(me);
+			
+		if( BATTLEFIELD_D->inside_battlefield(me) )
+			return tell(me, "戰場中無法召集員工。\n");
+
+		foreach( object labor in labors )
 		{
-			if( ++i == num )
+			if( query("number", labor) == num )
 			{
-				if( !file_exist(file+".o") )
-	    			{
-	    				set("hirelabors", labors - ({ file }), me);
-	    				if( !sizeof(query("hirelabors", me)) )
-	    					delete("hirelabors", me);
-	    				continue;
-	    			}
-
-    				if( !objectp(labor = load_object(file)) )
-    					error("Can't load "+file+".");
-
 				if( same_environment(me, labor) )
-					return tell(me, labor->query_idname()+"已經在這裡了。\n");
+				{
+					tell(me, labor->query_idname()+"已經在這裡了。\n");
+					count++;
+					continue;
+				}
 
 				if( query("adventure", labor) && file_exists(query("adventure/from", labor)) && ADVENTURE_D->is_doing_adventure(query("adventure/from", labor)) )
-					return tell(me, labor->query_idname()+"正在執行探險任務中，無法召回。\n");
+				{
+					tell(me, labor->query_idname()+"正在執行探險任務中，無法召回。\n");
+					count++;
+					continue;
+				}
 
+				if( query("job/type", labor) == SPORTER && BASEBALL_D->is_playing(labor) )
+				{
+					tell(me, labor->query_idname()+"正在進行球賽，目前無法移動。\n");
+					count++;
+					continue;
+				}
+				
+				if( environment(labor) && labor->is_faint() )
+				{
+					tell(me, labor->query_idname()+"昏迷中，目前無法移動。\n");
+					count++;
+					continue;
+				}
+					
+				if( environment(labor) && labor->is_dead() )
+				{
+					tell(me, labor->query_idname()+"死亡了，目前無法移動。\n");
+					count++;
+					continue;
+				}
+					
 				waiting_time = labor->query_loading()/1000;
 				
 				// 最少 5 秒鐘
 				if( waiting_time < 5 )
 					waiting_time = 5;
+					
+				if( wizardp(me) )
+					waiting_time = 0;
 				
 				msg("$ME捎了一封信給了"+labor->query_idname()+"叫"+pnoun(3, labor)+"立刻趕來此處(需要 "+waiting_time+" 秒的時間)。\n", me, 0, 1);
 				
@@ -194,9 +194,14 @@ private void do_command(object me, string arg)
 					delete_temp("labor_call_out_handler", labor);
 				}
 				set_temp("labor_call_out_handler", call_out((: labor_call, me, labor:), waiting_time), labor);
-				return;
+					
+				count++;
 			}
 		}
+		
+		if( count > 0 ) return;
+		
+		return tell(me, "沒有這個編號的員工。\n");
 	}
 	else if( sscanf(arg, "salary %s", salary) == 1 )
 	{

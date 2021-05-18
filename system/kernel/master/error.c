@@ -19,11 +19,11 @@
 /* ³B²z¿ù»~°T®§ªº¨ç¦¡ */
 string tracert_error(mapping error, int caught)
 {
-        int count;
-        string err_msg;
-        mapping trace;
+	int count;
+	string err_msg;
+	mapping trace;
 
-        err_msg="\n"+sprintf(@ERR
+	err_msg="\n"+sprintf(@ERR
 ¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w<Bugs Report>¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w
 [ ¿ù»~®É¶¡ ]: %-s
 [ ¿ù»~¤º®e ]: %-s[m
@@ -31,48 +31,48 @@ string tracert_error(mapping error, int caught)
 [ ¿ù»~¦æ¼Æ ]: %-d[m
 [ ¸ê®Æ¦^·¹ ]:
 ERR,
-        ctime(time()),
-        replace_string(error["error"], "\n", " "),
-        error["file"],
-        error["line"]);
+	    ctime(time()),
+	    replace_string(error["error"], "\n", " "),
+	    error["file"],
+	    error["line"]);
 
-        foreach(trace in error["trace"])
-        {
-                count++;
-                err_msg +=sprintf(@ERR
+	foreach(trace in error["trace"])
+	{
+		count++;
+		err_msg +=sprintf(@ERR
     -- ²Ä %|3d µ§ --
         [ Ä²°Êª«¥ó ]: %O     
         [ µ{¦¡ÀÉ®× ]: %s
         [ ¨ç¦¡¦WºÙ ]: %s(%s)
         [ ©I¥s¦æ¼Æ ]: %s
 ERR,
-                count,
-                trace["object"],
-                trace["program"]||"",
-                trace["function"]||"",
-                trace["arguments"] ? implode(map(trace["arguments"], (:typeof($1):)), ", ") : "",
-                (trace["line"] || "¥¼ª¾")+"");
+		    count,
+		    trace["object"],
+		    trace["program"]||"",
+		    trace["function"]||"",
+		    trace["arguments"] ? implode(map(trace["arguments"], (:typeof($1):)), ", ") : "",
+		    (trace["line"] || "¥¼ª¾")+"");
 
-                if( trace["arguments"] )
-                {
-                        err_msg += "        [ ¶Ç¤J°Ñ¼Æ ]:\n";
-                        err_msg += implode(map(trace["arguments"], (: "                   ** ("+typeof($1)+")"+implode(explode(sprintf("%."+TRACE_DETAIL_LENGTH_LIMIT+"O\n", $1)+(strlen(sprintf("%O", $1)) > TRACE_DETAIL_LENGTH_LIMIT ? "... °T®§¹Lªø¬Ù²¤\n" : ""), "\n"),"\n                      ") :)), "\n")+"\n";
-                }
-                if( trace["locals"] )
-                {
-                        err_msg += "        [ µ{¦¡ÅÜ¼Æ ]:\n";
-                        err_msg += implode(map(trace["locals"], (: "                   ** ("+typeof($1)+")"+implode(explode(sprintf("%."+TRACE_DETAIL_LENGTH_LIMIT+"O\n", $1)+(strlen(sprintf("%O", $1)) > TRACE_DETAIL_LENGTH_LIMIT ? "... °T®§¹Lªø¬Ù²¤\n" : ""), "\n"),"\n                      ") :)), "\n")+"\n";
-                }
-        }
-        err_msg+="¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w<Bugs Report>¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w\n\n";
-        return err_msg;
+		if( trace["arguments"] )
+		{
+			err_msg += "        [ ¶Ç¤J°Ñ¼Æ ]:\n";
+			err_msg += implode(map(trace["arguments"], (: "                   ** ("+typeof($1)+")"+implode(explode(sprintf("%."+TRACE_DETAIL_LENGTH_LIMIT+"O\n", $1)+(strlen(sprintf("%O", $1)) > TRACE_DETAIL_LENGTH_LIMIT ? "... °T®§¹Lªø¬Ù²¤\n" : ""), "\n"),"\n                      ") :)), "\n")+"\n";
+		}
+		if( trace["locals"] )
+		{
+			err_msg += "        [ µ{¦¡ÅÜ¼Æ ]:\n";
+			err_msg += implode(map(trace["locals"], (: "                   ** ("+typeof($1)+")"+implode(explode(sprintf("%."+TRACE_DETAIL_LENGTH_LIMIT+"O\n", $1)+(strlen(sprintf("%O", $1)) > TRACE_DETAIL_LENGTH_LIMIT ? "... °T®§¹Lªø¬Ù²¤\n" : ""), "\n"),"\n                      ") :)), "\n")+"\n";
+		}
+	}
+	err_msg+="¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w<Bugs Report>¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w¢w\n\n";
+	return err_msg;
 }
 
 void error_handler(mapping error, int caught)
 {
 	object me;
 	string msg;
-	
+
 	me = this_interactive() || this_player() || previous_object();
 
 	// Á×§K³´¤JµL­­¿ù»~¦^³ø°j°é
@@ -83,25 +83,25 @@ void error_handler(mapping error, int caught)
 		return;
 	}
 
-        msg = tracert_error(error, caught);
-        
-        if( caught )
-        	log_file("catch", msg);
-        else
-        	log_file("run", msg);
-        	
-        if( objectp(me) && userp(me) )
-        {
-        	string *command = query_temp("command", me);
+	msg = tracert_error(error, caught);
+
+	if( caught )
+		log_file("catch", msg);
+	else
+		log_file("run", msg);
+
+	if( objectp(me) && userp(me) )
+	{
+		string *command = query_temp("command", me);
 
 		if( strlen(msg) >= SPRINTF_OVERFLOW-50000 ) msg = msg[0..SPRINTF_OVERFLOW-50000] + "\n\n[°T®§¹Lªø¬Ù²¤...]\n";
-		
+
 		if( member_array("temp_database", variables(me)) != -1 ) 
 			set_temp("bug_msg", msg, me);
 
 		if( !wizardp(me) )
 		{
-			tell(me, "[1;5;33mWARNING[m ³o­Óµ{¦¡§@·~°õ¦æµL®Ä§Y±NÃö³¬¡A¦p¦³°ÝÃD½Ð¬¢µ{¦¡³]­p®v©Î¬ÛÃö¤H­û...\n", "ERRMSG");			
+			tell(me, "[1;5;33mWARNING[m³o­Óµ{¦¡§@·~°õ¦æµL®Ä§Y±NÃö³¬¡A¦p¦³°ÝÃD½Ð¬¢µ{¦¡³]­p®v©Î¬ÛÃö¤H­û...\n", "ERRMSG");                        
 			
 			// Á×§K CHANNEL_D ¥»¨­µo¥Í¿ù»~®Éªº°ÝÃD
 			if( find_object(CHANNEL_D) )
@@ -137,7 +137,7 @@ void log_error(string, string message)
 	string error_type;
 	object user = this_interactive() || this_player() || previous_object();
 
-    	log_file("comp", message);
+	log_file("comp", message);
 
 	error_type = strsrch(message, "Warning") == -1 ? "¿ù»~" : "Äµ§i";
 

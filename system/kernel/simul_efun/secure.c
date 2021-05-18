@@ -29,8 +29,3 @@ int exec(object to, object from)
 	
 	return efun::exec(to, from);
 }
-
-mapping memory_summary()
-{
-	error("經過實驗證實，會導致當機...");
-}

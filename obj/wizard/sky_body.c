@@ -33,13 +33,13 @@ void create()
 	set("mass", 0);
 	set("value", 100000000);
 	set("flag/no_amount", 1);
+	set(DEFEND, 100);
 	set(BUFF_STR, 5);
 	set(BUFF_STAMINA_REGEN, 5);
-	set(BUFF_ARMOR_INJURY, 5);
-	set(BUFF_ARMOR_SLASH, 5);
+
 	set("buff/status", HIW"斷"NOR WHT"天"HIW"甲"NOR);
 	
-	::setup_equipment(EQ_BODY, HIY"身"NOR YEL"體"NOR);
+	::setup_equipment(EQ_BREASTPLATE, HIY"胸"NOR YEL"甲"NOR);
 }
 
 //
@@ -52,7 +52,6 @@ void special_defend(object attacker, object defender)
 	if( !random(2) )
 	{
 		msg("$ME被$YOU身上的"+this_object()->query_name()+"尖銳的鋒刺劃了一下，造成輕微的傷害。\n", attacker, defender, 1);
-		COMBAT_D->damage_message(defender, attacker, damage);
-		attacker->cost_health(damage);
+		COMBAT_D->cause_damage(attacker, defender, damage);
 	}
 }

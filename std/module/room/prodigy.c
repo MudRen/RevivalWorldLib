@@ -17,38 +17,44 @@
 #include <daemon.h>
 #include <feature.h>
 #include <message.h>
+#include <condition.h>
 
 inherit ROOM_ACTION_MOD;
 
-void do_buff(object me, string arg)
+void do_pray(object me, string arg)
 {
+	object env = environment(me);
+
+	if( env->query_city() != query("city", me) )
+		return tell(me, pnoun(2, me)+"不是這個城市的市民，無法在這裡祈求奇蹟。\n");
 	
-	
+    msg("$ME跪在奇觀內殿中央輕聲囑禱，一股神聖的力量突然湧出，內殿角落緩緩散出"HIR"紅"NOR RED"、"HIB"藍"NOR BLU"、"HIG"綠"NOR GRN"、"HIY"黃"NOR"四種顏色的淡煙，將$ME包覆起來...\n", me, 0, 1);
+
+	me->start_condition(LIFE_MIRACLE);
 }
 
 // 設定建築物內房間型態種類
 nosave mapping action_info =
 ([
-	"room"	:
+	"naos"	:
 	([
-		"short"	: HIR"奇觀內部"NOR,
+		"short"	: HIR"奇觀內殿"NOR,
 		"help"	:
 			([
 "topics":
 @HELP
-    奇觀內部可提供遊客休憩。
+    奇觀內殿。
 HELP,
 
-"buff":
+"pray":
 @HELP
-擺設傢俱的指令，用法如下：
-  未完成
+祈求奇蹟的降臨。
 HELP,
 
 			]),
 		"action":
 			([
-				"buff"	: (: do_buff :),
+				"pray"	: (: do_pray :),
 			]),
 	]),
 
@@ -61,7 +67,7 @@ nosave array building_info = ({
 	HIR"世界"NOR RED"奇觀"NOR
 
 	// 開張此建築物之最少房間限制
-	,16
+	,1
 
 	// 城市中最大相同建築數量限制(0 代表不限制)
 	,1
@@ -73,19 +79,19 @@ nosave array building_info = ({
 	,COMMERCE_REGION
 
 	// 開張儀式費用
-	,"300000000"
+	,1000000000000
 	
 	// 建築物關閉測試標記
-	,1
+	,0
 
 	// 繁榮貢獻度
-	,400
+	,1000
 
 	// 最高可加蓋樓層
 	,1
 	
 	// 最大相同建築物數量(0 代表不限制)
-	,1
+	,0
 	
 	// 建築物時代
 	,1

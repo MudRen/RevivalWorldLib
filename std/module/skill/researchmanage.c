@@ -28,10 +28,16 @@ void create()
 	set("id",		"researchmanage");
 
 	// 技能頭銜
-	//set("title/100",	HIC"釣魚名家"NOR);
+	//set("title/100",	"");
 	
 	// 技能註解
 	set("note",		"員工研發中心管理技能");
+	
+	// 文明時代
+	set("age",		2);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL);
 }
 
 // 限制可學習對象, 可用來設定各種學習條件

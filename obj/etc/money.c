@@ -73,7 +73,7 @@ varargs void move(mixed where, string amount)
 		case OBJECT:
 				new_env = where;
 				
-				if( new_env->is_living() )
+				if( userp(new_env) )
 				{
 					if( amount && count(amount, "<", copy(query("money"))) )
 					{
@@ -121,16 +121,18 @@ varargs void move(mixed where, string amount)
 	}	
 }
 
-void move_to_environment(object ob)
+int move_to_environment(object ob)
 {
 	object env = environment(ob);
 	
-	if( !env ) return;
+	if( !env ) return 0;
 	
 	if( env->is_maproom() )
 		move( query_temp("location", ob) );
 	else
 		move( env );
+		
+	return 1;
 }
 
 varargs string short(int need_quantity)

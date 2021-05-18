@@ -33,7 +33,8 @@ private void do_command(object me, string arg)
 
 	if( arg == "here" || arg == "here for enterprise" )
 	{
-		string money_unit, price, owner;
+		string money_unit, owner;
+		int price;
 		array loc;
 		object env = environment(me);
 		mapping data;
@@ -62,7 +63,7 @@ private void do_command(object me, string arg)
 			if( nullp(data[TYPE]) )
 			{
 				money_unit = MONEY_D->city_to_money_unit(loc[CITY]);
-				price = data[VALUE];
+				price = to_int(data[VALUE]);
 	
 				if( arg == "here" )
 				{

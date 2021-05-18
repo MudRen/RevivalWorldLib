@@ -55,7 +55,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 			if( !arg || arg == "" )
 				return logon_handle(INITIALIZE, ob);
 			
-			arg = remove_ansi(remove_fringe_blanks(lower_case(arg)));
+			arg = remove_ansi(trim(lower_case(arg)));
 			
 			if( arg == "gb" )
 			{
@@ -76,9 +76,9 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 			
 			level_num = SECURE_D->level_num(arg);
 			
-			if( level_num < GUEST )
+			if( level_num < WIZARD )
 			{
-				tell(ob, HIG"只有巫師才能從連接埠 "+WIZ_PORT+" 登入，玩家請從 "+PPL_PORT+" 登入。\n"NOR, CONNECTFAILED);
+				tell(ob, HIG"只有巫師才能從連接埠 "+implode(map(WIZ_PORT, (: $1+"" :)), ",")+" 登入，玩家請從 "+implode(map(PPL_PORT, (: $1+"" :)), ",")+" 登入。\n"NOR, CONNECTFAILED);
 				return logon_handle(INITIALIZE, ob);
 			}
 			
@@ -177,7 +177,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 		{
 			object reconnect_ob;
 			
-			if( !arg || remove_ansi(remove_fringe_blanks(lower_case(arg))) != "y" )
+			if( !arg || remove_ansi(trim(lower_case(arg))) != "y" )
 			{
 				tell(ob, "您決定不取代遊戲中相同的人物。\n", CONNECTFAILED);
 				ob->reset_database();
@@ -253,6 +253,7 @@ nomask void logon(object login_ob)
 		return;
 	}
 
+/*
 	if( !LOGIN_D->check_login_attacker(query_ip_number(login_ob)) )
 	{
 		login_ob->directly_receive(HIR"\n很抱歉，這個 IP["+query_ip_number(login_ob)+"] 的登入動作太過頻繁，請稍候再試。\n"NOR);
@@ -260,6 +261,7 @@ nomask void logon(object login_ob)
 		destruct(login_ob);
 		return;
 	}
+*/
 
 	LOGIN_D->show_login_message(login_ob);
 	logon_handle(INITIALIZE, login_ob);
@@ -268,7 +270,7 @@ int remove()
 {
 	foreach(object user in users())
 	{
-		if( !user->is_login_ob() ) continue;
+		if( !objectp(user) || !user->is_login_ob() ) continue;
 		tell(user, HIR"\n很抱歉，登錄系統更新，麻煩您再重新登錄。\n"NOR, CONNECTFAILED);
 		flush_messages(user);
 		destruct(user);

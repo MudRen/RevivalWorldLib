@@ -11,12 +11,11 @@
  -----------------------------------------
  */
 
-#define PPL_PORT		5000
-#define WIZ_PORT		5001
-#define CLIENT_PORT		5002
+#define PPL_PORT		({ 4000, 5000, 6000 })
+#define WIZ_PORT		({ 4001 })
 
 #define MOTD			"/system/daemons/etc/logind_motd"
-#define WAITING_ENTER_TIME	5
+#define WAITING_ENTER_TIME	3
 
 #define MAX_USERS		1000
 

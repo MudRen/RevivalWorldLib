@@ -10,6 +10,7 @@
  *
  -----------------------------------------
  */
+#include <ansi.h>
 #include <message.h>
 #include <buff.h>
 
@@ -19,9 +20,15 @@
 int query_equipment_buff(string key)
 {
 	int buff = 0;
-	
+	int fullsuit = this_object()->is_full_suit();
+
 	foreach(object ob in this_object()->query_equipment_objects())
-		buff += query(key, ob);
+	{
+		buff += query(key, ob) + query_temp(key, ob);
+		
+		if( fullsuit )
+			buff += query(BUFF_FULLSUIT+key, ob) + query_temp(BUFF_FULLSUIT+key, ob);
+	}
 	
 	return buff;
 }
@@ -32,7 +39,6 @@ int query_equipment_buff(string key)
 int query_condition_buff(string key)
 {
 	int buff = 0;
-	
 	mapping condition = query("condition");
 
 	if( mapp(condition) )
@@ -47,34 +53,80 @@ int query_condition_buff(string key)
 //
 int query_all_buff(string key)
 {
-	return query_equipment_buff(key) + query_condition_buff(key);
+	int value;
+	
+	if( undefinedp(value = query_temp("buff_cache/"+key)) )
+	{
+		value = query_equipment_buff(key) + query_condition_buff(key) + query_temp("buff/"+key) + query("battlereward/"+key);
+		
+		if( key == BUFF_COUNTERATTACK_CHANCE )
+		{
+			string stance = query("combat/stance/type");
+			
+			if( stance == "defend" )
+			{
+				value += this_object()->query_skill_level("defend-stance")/10;	
+			}
+			else if( stance == "defend-adv" )
+			{
+				value += 10 + this_object()->query_skill_level("defend-stance-adv")/10;
+			}
+		}
+		
+		set_temp("buff_cache/"+key, value);
+	}
+	
+	
+	
+	return value;
+}
+
+// 重設快取
+void reset_buff_cache()
+{
+	delete_temp("buff_cache");
 }
 
 //
 // 五大屬性
 //
-int query_str()
+varargs int query_str(int without_buff)
 {
+	if( without_buff )
+		return query("attr/str");
+
 	return query("attr/str") + query_all_buff(BUFF_STR);
 }
 
-int query_phy()
+varargs int query_phy(int without_buff)
 {
+	if( without_buff )
+		return query("attr/phy");
+
 	return query("attr/phy") + query_all_buff(BUFF_PHY);
 }
 
-int query_int()
+varargs int query_int(int without_buff)
 {
+	if( without_buff )
+		return query("attr/int");
+
 	return query("attr/int") + query_all_buff(BUFF_INT);
 }
 
-int query_agi()
+varargs int query_agi(int without_buff)
 {
+	if( without_buff )
+		return query("attr/agi");
+
 	return query("attr/agi") + query_all_buff(BUFF_AGI);
 }
 
-int query_cha() 
+varargs int query_cha(int without_buff) 
 {
+	if( without_buff )
+		return query("attr/cha");
+
 	return query("attr/cha") + query_all_buff(BUFF_CHA);
 }
 
@@ -82,16 +134,25 @@ int query_cha()
 //
 // 三大數值最大值
 //
-int query_stamina_max()
+varargs int query_stamina_max(int without_buff)
 {
+	if( without_buff )
+		return query("abi/stamina/max");
+
 	return query("abi/stamina/max") + query_all_buff(BUFF_STAMINA_MAX);
 }
-int query_health_max()
+varargs int query_health_max(int without_buff)
 {
+	if( without_buff )
+		return query("abi/health/max");
+
 	return query("abi/health/max") + query_all_buff(BUFF_HEALTH_MAX);
 }
-int query_energy_max()
+varargs int query_energy_max(int without_buff)
 {
+	if( without_buff )
+		return query("abi/energy/max");
+
 	return query("abi/energy/max") + query_all_buff(BUFF_ENERGY_MAX);
 }
 
@@ -159,7 +220,6 @@ int is_all_ability_full()
 	return is_stamina_full() && is_health_full() && is_energy_full();
 }
 
-
 //
 // 變動五大屬性
 //
@@ -183,8 +243,11 @@ int add_temp_cha(int i) { addn("attr/temp/cha", i); }
 //
 // 食物狀態
 //
-int query_food_max()
+varargs int query_food_max(int without_buff)
 {
+	if( without_buff )
+		return query("stat/food/max");
+
 	return query("stat/food/max") + query_all_buff(BUFF_FOOD_MAX);
 }
 
@@ -203,16 +266,26 @@ int add_food(int i)
 {
 	if( query_food_cur() + i > query_food_max() )
 		return 0;
-	
+
+	if( !userp(this_object()) && !query_heart_beat(this_object()) )
+		this_object()->startup_heartbeat();
+
 	return addn("stat/food/cur", i);
+}
+void reset_food()
+{
+	set("stat/food/cur", 0);
 }
 
 //
 // 飲水狀態
 //
 
-int query_drink_max()
+varargs int query_drink_max(int without_buff)
 {
+	if( without_buff )
+		return query("stat/drink/max");
+
 	return query("stat/drink/max") + query_all_buff(BUFF_DRINK_MAX);
 }
 
@@ -232,54 +305,109 @@ int add_drink(int i)
 	if( query_drink_cur() + i > query_drink_max() )
 		return 0;
 	
+	if( !userp(this_object()) && !query_heart_beat(this_object()) )
+		this_object()->startup_heartbeat();
+
 	return addn("stat/drink/cur", i);
 }
+
+void reset_drink()
+{
+	set("stat/drink/cur", 0);
+}
+
+// 最佳狀況
+int is_all_attribution_full()
+{
+	return is_stamina_full() && is_health_full() && is_energy_full() && !query_drink_cur() && !query_food_cur();
+}
+
 
 //
 // 社會經驗運算
 //
-string query_social_exp_cur() { return query("exp/social/cur"); }
-string query_social_exp_tot() { return query("exp/social/tot"); }
-string add_social_exp(int exp)
+int query_social_exp_cur() { return to_int(query("exp/social/cur")); }
+int query_social_exp_tot() { return to_int(query("exp/social/tot")); }
+int add_social_exp(int exp)
 {
 	float fexp = to_float(exp);
-	string cur = query_social_exp_cur();
-	string tot = query_social_exp_tot();
+	int cur = query_social_exp_cur();
+	int tot = query_social_exp_tot();
 
 	if( fexp <= 0 ) return 0;
-
-	// 大於 5000 萬則減少經驗值收入機會
-	if( random(to_int(count(cur, "/", 50000000))+1) ) return 0;
 
 	// 輔助裝備法術加成
 	fexp += fexp*(query_int()*2-20+query_all_buff(BUFF_SOCIAL_EXP_BONUS))/100.;
 
-	// 總經驗值每 10 億降 1 倍經驗值
-	fexp /= to_int(count(tot, "/", 1000000000))+1;
+	// 總經驗值每 5 億降 1 倍經驗值
+	fexp /= (tot/500000000)+1.;
 
 	exp = ceil(fexp);
 
-	set("exp/social/tot", copy(count(exp, "+", tot)));
+	set("exp/social/tot", exp + tot);
 
-	return set("exp/social/cur", copy(count(exp, "+", cur)));
+	return set("exp/social/cur", exp + cur);
 }
 
-string cost_social_exp(int exp)
+int cost_social_exp(int exp)
 {
-	string newexp, oldexp = query("exp/social/cur");
+	int newexp;
+	int oldexp = to_int(query("exp/social/cur"));
 	
 	if( exp <= 0 ) return 0;
 	
-	newexp = count(oldexp, "-", exp);
+	newexp = oldexp - exp;
 	
-	if( count(newexp, "<", 0) )
+	if( newexp < 0 )
 		return 0;
 	
 	set("exp/social/cur", newexp);
 	
-	return newexp;
+	return 1;
 }
 
+//
+// 戰鬥經驗運算
+//
+int query_combat_exp_cur() { return to_int(query("exp/combat/cur")); }
+int query_combat_exp_tot() { return to_int(query("exp/combat/tot")); }
+int add_combat_exp(int exp)
+{
+	float fexp = to_float(exp);
+	int cur = query_combat_exp_cur();
+	int tot = query_combat_exp_tot();
+
+	if( fexp <= 0 ) return 0;
+
+	// 輔助裝備法術加成
+	fexp += fexp*(query_int()*2-20+query_all_buff(BUFF_COMBAT_EXP_BONUS))/100.;
+
+	// 總經驗值每 5 億降 1 倍經驗值
+	fexp /= (tot/500000000)+1.;
+
+	exp = ceil(fexp);
+
+	set("exp/combat/tot", exp + tot);
+
+	return set("exp/combat/cur", exp + cur);
+}
+
+int cost_combat_exp(int exp)
+{
+	int newexp;
+	int oldexp = to_int(query("exp/combat/cur"));
+	
+	if( exp <= 0 ) return 0;
+	
+	newexp = oldexp - exp;
+	
+	if( newexp < 0 )
+		return 0;
+	
+	set("exp/combat/cur", newexp);
+	
+	return 1;
+}
 //
 // 體力運算
 //
@@ -290,6 +418,9 @@ int cost_stamina(int str)
 	if( curstr < str ) return 0;
 	
 	addn("abi/stamina/cur", -str);
+
+	if( !userp(this_object()) && !query_heart_beat(this_object()) )
+		this_object()->startup_heartbeat();
 
 	return 1;	
 }
@@ -311,17 +442,25 @@ void earn_stamina(int str)
 //
 // 生命運算
 //
-int cost_health(int hp)
+varargs int cost_health(int hp, int kill)
 {
 	int curhp = query_health_cur();
-	
-	if( curhp < hp )
+
+	if( !userp(this_object()) && !query_heart_beat(this_object()) )
+		this_object()->startup_heartbeat();
+
+	if( curhp <= hp )
 	{
-		this_object()->faint();
+		if( kill )
+			this_object()->die();
+		else
+			this_object()->faint();
+
 		return 0;
 	}
 
-	addn("abi/health/cur", -hp);	
+	addn("abi/health/cur", -hp);
+
 	return 1;
 }
 void earn_health(int hp)
@@ -350,6 +489,9 @@ int cost_energy(int ep)
 	
 	addn("abi/energy/cur", -ep);
 
+	if( !userp(this_object()) && !query_heart_beat(this_object()) )
+		this_object()->startup_heartbeat();
+
 	return 1;	
 }
 
@@ -364,4 +506,79 @@ void earn_energy(int ep)
 		set_energy_full();
 	else
 		addn("abi/energy/cur", ep);
+}
+
+//
+// 疲勞運算
+//
+int add_fatigue(int fatigue)
+{
+	int curfatigue = query("fatigue");
+	int result = curfatigue + fatigue;
+
+	if( curfatigue == 1000 )
+		return curfatigue;
+
+	if( result > 1000 )
+		result = 1000;
+
+	tell(this_object(), pnoun(2, this_object())+"感覺到身體的疲勞度增加了("+HIY+"+"+fatigue+"、"NOR YEL+result+"/1000"NOR")。\n");
+
+	set("fatigue", result);
+	
+	return result;
+}
+int reset_fatigue()
+{
+	set("fatigue", 0);
+
+	return 1;
+}
+int query_fatigue()
+{
+	return query("fatigue");
+}
+int is_fatigue_full()
+{
+	return query("fatigue") == 1000;
+}
+
+// 獲得聲望
+int earn_prestige(int prestige)
+{
+	int result = addn("prestige", prestige);
+
+	tell(this_object(), NOR YEL+pnoun(2, this_object())+"獲得 "HIY+prestige+NOR YEL" 點聲望。\n"NOR);
+	
+	return result;	
+}
+
+int cost_prestige(int prestige)
+{
+	int curprestige = query("prestige");
+	
+	if( curprestige < prestige )
+		return 0;
+	
+	addn("prestige", -prestige);
+
+	return 1;
+}
+
+// 與此生物戰鬥時可獲得之經驗值
+int query_fighting_exp()
+{
+	int exp = 0;
+	
+	exp += query_str();
+	exp += query_phy();
+	exp += query_int();
+	exp += query_agi();
+	exp += query_cha();
+	
+	exp += query_stamina_max()/10;
+	exp += query_health_max()/10;
+	exp += query_energy_max()/10;
+	
+	return exp / 10;
 }

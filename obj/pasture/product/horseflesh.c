@@ -11,6 +11,7 @@
  -----------------------------------------
  */
 
+#include <ansi.h>
 #include <inherit.h>
 
 inherit STANDARD_OBJECT;
@@ -23,6 +24,6 @@ void create()
 	
 	set("long", "相當具有嚼勁的馬肉。\n");
 	set("unit", "塊");
-	set("mass", 600);
-	set("value", 15000);
+	set("mass", 500);
+	set("value", 9000);
 }

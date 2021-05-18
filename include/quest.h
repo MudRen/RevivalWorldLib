@@ -44,3 +44,15 @@
 #define QUEST_EPIC_PASTURE		"牧神史詩"
 #define QUEST_EPIC_PASTURE_NAME		HIY"牧"NOR YEL"神"HIW"史"NOR WHT"詩"NOR
 #define QUEST_EPIC_PASTURE_STEP		25
+
+#define QUEST_LOST_SHARD		"遺失的遠古武器碎片"
+#define QUEST_LOST_SHARD_NAME		NOR YEL"遺失的"HIY"遠古武器碎片之謎"NOR
+#define QUEST_LOST_SHARD_STEP		4
+
+#define QUEST_MOON_RABBIT		"傳說的中秋寶藏"
+#define QUEST_MOON_RABBIT_NAME		NOR CYN"傳說的"HIC"中秋寶藏之謎"NOR
+#define QUEST_MOON_RABBIT_STEP		2
+
+#define QUEST_FOSSIL			"化石‧古代遺跡"
+#define QUEST_FOSSIL_NAME		NOR CYN"化石‧"HIC"古代遺跡"NOR
+#define QUEST_FOSSIL_STEP		2

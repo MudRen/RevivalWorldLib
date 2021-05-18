@@ -13,16 +13,17 @@
 
 #include <feature.h>
 
-int is_npc()
-{
-	return 1;
-}
-
 /* 資料 */
 inherit DATABASE;
 
 /* 清除 */
 inherit CLEAN_UP;
+
+/* 數量 */
+inherit AMOUNT;
+
+/* 飛行 */
+inherit FLY;
 
 /* 生物 */
 inherit LIVING_LIV;
@@ -33,14 +34,14 @@ inherit CONDITION_LIV;
 /* 延遲 */
 inherit DELAY_LIV;
 
+/* 困住 */
+inherit STUCK_LIV;
+
 /* 移動 */
 inherit MOVE_LIV;
 
 /* 金錢處理 */
 inherit MONEY_LIV;
-
-/* 戰鬥 */
-inherit COMBAT_LIV;
 
 /* 技能 */
 inherit SKILL_LIV;
@@ -61,13 +62,18 @@ inherit COMMAND_NPC;
 inherit ACTION_NPC;
 
 /* 心跳 */
-inherit HEART_BEAT_NPC;
+inherit HEART_BEAT_LIV;
 
 /* 訊息 */
 inherit MESSAGE_NPC;
 
-/* 訊息行為 */
-inherit BEHAVIOR_MESSAGE_NPC;
-
 /* 走動行為 */
 inherit BEHAVIOR_WALKING_NPC;
+
+/* 組隊 */
+inherit GROUP_LIV;
+
+int is_npc()
+{
+	return 1;
+}

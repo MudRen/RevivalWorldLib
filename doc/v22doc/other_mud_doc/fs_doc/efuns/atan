@@ -1,0 +1,20 @@
+atan(3)               LPC ╰参ㄧ计               atan(3)
+
+嘿
+     atan() - 肚疊翴把计はタちㄧ计(àㄧ计)
+
+粂猭
+     float atan( float f );
+
+磞瓃
+     肚把计 <f> はタちㄧ计, 虫琌褃秖.
+
+     褃秖 r 蛤à秖 a 闽玒琌:
+
+        r = a * PI / 180.0;
+
+叫把σ
+     acos(3), asin(3), cos(3), sin(3), tan(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

@@ -30,7 +30,9 @@ private void do_command(object me, string arg)
 {
 	int estatetax;
 	string city, money_unit, msg, id, query_city;
-	
+	object player;
+	int money;
+
 	city = query("city", me);
 
 	if( !city )
@@ -40,8 +42,7 @@ private void do_command(object me, string arg)
 		id = me->query_id(1);
 	else if( sscanf(arg, "city %s", query_city) == 1 )
 	{
-		string money;
-		string total_money;
+		int total_money;
 		
 		money_unit = MONEY_D->city_to_money_unit(query_city);
 		estatetax = CITY_D->query_city_info(query_city, "estatetax");
@@ -51,16 +52,28 @@ private void do_command(object me, string arg)
 		
 		msg = CITY_D->query_city_idname(query_city)+"的所有稅收狀況如下：\n";
 		msg += "─────────────────────────────────\n";
+		msg += "名稱                   稅收倍率         稅收\n";
+		msg += "─────────────────────────────────\n";
 
 		foreach(string citizen in CITY_D->query_citizens(query_city))
 		{
 			money = TAX_D->query_player_tax(citizen, estatetax);
-			total_money = count(total_money, "+", money);
-			msg += sprintf("%-30s%s\n", capitalize(citizen), money(money_unit, money));
+			
+			player = load_user(citizen);
+			
+			if( !undefinedp(query("taxrate", player)) )
+				money *= copy(query("taxrate", player));
+
+			total_money += money;
+
+			msg += sprintf("%-30s%-10d"HIY"%s"NOR"\n", player->query_idname(), undefinedp(query("taxrate", player))?1:query("taxrate", player), money(money_unit, money));
+			
+			if( !userp(player) )
+				destruct(player);
 		}
 
 		msg += "─────────────────────────────────\n";
-		msg += sprintf("%-30s%s\n", CITY_D->query_city_idname(city)+"稅收總收入", money(money_unit, total_money));
+		msg += sprintf("%-40s"HIY"%s"NOR"\n", CITY_D->query_city_idname(city)+"稅收總收入", money(money_unit, total_money));
 
 		return me->more(msg);
 	}
@@ -76,25 +89,30 @@ private void do_command(object me, string arg)
 	else
 		return tell(me, pnoun(2, me)+"沒有權利查詢其他人的稅收資料。\n");
 	
-	if( find_player(id) )
-		city = query("city", find_player(id));
+	if( !objectp(player = load_user(id)) )
+		return tell(me, "沒有 "+id+" 這位玩家。\n");
+
+	city = query("city", player);
 
 	money_unit = MONEY_D->city_to_money_unit(city);
 	estatetax = CITY_D->query_city_info(city, "estatetax");
+	money = TAX_D->query_player_tax(id, estatetax);
 
-	if( id != me->query_id(1) )
-		msg = capitalize(id)+" 之稅收資料如下：\n";
-	else
-		msg = "";
-
-	
-	
-	msg += sprintf("稅收項目    稅率(百萬分之一)     稅收總額\n"
+	if( !undefinedp(query("taxrate", player)) )
+		money *= copy(query("taxrate", player));
+		
+	msg = (player == me ? pnoun(2, me):player->query_idname())+"的稅收資料如下：\n";	
+	msg += sprintf("稅收項目      土地+房屋數 x 稅率   x 稅收倍率   =   稅收總額\n"
 	NOR WHT"─────────────────────────────────\n"
-	NOR HIY"地產稅      %-8d             %s\n"
+	NOR HIY"地產稅        %-11d x %-6d x %-10d =   %s\n"
 	NOR WHT"─────────────────────────────────\n\n"NOR
+	, ESTATE_D->query_total_estate_floors(id)
 	, estatetax
-	, money(money_unit, TAX_D->query_player_tax(id, estatetax)));
+	, undefinedp(query("taxrate", player)) ? 1 : query("taxrate", player)
+	, money(money_unit, money));
 	
+	if( !userp(player) )
+		destruct(player);
+
 	tell(me, msg);
 }

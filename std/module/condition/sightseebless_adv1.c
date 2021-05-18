@@ -13,55 +13,34 @@
  
 #include <ansi.h>
 #include <buff.h>
+#include <feature.h>
 
-#define CONDITION_ID		"sightseebless-adv"
-#define CONDITION_NAME		HIY"傲視"NOR YEL"天下"NOR
-#define CONDITION_TYPE		"加持"
-#define DEFAULT_TIME		7200
-#define DEFAULT_HEART_BEAT	0
+inherit CONDITION_MOD;
 
-// 回傳狀態英文名稱
-string query_condition_id()
-{
-	return CONDITION_ID;
-}
-
-// 回傳狀態中文名稱
-string query_condition_name()
-{
-	return CONDITION_NAME;
-}
-
-// 回傳狀態型態名稱
-string query_condition_type()
-{
-	return CONDITION_TYPE;
-}
-
-// 回傳狀態預設持續時間
-int query_default_condition_time()
-{
-	return DEFAULT_TIME;
-}
-
-// 回傳狀態預設心跳時間
-int query_default_condition_heart_beat()
-{
-	return DEFAULT_HEART_BEAT;
-}
+string id 		= "sightseebless-adv";
+string name 	= HIY"傲視"NOR YEL"群雄"NOR;
+string type 	= CONDITION_TYPE_POSITIVE;
+int time 		= 7200;
+int heartbeat 	= 0;
 
 // 啟動狀態時的效果
 void start_effect(object ob)
 {
-	set("condition/"+replace_string(base_name(this_object()), "/","#")+"/"+BUFF_INT, 1, ob);
-	set("condition/"+replace_string(base_name(this_object()), "/","#")+"/"+BUFF_CHA, 1, ob);
-	msg("$ME進入「"CONDITION_NAME"」的"CONDITION_TYPE"狀態。\n", ob, 0, 1);
+	set(query_key()+"/"+BUFF_STR, 3, ob);
+	set(query_key()+"/"+BUFF_PHY, 3, ob);
+	set(query_key()+"/"+BUFF_INT, 3, ob);
+	set(query_key()+"/"+BUFF_CHA, 3, ob);
+	set(query_key()+"/"+BUFF_AGI, 3, ob);
+	set(query_key()+"/"+BUFF_FOOD_MAX, 100, ob);
+	set(query_key()+"/"+BUFF_DRINK_MAX, 100, ob);
+
+	::start_effect(ob);
 }
 
 // 結束狀態時的效果
 void stop_effect(object ob)
 {
-	msg("$ME脫離「"CONDITION_NAME"」的"CONDITION_TYPE"狀態。\n", ob, 0, 1);
+	::stop_effect(ob);
 }
 
 // 狀態進行中的效果

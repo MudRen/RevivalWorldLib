@@ -38,23 +38,22 @@ nomask string query_network_short(object user)
 	return network_short;
 }
 
-string dsize(string size)
+string dsize(int size)
 {
-	if( count(size, "<", "1024") )
+	if( size < 1024 )
 		return size + " Bytes";
 	
-	if( count(size, "<", "1048576") )
-		return count(size, "/", "1024")+" KBytes";
+	if( size < 1048576 )
+		return sprintf("%.3f KBytes", size / 1024.);
 		
-	if( count(size, "<", "1073741824") )
-		return count(size, "/", "1048576")+" MBytes";
-		
-	if( count(size, "<", "1099511627776") )
-		return count(size, "/", "1073741824")+" GBytes";
+	if( size < 1073741824 )
+		return sprintf("%.3f MBytes", size / 1048576.);
 
-	if( count(size, "<", "1125899906842624") )
-		return count(size, "/", "1099511627776")+" TBytes";
-	
+	if( size < 1099511627776 )
+		return sprintf("%.3f GBytes", size / 1073741824.);
+
+	if( size < 1125899906842624 )
+		return sprintf("%.3f TBytes", size / 1099511627776.);
 }
 
 string query_network_packet_stats()
@@ -65,6 +64,13 @@ string query_network_packet_stats()
 
 }
 
+string query_network_volume_stats()
+{
+	mapping networkstats = network_stats();
+
+	return sprintf("已接收 %s 資料(%.3f KBytes/sec)，已傳送 %s 資料(%.3f KBytes/sec)", dsize(networkstats["incoming volume total"]), to_float(networkstats["incoming volume total"])/1024./uptime(), dsize(networkstats["outgoing volume total"]), to_float(networkstats["outgoing volume total"])/1024./uptime());
+
+}
 
 void create()
 {

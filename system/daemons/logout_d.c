@@ -26,10 +26,12 @@ void net_dead(object ob)
 	CHANNEL_D->channel_broadcast("sys", "登出："+ob->query_idname()+WHT"由"+network_short+"斷線，倒數五分鐘離線。", 1);	
 
 	log_file(LOG, ob->query_idname()+" disconnect "+network_short+NOR+"\n");
+	
+	ob->save();
 	// CHANNEL_D->remove_user(ob);
 }
 
-private void save_user_info(object ob)
+void save_user_info(object ob)
 {
 	mapping current_login = copy(query_temp("login", ob));
 	
@@ -53,16 +55,33 @@ private void save_user_info(object ob)
 
 varargs void quit(object ob, string arg)
 {
+	object labor_ob;
 	object env = environment(ob);
 	string network_short = NETWORK_D->query_network_short(ob);
-	if( !userp(ob) && !query_temp("net_dead", ob) ) return;
+	string labor, *labors = query("hirelabors", ob);
+
+	BATTLEFIELD_D->remove_battlefield_condition(ob);
 	
+	foreach( object member in ob->query_group_members()||({}) )
+	{
+		if( !objectp(member ) ) continue;
+		if( member->is_module_npc() && query("boss", member) == ob->query_id(1) )
+			member->do_command("group leave");
+	}
+
+	// 儲存所有員工
+	if( sizeof(labors) )
+	foreach(labor in labors)
+		if( objectp(labor_ob = load_object(labor)) )
+			labor_ob->save();
+
 	save_user_info(ob);
 
-	/* 更新 TOP 資料 */
 	TOP_D->calculate_top(ob);
-
 	CHANNEL_D->remove_user(ob);
+	ob->dismiss_group();
+	
+	BATTLEFIELD_D->cancel_battle(ob);
 
 	if( query_temp("net_dead", ob) )
 	{

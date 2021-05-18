@@ -23,6 +23,6 @@ void create()
         
         set("long", "百合花花語：純潔‧純潔的心‧百年好合‧偉大的愛 。\n");
         set("unit", "朵");
-        set("mass", 5);
+        set("mass", 200);
         set("value", 800);
 }

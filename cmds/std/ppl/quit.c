@@ -25,15 +25,18 @@ HELP;
 
 private void do_command(object me, string arg)
 {
-	if( me->is_fighting() )
-		return tell(me,"你正在戰鬥中，無法離線！\n");
+	if( COMBAT_D->in_fight(me) )
+		return tell(me, pnoun(2, me)+"正在戰鬥中，無法離線！\n");
+
 	if( me != this_player(1) ) 
-		tell(me, this_player(1)->query_idname()+"強迫你離開遊戲。\n", CMDMSG);
+		tell(me, this_player(1)->query_idname()+"強迫"+pnoun(2, me)+"離開遊戲。\n");
 
 	if( me->is_delaying() )
-		return tell(me, me->query_delay_msg(), CMDMSG);
+		return tell(me, me->query_delay_msg());
 
-     	catch{"/cmds/std/wiz/snoop.c"->remove_user(me);};
+     	catch{COMMAND_D->find_command_object("snoop")->remove_user(me);};
+
+	set_temp("quiting", 1, me);
 
 	LOGOUT_D->quit(me, arg);
 }

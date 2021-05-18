@@ -1,0 +1,22 @@
+
+pointerp(3)           LPC ╰参ㄧ计           pointerp(3)
+
+嘿
+     pointerp() - 耞把计琌琌皚
+
+粂猭
+     int pointerp( mixed arg );
+
+磞瓃
+     蛤 arrayp() 妓, 耞把计┮倒跑计琌琌皚.
+
+絛ㄒ
+     /std/smartmonster.c
+
+叫把σ
+     mapp(3),  stringp(3),   objectp(3),   intp(3),   bufferp(3),
+     floatp(3), functionp(3), nullp(3), undefinedp(3), errorp(3),
+     arrayp(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

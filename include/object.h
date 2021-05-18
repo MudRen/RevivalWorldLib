@@ -13,15 +13,15 @@
  
 #define VOID_OB		"/obj/etc/void.c"
 
-#define SIMUL_EFUN_OB	"/system/kernel/simul_efun.c"
+#define SIMUL_EFUN_OB   "/system/kernel/simul_efun.c"
 
 #define LOGIN_OB	"/system/object/login_ob.c"
 #define PPL_OB		"/system/object/ppl_ob.c"
 #define WIZ_OB		"/system/object/wiz_ob.c"
 
 #define NORMAL_ROOM	"/obj/room/room.c"
-#define CITYROOM	"/obj/room/cityroom.c"
-#define AREAROOM	"/obj/room/arearoom.c"
-#define ZONEROOM        "/obj/room/zoneroom.c"
+#define CITYROOM	"/obj/room/cityroom"
+#define AREAROOM	"/obj/room/arearoom"
+#define ZONEROOM        "/obj/room/zoneroom"
 
 #define WIZ_HALL	"/wiz/wizhall/room_wizhall_1"

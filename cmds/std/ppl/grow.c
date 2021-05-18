@@ -11,6 +11,7 @@
  -----------------------------------------
  */
 
+#include <buff.h>
 #include <ansi.h>
 #include <feature.h>
 #include <daemon.h>
@@ -18,6 +19,8 @@
 #include <map.h>
 #include <material.h>
 #include <skill.h>
+#include <location.h>
+#include <citycondition.h>
 
 inherit COMMAND;
 
@@ -38,52 +41,73 @@ string help = @HELP
     
 HELP;
 
-private void maintain_levelup(object me, array loc)
+private void maintain_levelup(object me, array loc, int amount)
 {
 	int level = 0;
 
-	switch( CITY_D->add_coor_data(loc, "maintain_time", 1) )
+	switch( CITY_D->add_coor_data(loc, "maintain_time", amount) )
 	{
-		case 1:
+		case 1..49:
 			level = 1; break;
-		case 50:
+		case 50..999:
 			level = 2; break;
-		case 1000:
+		case 1000..9999:
 			level = 3; break;
-		case 10000:
+		case 10000..49999:
 			level = 4; break;
-		case 50000:
+		case 50000..99999:
 			level = 5; break;
-		case 100000:
+		case 100000..199999:
 			level = 6; break;
-		case 200000:
+		case 200000..499999:
 			level = 7; break;
-		case 500000:
+		case 500000..999999:
 			level = 8; break;
-		case 1000000:
+		case 1000000..1999999:
 			level = 9; break;
-		case 2000000:
+		case 2000000..4999999:
 			level = 10; break;
+		case 5000000..9999999:
+			level = 11; break;
+		case 10000000..19999999:
+			level = 12; break;
+		case 20000000..49999999:
+			level = 13; break;
+		case 50000000..99999999:
+			level = 14; break;
+		case 100000000..199999999:
+			level = 15; break;
+		case 200000000..499999999:
+			level = 16; break;
+		case 500000000..MAX_INT:
+			level = 17; break;
 	}
 	
-	if( level )
+	if( level > CITY_D->query_coor_data(loc, "growth_level") )
 	{
 		CITY_D->set_coor_data(loc, "growth_level", level);
 		msg("此地的土地等級隨著$ME的辛勤照料提升為第 "HIY+level+NOR" 級。\n", me, 0, 1);
 		
 		if( !SECURE_D->is_wizard(me->query_id(1)) )
-		TOP_D->update_top("maintain", save_variable(loc), CITY_D->query_coor_data(loc, "growth_level"), me->query_idname(), CITY_D->query_coor_data(loc, TYPE));
+		TOP_D->update_top("maintain", save_variable(loc), level, me->query_idname(), CITY_D->query_coor_data(loc, TYPE));
 	}
 }
 
 private void do_command(object me, string arg)
 {
-	int amount, growth_level, multiplicand;
+	int amount, growth_level;
+	float multiplicand;
 	array loc = query_temp("location", me);
 	object ob;
 	string msg="", file;
 	mapping coor_data, growth_data;
 	
+	if( COMBAT_D->in_fight(me) )
+		return tell(me, pnoun(2, me)+"正在戰鬥中。\n");
+
+	if( me->is_delaying() )
+		return tell(me, me->query_delay_msg());
+
 	if( (MAP_D->query_map_system(loc)) != CITY_D )
 		return tell(me, pnoun(2, me)+"無法在此進行生產。\n");
 	
@@ -109,10 +133,27 @@ private void do_command(object me, string arg)
 		GROWTH_D->set_status(loc);
 		return tell(me, pnoun(2, me)+"取消了此地的產品生產。\n");
 	}
-		
+
+ 	if( me->is_fatigue_full() )
+		return tell(me, pnoun(2, me)+"實在是太疲勞了，無法再進行生產。\n");
+
+	if( !random(1000) )
+		me->add_fatigue(1);
+						
 	if( arg == "maintain" || sscanf(arg, "maintain %d", amount) == 1 )
 	{
 		int cost_str;
+		int my_phy = me->query_phy();
+		int maintain_cost;
+
+		if( my_phy <= 150 )
+			maintain_cost = MAINTAIN_STR_COST - my_phy;
+		else if( my_phy <= 200)
+			maintain_cost = MAINTAIN_STR_COST - 150 - pow(my_phy - 150, 0.9);
+		else
+			maintain_cost = MAINTAIN_STR_COST - 184 - pow(my_phy - 200, 0.8);
+
+		if( maintain_cost < 50 ) maintain_cost = 50;
 
 		switch(coor_data[TYPE])
 		{
@@ -124,13 +165,13 @@ private void do_command(object me, string arg)
 				return tell(me, pnoun(2, me)+"無法整這塊地。\n");
 		}
 
-		if( amount < 1 )
-			amount = 1;
+		if( amount < 1 || amount > 1000 )
+			return tell(me, "請輸入 1~1000 的整地次數。\n");
 
 		if( mapp(growth_data) )
 			return tell(me, "這裡正在生產產品，無法進行整地動作。\n");
 			
-		cost_str = to_int(MAINTAIN_STR_COST * pow(amount, 0.9));
+		cost_str = to_int(maintain_cost * pow(amount, 0.9));
 
 		if( !me->cost_stamina(cost_str) )
 			return tell(me, pnoun(2, me)+"的體力不足 "+cost_str+"，無法進行整地的動作。\n");
@@ -138,12 +179,14 @@ private void do_command(object me, string arg)
 		msg("$ME耗費 "+cost_str+" 的體力辛勤的保養整地，使土地品質變得較為優良。("WHT"+"HIW+amount+NOR")\n", me, 0, 1);
 		
 		// 升級檢查
-		for(int i = 0; i<amount ; ++i)
-			maintain_levelup(me, loc);
+		maintain_levelup(me, loc, amount);
 		
-		me->add_social_exp(amount * (10+random(30)));
+		me->add_social_exp(range_random(amount * 100, amount * 400));
 		GROWTH_D->set_status(loc);
 
+		me->remove_status(query_temp("last_time_grow_maintain_status", me));
+		me->add_status(set_temp("last_time_grow_maintain_status", HIW"整"NOR WHT"地"NOR, me), 30);
+	
 		return;
 	}
 	
@@ -171,21 +214,23 @@ private void do_command(object me, string arg)
 			
 			multiplicand = growth_data["input_amount"] * growth_data["harvest_percent"] * (growth_level+DEFAULT_GROW) / 1000.;
 			
-			amount *= multiplicand;
+			amount = to_int(amount * multiplicand);
 
-			set_temp("amount", amount, ob);
+			ob->set_amount(amount);
 		
 			msg += "．"+ob->short(1)+"\n";
 	
-			me->add_social_exp(random(amount * 30));
+			me->add_social_exp(range_random(to_int(pow(amount, 0.5)*100), to_int(pow(amount, 0.5)*200)));
 
 			ob->move_to_environment(me);
+			
+			PRODUCT_D->count_supply_and_demand(file, amount);
 		}
 		
 		msg(msg, me, 0, 1);
 		
 		// 升級檢查
-		maintain_levelup(me, loc);
+		maintain_levelup(me, loc, 1);
 
 		TREASURE_D->get_treasure_growth(me, growth_level, coor_data[TYPE]);
 
@@ -203,7 +248,7 @@ private void do_command(object me, string arg)
 	if( !objectp(ob = present(arg)) )
 		return tell(me, pnoun(2, me)+"身上並沒有 "+arg+" 這種東西。\n");
 
-	if( count(amount, ">", query_temp("amount", ob)||1) )
+	if( amount > ob->query_amount() )
 		return tell(me, pnoun(2, me)+"身上沒有那麼多的"+ob->query_idname()+"。\n");
 
 	// 若此物品是種子/秧苗/種馬種牛/魚苗
@@ -246,6 +291,14 @@ private void do_command(object me, string arg)
 		growth_data["input_amount"] = amount;
 		growth_data["harvest_percent"] = 100;
 		
+		if( CITY_D->query_section_info(loc[CITY], loc[NUM], GROW_BUFF) > time() )
+			growth_data["harvest_percent"] += 10;
+		
+		if( CITY_D->query_city_info(loc[CITY], BATTLEFIELD_GROW_BUFF) > time() )
+			growth_data["harvest_percent"] += 15;
+		
+		growth_data["harvest_percent"] += me->query_all_buff(BUFF_GROW_ABILITY);
+		
 		foreach(file, int num in growth_data["material"])
 			growth_data["material"][file] *= amount;
 		
@@ -256,16 +309,21 @@ private void do_command(object me, string arg)
 		{
 			case FARM:
 				msg("$ME開始在這塊田地上耕作"+QUANTITY_D->obj(ob, amount)+"。\n"+growth_data["start_msg"], me, ob, 1);
+				me->remove_status(query_temp("last_time_grow_farm_status", me));
+				me->add_status(set_temp("last_time_grow_farm_status", HIG"農"NOR GRN"業"NOR, me), 30);
 				break;
 			case PASTURE:
 				msg("$ME開始在這片牧場上畜養"+QUANTITY_D->obj(ob, amount)+"。\n"+growth_data["start_msg"], me, ob, 1);
+				me->remove_status(query_temp("last_time_grow_pasture_status", me));
+				me->add_status(set_temp("last_time_grow_pasture_status", HIY"畜"NOR YEL"牧"NOR, me), 30);
 				break;
 			case FISHFARM:
 				msg("$ME開始在這處養殖場上養殖"+QUANTITY_D->obj(ob, amount)+"。\n"+growth_data["start_msg"], me, ob, 1);
+				me->remove_status(query_temp("last_time_grow_pasture_status", me));
+				me->add_status(set_temp("last_time_grow_pasture_status", HIB"養"NOR BLU"殖"NOR, me), 30);
 				break;
 		}
-		
-		
+
 		destruct(ob, amount);
 		
 		return;
@@ -288,7 +346,7 @@ private void do_command(object me, string arg)
 				if( !me->cost_stamina(GROW_STR_COST * amount) )
 					return tell(me, pnoun(2, me)+"的體力不夠了。\n");
 				
-				me->add_social_exp(random(amount * 50));
+				me->add_social_exp(range_random(amount * 100, amount * 200));
 				
 				growth_data["material"][basename] -= amount;
 				
@@ -299,12 +357,18 @@ private void do_command(object me, string arg)
 				{
 					case FARM:
 						msg("$ME利用"+QUANTITY_D->obj(ob, amount)+"對這塊農地進行灌溉。\n", me, ob, 1);
+						me->remove_status(query_temp("last_time_grow_farm_status", me));
+						me->add_status(set_temp("last_time_grow_farm_status", HIG"農"NOR GRN"業"NOR, me), 30);
 						break;
 					case PASTURE:
 						msg("$ME利用"+QUANTITY_D->obj(ob, amount)+"對這片牧場進行飼養。\n", me, ob, 1);
+						me->remove_status(query_temp("last_time_grow_pasture_status", me));
+						me->add_status(set_temp("last_time_grow_pasture_status", HIY"畜"NOR YEL"牧"NOR, me), 30);
 						break;
 					case FISHFARM:
 						msg("$ME利用"+QUANTITY_D->obj(ob, amount)+"對這處養殖場進行餵養。\n", me, ob, 1);
+						me->remove_status(query_temp("last_time_grow_pasture_status", me));
+						me->add_status(set_temp("last_time_grow_pasture_status", HIB"養"NOR BLU"殖"NOR, me), 30);
 						break;
 				}
 
@@ -320,7 +384,7 @@ private void do_command(object me, string arg)
 				CITY_D->set_coor_data(loc, "growth", growth_data);
 				GROWTH_D->set_status(loc, growth_data);
 				destruct(ob, amount);
-				
+
 				return;
 			}
 			break;

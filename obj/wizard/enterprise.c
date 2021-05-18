@@ -30,18 +30,14 @@ void fire_process(object me, object target, int combo, int sec)
 {
 	if( sec == 0 )
 	{
-		int damage, faint;
+		int damage;
 		for(int i=0;i<combo;i++)
 		{
 			damage = range_random(1, 125);
 			
-			if( !target->cost_health(damage) )
-				faint = 1;
-			
 			msg("$YOU被$ME發射的 12 型光炮陣列擊中，導致 "HIR+damage+NOR" 的生命傷害("NOR GRN+target->query_health_cur()+NOR"/"HIG+target->query_health_max()+NOR")。\n", me, target, 1);
-
-			if( faint )
-				target->faint();
+			
+			COMBAT_D->cause_damage(me, target, damage);
 		}
 		
 		delete_temp("delay/fire");

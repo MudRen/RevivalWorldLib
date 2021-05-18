@@ -32,7 +32,13 @@ void create()
 	set("title/100",	NOR HIY"電子零件師"NOR);
 	
 	// 技能註解
-	set("note",		"電子零件製作技術");
+	set("note",		"電子零件製作技術(需一階生產總等級達Lv100)");
+	
+	// 文明時代
+	set("age",		2);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL);
 }
 
 // 限制可學習對象, 可用來設定各種學習條件
@@ -45,9 +51,12 @@ varargs int allowable_learn(object ob)
 		if( ob->is_npc() )
 			return 0;
 		else
-		{
-			return 0;
-		}
+			return 
+			ob->query_skill_level("metalclassify")+
+			ob->query_skill_level("waterclassify")+
+			ob->query_skill_level("stoneclassify")+
+			ob->query_skill_level("woodclassify")+
+			ob->query_skill_level("fuelclassify") >= 100;
 	}
 }
 

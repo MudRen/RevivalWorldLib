@@ -23,18 +23,19 @@ inherit EQUIPMENT;
 void create()
 {
 	set_idname(HIY"buddha "NOR YEL"wood"NOR, HIY"御"NOR YEL"神"NOR HIY"木"NOR);
-	set_temp("status", HIC"稀"NOR CYN"有");
+	set_temp("status", HIW"史"NOR WHT"詩");
 
 	if( this_object()->set_shadow_ob() ) return;
 
-	set("long", "一個巨大神木上的碎片。」\n");
+	set("long", "一個巨大神木上的碎片。\n");
 	set("unit", "株");
 	set("mass", 0);
 	set("value", 100000000);
 	set("flag/no_amount", 1);
 	set(BUFF_CHA, 65);
 	set(BUFF_SOCIAL_EXP_BONUS, 50);
-	set("buff/status", HIY"參"NOR YEL"神"NOR HIY"木"NOR);
+	set(BUFF_COMBAT_EXP_BONUS, 50);
+	set("buff/status", HIY"御"NOR YEL"神"NOR HIY"木"NOR);
 	
 	::setup_equipment(EQ_BROOCH, HIG"胸"NOR GRN"針"NOR);
 }

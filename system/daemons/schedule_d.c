@@ -99,7 +99,7 @@ void heart_beat()
 }
 void create()
 {
-	set_heart_beat(10);
+	set_heart_beat(1);
 
 	foreach(int id, mixed event in events)
 	{

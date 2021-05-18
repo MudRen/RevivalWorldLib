@@ -77,9 +77,9 @@ HELP + list + @HELP
 [0m¡@¡D´ºÆ[¡G
 [0m¡@¡@¡@10. ¸ô¿O  [33;1m£F[0m¡Ð¥i¦b´c¦H¤Ñ®ð¤¤´£°ª©P³òªº¯à¨£«×¡A¤@®æ¡C
 [0m      11. ¤ô¦À  [36;1m¡ó[0m¡Ð¥i¥Î¨Ó±Ä¶°([33;1mcollect[0m) ¤ô¸ê·½¡A¤@®æ¡C
-[0m      12. ²D«F  [1m¡¸[0m¡Ð¥Î¨Ó¥ð®§([33;1msit[0m) ¡A®ÄªG³Ì¨Î¡A¤@®æ¡C
-[0m      13. ¤j¾ð  [32;1m¢D[0m¡Ð¥Î¨Ó¥ð®§([33;1msit[0m) ¡A®ÄªG´¶³q¡A¤@®æ¡C
-[0m      14. ¯ó¥Ö  [32m£s[37m¡Ð¥Î¨Ó¥ð®§([33;1msit[0m) ¡A®ÄªG²¤®t¡A¤@®æ¡C
+[0m      12. ²D«F  [1m¡¸[0m¡Ð¥Î¨Ó¥ð®§([33;1msit[0m) ¡A¥i«ì´_Åé¤O¡A¤@®æ¡C
+[0m      13. ¤j¾ð  [32;1m¢D[0m¡Ð¥Î¨Ó¥ð®§([33;1msit[0m) ¡A¥i«ì´_¥Í©R¡A¤@®æ¡C
+[0m      14. ¯ó¥Ö  [32m£s[37m¡Ð¥Î¨Ó¥ð®§([33;1msit[0m) ¡A¥i«ì´_ºë¯«¡A¤@®æ¡C
 [0m      15. ÀJ¹³  [35;1m¢Ç[0m¡Ð¨ã¦³¯«©_Å]¤O¡A¥i«O¯§¥|©Pªº¹A¥Ð¡A¨Ï¤Ñ¨a©Ò³y¦¨ªº·l¥¢­°¨ì³Ì
 [0m                  §C¡C
 [0m
@@ -144,7 +144,6 @@ void select_icon(object me, string arg);
 
 void do_build(object me, object material, array building_info, int type)
 {
-
 	int str_cost;
 	int num;
 	string mtr_name;
@@ -152,8 +151,7 @@ void do_build(object me, object material, array building_info, int type)
 	mapping mtr_ingredient;
 	array loc = query_temp("location", me);
 
-
-	if( CITY_D->query_coor_data(loc, TYPE) )
+	if( MAP_D->query_coor_data(loc, TYPE) )
 	{
 		tell(me, "³o¶ô¤g¦a¤W¤w¸g¦³«Øª«¤F¡AµLªk¦A¦¸«Ø³y¡A°£«D"+pnoun(2, me)+"¥ý©î°£±¼²{¦³ªº«Øª«¡C\n");
 		tell(me, "\n¿é¤J¼Æ¦r¿ï¶µ»P¨Ï¥Îªº§÷®Æ(¨Ò 2a by stone)¡A"HIW"ls"NOR" Åã¥Ü¦Cªí¡G\n");
@@ -171,11 +169,11 @@ void do_build(object me, object material, array building_info, int type)
 				return me->finish_input();
 			}
 			
-			CITY_D->set_coor_data(loc, TYPE, type);
-			CITY_D->set_coor_icon(loc, building_info[ICON_ELEM]);
+			MAP_D->set_coor_data(loc, TYPE, type);
+			MAP_D->set_coor_icon(loc, building_info[ICON_ELEM]);
 		
 			// §R°£ material ¸ê°T
-			CITY_D->delete_coor_data(loc, "material");
+			MAP_D->delete_coor_data(loc, "material");
 
 			tell(me, "¯Ó¶O¤F 300 ÂIÅé¤O¡A"HIG"["+me->query_stamina_cur()+"/"+me->query_stamina_max()+"]"NOR"¡C\n");
 			msg("$ME¦¨¥\¦a¦b³o¶ô¤g¦a¤W«Ø³y¤F¡u"+building_info[NAME_ELEM]+" "+building_info[ICON_ELEM]+"¡v¡C\n",me,0,1);
@@ -188,7 +186,7 @@ void do_build(object me, object material, array building_info, int type)
 		else
 		{
 			foreach( mtr_name, num in building_info[MTR_ELEM] )
-				mtr_exerted[mtr_name] = CITY_D->query_coor_data(loc, "material/"+mtr_name);
+				mtr_exerted[mtr_name] = MAP_D->query_coor_data(loc, "material/"+mtr_name);
 	
 			tell(me, "§÷®Æ¤£¨¬¡A«Ø³y¡u"+building_info[NAME_ELEM]+" "+building_info[ICON_ELEM]+"¡v»Ý­n"+MATERIAL_D->material_required_info(building_info[MTR_ELEM])+"¡A¥Ø«e§¹¦¨«× "+MATERIAL_D->material_percentage(building_info[MTR_ELEM], mtr_exerted)+"¡C\n\n");
 			return me->finish_input();
@@ -381,28 +379,35 @@ void clean_build(object me)
 {
 	array loc = query_temp("location", me);
 	
-	if( !CITY_D->query_coor_data(loc, TYPE) )
+	if( !MAP_D->query_coor_data(loc, TYPE) )
 	{
 		tell(me, "³o¶ô¤g¦a¤W¨Ã¨S¦³¥ô¦ó«Ø¿v¡A¤£»Ý­n©î°£¡C\n");
 		
 		return me->finish_input();
 	}
 
+	if( MAP_D->query_coor_data(loc, TYPE) == BRIDGE )
+	{
+		tell(me, "½Ð¥Î buildbridge ¨Ó¶i¦æ©î¾ô°Ê§@¡C\n");
+		
+		return me->finish_input();
+	}
+	
 	if( !me->cost_stamina(300) )
 	{
 		tell(me, pnoun(2, me)+"¤w¸g®ð³Ý¼N¼N¡A¨S¦³Åé¤O©î°£³o¨ÇªF¦è¤F¡C\n");
 		return me->finish_input();
 	}
 
-	msg("$ME±N«Ø³y¦nªº¡u"+CITY_D->query_coor_icon(loc)+"¡v©î°£±¼¤F¡C\n", me, 0, 1);
+	msg("$ME±N«Ø³y¦nªº¡u"+MAP_D->query_coor_icon(loc)+"¡v©î°£±¼¤F¡C\n", me, 0, 1);
 	tell(me, "¯Ó¶O¤F 300 ÂIÅé¤O¡A"HIG"["+me->query_stamina_cur()+"/"+me->query_stamina_max()+"]"NOR"¡C\n");
 
-	CITY_D->delete_coor_data(loc, "growth");
-	CITY_D->delete_coor_data(loc, "status");
-	CITY_D->delete_coor_data(loc, TYPE);
-	CITY_D->set_coor_icon(loc, BWHT"¡¼"NOR);
+	MAP_D->delete_coor_data(loc, "growth");
+	MAP_D->delete_coor_data(loc, "status");
+	MAP_D->delete_coor_data(loc, TYPE);
+	MAP_D->set_coor_icon(loc, "¡D");
 	
-	ESTATE_D->set_land_estate(CITY_D->query_coor_data(loc, "owner"), loc);
+	ESTATE_D->set_land_estate(MAP_D->query_coor_data(loc, "owner"), loc);
 	
 	tell(me, "\n¿é¤J¼Æ¦r¿ï¶µ»P¨Ï¥Îªº§÷®Æ(¨Ò 2a by stone)¡A"HIW"ls"NOR" Åã¥Ü¦Cªí¡G\n");
 	input_to((: select_icon, me  :));
@@ -451,43 +456,46 @@ void select_icon(object me, string arg)
 		return me->finish_input();
 	}
 
-	owner = CITY_D->query_coor_data(loc, "owner");
-	
-	if( !owner ) 
+	if( CITY_D->is_city_location(loc) )
 	{
-		tell(me, "³o¬O¤@¶ô¤£ÄÝ©ó¥ô¦ó¤Hªº¤g¦a¡A"+pnoun(2, me)+"¥²¶·¥ý¶R¤U³o¶ô¦a¤~¯à¦b¤W­±«Ø³y«Ø¿vª«¡C\n");
-		return me->finish_input();
-	}
-
-	if( belong_to_government(owner) )
-	{
-		if( !CITY_D->is_mayor_or_officer(loc[CITY], me) )
+		owner = CITY_D->query_coor_data(loc, "owner");
+		
+		if( !owner ) 
 		{
-			tell(me, "³o¶ô¦a¬O¥«¬F©²¥Î¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
+			tell(me, "³o¬O¤@¶ô¤£ÄÝ©ó¥ô¦ó¤Hªº¤g¦a¡A"+pnoun(2, me)+"¥²¶·¥ý¶R¤U³o¶ô¦a¤~¯à¦b¤W­±«Ø³y«Ø¿vª«¡C\n");
+			return me->finish_input();
+		}
+	
+		if( belong_to_government(owner) )
+		{
+			if( !CITY_D->is_mayor_or_officer(loc[CITY], me) )
+			{
+				tell(me, "³o¶ô¦a¬O¥«¬F©²¥Î¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
+				return me->finish_input();
+			}
+		}
+		else if( belong_to_enterprise(owner) )
+		{
+			if( owner[11..] != query("enterprise", me) )
+			{
+				tell(me, pnoun(2, me)+"¤£¬O"+ENTERPRISE_D->query_enterprise_color_id(query("enterprise", me))+"¥ø·~¶°¹Îªº¦¨­û¡AµLªk¦b¦¹«Ø³y¥ô¦óªF¦è¡C\n");
+				return me->finish_input();
+			}
+		}
+		else if( owner != me->query_id(1) && !ENTERPRISE_D->same_enterprise(owner, me->query_id(1)) ) 
+		{
+			tell(me, "³o¶ô¦a¬O "+capitalize(owner)+" ªº¨p¤H¤g¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
 			return me->finish_input();
 		}
 	}
-	else if( belong_to_enterprise(owner) )
-	{
-		if( owner[11..] != query("enterprise", me) )
-		{
-			tell(me, pnoun(2, me)+"¤£¬O"+ENTERPRISE_D->query_enterprise_color_id(query("enterprise", me))+"¥ø·~¶°¹Îªº¦¨­û¡AµLªk¦b¦¹«Ø³y¥ô¦óªF¦è¡C\n");
-			return me->finish_input();
-		}
-	}
-	else if( owner != me->query_id(1) && !ENTERPRISE_D->same_enterprise(owner, me->query_id(1)) ) 
-	{
-		tell(me, "³o¶ô¦a¬O "+capitalize(owner)+" ªº¨p¤H¤g¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
-		return me->finish_input();
+
+	foreach( string coor, mixed data in MAP_D->query_coor_range(loc, ROOM, 1) )
+        if( data )
+        {
+                tell(me, pnoun(2, me)+"¥²¶·¥ýÃö³¬³o´É«Ø¿vª«¤~¯à­«·s«Ø³y¡C\n");
+                return me->finish_input();
 	}
 
-	foreach( string coor, mixed data in CITY_D->query_coor_range(loc, ROOM, 1) )
-                if( data )
-                {
-                        tell(me, pnoun(2, me)+"¥²¶·¥ýÃö³¬³o´É«Ø¿vª«¤~¯à­«·s«Ø³y¡C\n");
-                        return me->finish_input();
-		}
-	
 	if( ESTATE_D->query_loc_estate(loc) && ESTATE_D->query_loc_estate(loc)["type"] != "land" )
 	{
 		tell(me, pnoun(2, me)+"¥²¶·¥ýÃö³¬³o´É«Ø¿vª«¤~¯à­«·s«Ø³y¡C\n");
@@ -507,7 +515,7 @@ void select_icon(object me, string arg)
 		case "l":
 		case "look":
 		{
-			tell(me,MAP_D->show_map(query_temp("location", me), 0) || "¦a¹Ï¨t²Î¿ù»~¡A½Ð³qª¾§Å®v³B²z¡C\n");
+			tell(me, MAP_D->show_map(loc, 0) || "¦a¹Ï¨t²Î¿ù»~¡A½Ð³qª¾§Å®v³B²z¡C\n");
 			tell(me, "\n¿é¤J¼Æ¦r¿ï¶µ»P¨Ï¥Îªº§÷®Æ(¨Ò 2a by stone)¡A"HIW"ls"NOR" Åã¥Ü¦Cªí¡G\n");
 			input_to((: select_icon, me :));
 			return;
@@ -522,6 +530,11 @@ void select_icon(object me, string arg)
 		case "er":
 		case "erase":
 		{
+			if( AREA_D->is_area_location(loc) )
+			{
+				if( !wizardp(me) || AREA_D->query_coor_data(loc, TYPE) )
+					return tell(me, pnoun(2, me)+"µLªk²M°£³o¸Ìªº¦a§Î©Î«Ø¿vª«¡C\n");
+			}
 			evaluate((: clean_build, me :));
 			return;
 		}
@@ -543,7 +556,7 @@ void select_icon(object me, string arg)
 				return;
 			}
 				
-			CITY_D->move(me, arg);
+			MAP_D->move(me, arg);
 		} 
 		
 		tell(me, "\n¿é¤J¼Æ¦r¿ï¶µ»P¨Ï¥Îªº§÷®Æ(¨Ò 2a by stone)¡A"HIW"ls"NOR" Åã¥Ü¦Cªí¡G\n");
@@ -551,6 +564,12 @@ void select_icon(object me, string arg)
 		return;
 	}
 	
+	if( AREA_D->is_area_location(loc) )
+	{
+		if( !wizardp(me) || AREA_D->query_coor_data(loc, TYPE) )
+			return tell(me, pnoun(2, me)+"µLªk¦b³o¸Ì«Ø³y«Ø¿vª«¡C\n");
+	}
+			
 	// ¸ÑªR§÷®Æª«¥ó
 	if( sscanf(arg, "%s by %s", arg, material_id) == 2 )
 	{
@@ -600,26 +619,43 @@ private void do_command(object me, string arg)
 	string owner;
 	array loc = query_temp("location", me);
 
-	if( !arrayp(loc) || !CITY_D->is_city_location(loc) )
-		return tell(me, pnoun(2, me)+"¥u¯à¦b«°¥«¦a¹Ï¤¤«Ø³y«Ø¿vª«¡C\n");
+	if( !arrayp(loc) )
+		return tell(me, pnoun(2, me)+"¥u¯à¦b¦a¹Ï¤¤«Ø³y«Ø¿vª«¡C\n");
 
-	owner = CITY_D->query_coor_data(loc, "owner");
+	//¦£¸L¤¤¤£¯à¤U«ü¥O
+	if( me->is_delaying() )
+	{
+		tell(me, me->query_delay_msg());
+		return me->show_prompt();
+	}
+
+	if( CITY_D->is_city_location(loc) )
+	{
+		owner = CITY_D->query_coor_data(loc, "owner");
 	
-	if( !owner ) 
-		return tell(me, "³o¬O¤@¶ô¤£ÄÝ©ó¥ô¦ó¤Hªº¤g¦a¡A"+pnoun(2, me)+"¥²¶·¥ý¶R¤U³o¶ô¦a¤~¯à¦b¤W­±«Ø³y«Ø¿vª«¡C\n");
-
-	if( belong_to_government(owner) )
-	{
-		if( !CITY_D->is_mayor_or_officer(loc[CITY], me) )
-			return tell(me, "³o¶ô¦a¬O¥«¬F©²¥Î¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
+		if( !owner ) 
+			return tell(me, "³o¬O¤@¶ô¤£ÄÝ©ó¥ô¦ó¤Hªº¤g¦a¡A"+pnoun(2, me)+"¥²¶·¥ý¶R¤U³o¶ô¦a¤~¯à¦b¤W­±«Ø³y«Ø¿vª«¡C\n");
+	
+		if( belong_to_government(owner) )
+		{
+			if( !CITY_D->is_mayor_or_officer(loc[CITY], me) )
+				return tell(me, "³o¶ô¦a¬O¥«¬F©²¥Î¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
+		}
+		else if( belong_to_enterprise(owner) )
+		{
+			if( owner[11..] != query("enterprise", me) )
+				return tell(me, pnoun(2, me)+"¤£¬O"+ENTERPRISE_D->query_enterprise_color_id(query("enterprise", me))+"¥ø·~¶°¹Îªº¦¨­û¡AµLªk¦b¦¹«Ø³y¥ô¦óªF¦è¡C\n");
+		}
+		else if( owner != me->query_id(1) && !ENTERPRISE_D->same_enterprise(owner, me->query_id(1)) ) 
+			return tell(me, "³o¶ô¦a¬O "+capitalize(owner)+" ªº¨p¤H¤g¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
 	}
-	else if( belong_to_enterprise(owner) )
+	else if( AREA_D->is_area_location(loc) )
 	{
-		if( owner[11..] != query("enterprise", me) )
-			return tell(me, pnoun(2, me)+"¤£¬O"+ENTERPRISE_D->query_enterprise_color_id(query("enterprise", me))+"¥ø·~¶°¹Îªº¦¨­û¡AµLªk¦b¦¹«Ø³y¥ô¦óªF¦è¡C\n");
+		if( AREA_D->query_coor_data(loc, TYPE) )
+			return tell(me, pnoun(2, me)+"µLªk¦b¦¹¦a«Ø³y«Ø¿vª«¡C\n");
 	}
-	else if( owner != me->query_id(1) && !ENTERPRISE_D->same_enterprise(owner, me->query_id(1)) ) 
-		return tell(me, "³o¶ô¦a¬O "+capitalize(owner)+" ªº¨p¤H¤g¦a¡A"+pnoun(2, me)+"¨S¦³Åv§Q¦b³o¤W­±«Ø³y¥ô¦óªF¦è¡C\n");
+	else
+		return tell(me, pnoun(2, me)+"µLªk¦b¦¹¦a«Ø³y«Ø¿vª«¡C\n");
 
 	if( arg )
 		return select_icon(me, arg);

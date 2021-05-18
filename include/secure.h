@@ -22,8 +22,7 @@
 // §Å®vµ¥¯Å
 #define STANDARD        (1 << 0)
 #define PLAYER          (1 << 1)
-#define GUEST           (1 << 2)
-#define WIZARD          (1 << 3)
-#define ADVISOR         (1 << 5)
-#define ADMIN           (1 << 6)
-#define ROOT            (1 << 7)
+#define WIZARD          (1 << 2)
+#define ADVISOR         (1 << 3)
+#define ADMIN           (1 << 4)
+

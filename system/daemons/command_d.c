@@ -51,6 +51,7 @@ private nosave mapping default_aliases = ([
     "hp":	"score s",
     "est":	"estate",
     "man":	"help",
+    "money": "score",
     "reply":	"tell -r",
 ]);
 
@@ -72,7 +73,6 @@ private nosave mapping standard_commands_path =
 ([
 STANDARD	:	"std/npc",
 PLAYER		:	"std/ppl",
-GUEST		:	"std/guest",
 WIZARD		:	"std/wiz",
 ADVISOR		:	"std/adv",
 ADMIN		:	"std/adm",
@@ -90,7 +90,6 @@ private nomask void reset_commands()
 	
 	std_commands[STANDARD] 	= allocate_mapping(0);
 	std_commands[PLAYER] 	= allocate_mapping(0);
-	std_commands[GUEST] 	= allocate_mapping(0);
 	std_commands[WIZARD] 	= allocate_mapping(0);
 	std_commands[ADVISOR] 	= allocate_mapping(0);
 	std_commands[ADMIN] 	= allocate_mapping(0);

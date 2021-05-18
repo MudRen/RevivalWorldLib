@@ -11,16 +11,16 @@
  -----------------------------------------
  */
 
+#include <feature.h>
+inherit ROOM_ACTION_MOD;
+
 #include <ansi.h>
 #include <map.h>
-#include <feature.h>
 #include <message.h>
 #include <daemon.h>
 #include <npc.h>
 #include <skill.h>
 #include <condition.h>
-
-inherit ROOM_ACTION_MOD;
 
 #define CLASS_UNIT	10000
 #define MSGTITLE	HIM"上課-"NOR
@@ -29,6 +29,7 @@ inherit ROOM_ACTION_MOD;
 void do_list(object me, string arg)
 {
 	string skill_type;
+	int type;
 	string list="";
 	object skillob, env = environment(me);
 	string *skills = SKILL_D->query_sorted_skills();
@@ -42,7 +43,7 @@ void do_list(object me, string arg)
 		list += "目前沒有開設任何課程\n";
 
 	list += WHT"──────────────────────────────────────────\n"NOR;
-	list += "全部課程資料                    學習難度 上限 玩家 員工 課程簡介\n";
+	list += "全部課程資料                 學習難度 上限 玩家 員工 經驗 文明 課程簡介\n";
 	
 	foreach(string skill in skills)
 	{
@@ -63,14 +64,16 @@ void do_list(object me, string arg)
 			list += "- "+skill_type+" -\n";
 			skill_type = 0;
 		}
+		type = query("type", skillob);
 
-		list += sprintf("%-36s"WHT"%4.1f"HIY" %4d "NOR" %2s   %2s  %s"NOR"\n"NOR
+		list += sprintf("%-33s"WHT"%4.1f"HIY" %4d "NOR" %2s   %2s  %2s %2s %s"NOR"\n"NOR
 			    ,skillob->query_idname()
 			    ,1/(skillob->exp_multiple(me))
 			    ,skillob->max_level(me)
-
 			    ,skillob->allowable_learn() & PLAYER_SKILL ? ( skillob->allowable_learn(me) ? HIW : HIR)+"○"NOR : WHT"╳"NOR
 			    ,skillob->allowable_learn() & NPC_SKILL ? HIW"○"NOR : WHT"╳"NOR
+			    ,type==1?HIG"社會"NOR:type==2?HIR"戰鬥"NOR:type==3?HIW"綜合"NOR:HIY"錯誤"NOR
+			    ,CITY_D->query_age_name(query("age", skillob), 1)
 			    ,skillob->query_skill_note()||"無說明");
 	}
 	list += WHT"──────────────────────────────────────────\n"NOR;
@@ -85,6 +88,9 @@ void do_setup(object me, string arg)
 {
 	object env = environment(me);
 	string course = query("course", env);
+	string city = env->query_city();
+	object skillob;
+	int age;
 
 	if( query("owner", env)[11..] != query("enterprise", me) )
 		return tell(me, pnoun(2, me)+"並不是本企業的成員。\n");
@@ -102,9 +108,14 @@ void do_setup(object me, string arg)
 			return;
 		}
 		
-		if( !SKILL_D->skill_exists(course) || (SKILL(course))->self_learning() )
-			return tell(me, "並沒有 "+course+" 這種課程。\n");
+		if( !SKILL_D->skill_exists(course) || !objectp(skillob = load_object(SKILL(course))) || skillob->self_learning() )
+			return tell(me, "無法舉辦 "+course+" 這種課程。\n");
 		
+		age = query("age", skillob);
+
+		if( age > CITY_D->query_city_info(city, "age") )
+			return tell(me, "必須先將城市文明提升至「"+CITY_D->query_age_name(age)+"」才能舉辦此課程。\n");
+
 		msg("$ME將這間教室的課程設定為「"+(SKILL(course))->query_idname()+"」。\n", me, 0, 1);
 		set("course", course, env);
 		env->save();
@@ -114,7 +125,7 @@ void do_setup(object me, string arg)
 }
 
 
-void confirm_learn(object me, string skill, int socialexp, string moneyunit, int is_member, string input)
+void confirm_learn(object me, string skill, int exp, string exp_type, string exp_type_name, string input)
 {
 	int bonus;
 	string msg = "";
@@ -125,17 +136,17 @@ void confirm_learn(object me, string skill, int socialexp, string moneyunit, int
 		{
 			case 0:
 			{
-				bonus = socialexp/100;
+				bonus = exp/100;
 				msg = MSGTITLE"老師拿著粉筆在黑板上敲寫著複雜的數學公式...。\n";
-				msg += MSGTITLE HIC"$ME減少耗費 1% 的社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 1% 的"+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				
 				break;
 			}
 			case 1:
 			{
-				bonus = socialexp/50;
+				bonus = exp/50;
 				msg = MSGTITLE"老師的腳突然從講臺上踩空狠狠地扭了一下，卻假裝什麼事也沒發生...。\n";
-				msg += MSGTITLE HIC"$ME減少耗費 2% 的社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 2% 的"+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				
 				break;
 			}
@@ -146,10 +157,10 @@ void confirm_learn(object me, string skill, int socialexp, string moneyunit, int
 			}
 			case 3:
 			{
-				bonus = socialexp/33;
+				bonus = exp/33;
 				msg = MSGTITLE"老師冷冷地說道：「"+me->query_idname()+pnoun(2, me)+"來回答這個問題。」\n";
 				msg += MSGTITLE"$ME臉色一變馬上說道：「嘔...老師對不起，我身體不舒服想吐...。」\n";
-				msg += MSGTITLE HIC"$ME減少耗費 3% 社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 3% "+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				
 				break;
 			}
@@ -180,34 +191,34 @@ void confirm_learn(object me, string skill, int socialexp, string moneyunit, int
 			}
 			case 9:
 			{
-				bonus = socialexp/33;
+				bonus = exp/33;
 				msg = MSGTITLE"老師：「"+me->query_idname()+"我問"+pnoun(2, me)+"，1+1 等於多少？」\n";
 				msg += MSGTITLE"$ME緊張的臉色頓時輕鬆起來：「這題我終於會了，答案是 11 。\n";
-				msg += MSGTITLE HIC"$ME減少耗費 3% 社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 3% "+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				break;
 			}
 			case 10:
 			{
-				bonus = socialexp/20;
+				bonus = exp/20;
 				msg = MSGTITLE"$ME不屑地說：「吼，老師你這裡教錯了啦，到底懂不懂啊不要亂教。」\n";
 				msg += MSGTITLE"老師：「"+me->query_idname()+pnoun(2, me)+"不用想畢業了...」\n";
-				msg += MSGTITLE HIC"$ME減少耗費 5% 社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 5% "+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				break;
 			}
 			case 11:
 			{
-				bonus = socialexp/10;
+				bonus = exp/10;
 				msg = MSGTITLE"$ME淫蕩地說：「老師妳好美，聲音也好好聽喔。」\n";
 				msg += MSGTITLE"女老師害羞地說：「"+me->query_idname()+"同學千萬別這麼說，不過"+pnoun(2, me)+"這科成績將會得到滿分。」\n";
-				msg += MSGTITLE HIC"$ME減少耗費 10% 社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 10% "+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				break;
 			}
 			case 12:
 			{
-				bonus = socialexp/33;
+				bonus = exp/33;
 				msg = MSGTITLE"老師：「請"+me->query_idname()+"同學用'棉被'造一個句子。」\n";
 				msg += MSGTITLE"$ME：「前面那位女同學的衛生棉被我偷走了。」\n";
-				msg += MSGTITLE HIC"$ME減少耗費 3% 的社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 3% 的"+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				break;
 			}
 			case 13:
@@ -226,25 +237,41 @@ void confirm_learn(object me, string skill, int socialexp, string moneyunit, int
 			}
 			case 15:
 			{
-				bonus = socialexp/50;
+				bonus = exp/50;
 				msg = MSGTITLE"老師拿起被剪爛的點名簿罵道：「這是誰亂剪的！？」\n";
 				msg += MSGTITLE"$ME拿著剪刀指著隔壁善良的同學：「他。」\n";
 				msg += MSGTITLE"隔壁善良的同學還未來得及反應已經被老師格殺倒斃。\n";
-				msg += MSGTITLE HIC"$ME減少耗費 2% 的社會經驗值("+bonus+")！！！\n"NOR;
+				msg += MSGTITLE HIC"$ME減少耗費 2% 的"+exp_type_name+"經驗值("+bonus+")！！！\n"NOR;
 				break;
 			}
 		
 		}
 
-		if( !me->cost_social_exp(socialexp-bonus) )
+		if( exp_type == "combat" )
 		{
-			tell(me, pnoun(2, me)+"沒有足夠的社會經驗值來作這項學習。\n");
+			if( !me->cost_combat_exp(exp-bonus) )
+			{
+				tell(me, pnoun(2, me)+"沒有足夠的"+exp_type_name+"經驗值來作這項學習。\n");
+				return me->finish_input();
+			}
+		}
+		else if( exp_type == "social" )
+		{
+			if( !me->cost_social_exp(exp-bonus) )
+			{
+				tell(me, pnoun(2, me)+"沒有足夠的"+exp_type_name+"經驗值來作這項學習。\n");
+				return me->finish_input();
+			}
+		}
+		else
+		{
+			tell(me, "請輸入正確的指令格式。\n");	
 			return me->finish_input();
 		}
 
-		me->add_skill_exp(skill, socialexp);
+		me->add_skill_exp(skill, exp);
 
-		msg(msg+"$ME耗費 "HIG+(socialexp-bonus)+NOR" 點社會經驗值來學習「"HIY+(SKILL(skill))->query_idname()+NOR"」。\n", me, 0, 1);
+		msg(msg+"$ME耗費 "HIG+(exp-bonus)+NOR" 點"+exp_type_name+"經驗值來學習「"HIY+(SKILL(skill))->query_idname()+NOR"」。\n", me, 0, 1);
 		me->finish_input();
 	}
 	else
@@ -256,12 +283,12 @@ void confirm_learn(object me, string skill, int socialexp, string moneyunit, int
 
 void do_learn(object me, string arg)
 {
-	int is_member;
-	int socialexp;
+	mixed exp;
+	string exp_type;
+	string exp_type_name;
 	string skill;
 	object skillob;
 	object env = environment(me);
-	string moneyunit = env->query_money_unit();
 
 	skill = query("course", env);
 
@@ -273,31 +300,49 @@ void do_learn(object me, string arg)
 
 	skillob = load_object(SKILL(skill));
 
-	if( !arg || (!sscanf(arg, "%d", socialexp) && arg != "full") )
-		return tell(me, "請輸入正確的指令格式。\n");
+	if( !arg || sscanf(arg, "%s by %s", exp, exp_type) != 2  )
+		return tell(me, "請輸入正確的指令格式(help learn)。\n");
 
-	if( arg == "full" )
+	if( exp_type != "combat" && exp_type != "social" )
+		return tell(me, "經驗值種類請選擇社會經驗值(social)或戰鬥經驗值(combat)。\n");
+
+	if( exp_type == "combat" )
 	{
-		socialexp = to_int((skillob->level_exp(skillob->max_level(me)) - me->query_skill_exp(skill))/skillob->exp_multiple(me));
+		if( !(query("type", skillob) & COMBAT_SKILL) )
+			return tell(me, "這項技能無法使用戰鬥經驗值學習。\n");
+		
+		exp_type_name = "戰鬥";
+	}
+	else if( exp_type == "social" )
+	{
+		if( !(query("type", skillob) & SOCIAL_SKILL) )
+			return tell(me, "這項技能無法使用社會經驗值學習。\n");
 
-		if( socialexp < 1 )
+		exp_type_name = "社會";
+	}
+
+	if( exp == "full" )
+	{
+		exp = to_int((skillob->level_exp(skillob->max_level(me)) - me->query_skill_exp(skill))/skillob->exp_multiple(me));
+
+		if( exp < 1 )
 			return tell(me, pnoun(2, me)+"的「"HIY+skillob->query_idname()+NOR"」技能等級已經到達最大值。\n");
 	}
 	
-	if( socialexp < 1 || socialexp > 100000000 )
-		return tell(me, "耗費的社會經驗值必須介於 1 至 100,000,000 之間("+socialexp+")。\n");
+	exp = to_int(exp);
+	
+	if( exp < 1 || exp > 100000000 )
+		return tell(me, "耗費的"+exp_type_name+"經驗值必須介於 1 至 100,000,000 之間("+exp+")。\n");
 
 	if( !skillob->allowable_learn(me) )
 		return tell(me, skillob->query_idname()+"對"+pnoun(2, me)+"而言太過艱深。\n");
-		
+
 	if( me->query_skill_level(skill) >= skillob->max_level(me) )
 		return tell(me, pnoun(2, me)+"的"+skillob->query_idname()+"已經達到最高等級了。\n");
-
-	is_member = query("owner", env)[11..] == query("enterprise", me);
 	
-	tell(me, pnoun(2, me)+"準備耗費 "HIG+NUMBER_D->number_symbol(socialexp)+NOR" 點社會經驗值來學習「"HIY+skillob->query_idname()+NOR"」。\n是否確定要學習(Yes/No)？\n");	
+	tell(me, pnoun(2, me)+"準備耗費 "HIG+NUMBER_D->number_symbol(exp)+NOR" 點"+exp_type_name+"經驗值來學習「"HIY+skillob->query_idname()+NOR"」。\n是否確定要學習(Yes/No)？\n");	
 
-	input_to( (: confirm_learn, me, skill, socialexp, moneyunit, is_member :) );
+	input_to( (: confirm_learn, me, skill, exp, exp_type, exp_type_name :) );
 }
 
 
@@ -363,9 +408,13 @@ HELP,
 "learn":
 @HELP
 學習指令
-  learn full		- 自動計算學習到最高等級所需的社會經驗值
-  learn 20000		- 耗費 20,000 點的社會經驗值來學習這間教室所開設的課程
-                          學費每單位以 10,000 社會經驗來計算
+  learn full by '經驗值種類'	- 自動計算學習到最高等級所需的經驗值
+  learn 2000 by '經驗值種類'	- 耗費 2,000 點的經驗值來學習這間教室所開設的課程
+  
+  經驗值種類有兩種：
+  social			- 社會經驗值
+  combat			- 戰鬥經驗值
+ 
 HELP,
 			]),
 
@@ -400,7 +449,7 @@ nosave array building_info = ({
 	,AGRICULTURE_REGION
 
 	// 開張儀式費用
-	,"20000000"
+	,20000000
 	
 	// 建築物關閉測試標記
 	,0
@@ -409,7 +458,7 @@ nosave array building_info = ({
 	,0
 	
 	// 最高可加蓋樓層
-	,3
+	,6
 	
 	// 最大相同建築物數量(0 代表不限制)
 	,0

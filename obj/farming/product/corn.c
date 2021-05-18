@@ -22,7 +22,7 @@ void create()
 	if( this_object()->set_shadow_ob() ) return;
 	
 	set("long","具有香濃口味的五穀食品，又稱為番麥、玉蜀黍、御麥。\n");
-	set("unit", "袋");
-	set("mass", 800);
-	set("value", 400);
+	set("unit", "個");
+	set("mass", 200);
+	set("value", 100);
 }

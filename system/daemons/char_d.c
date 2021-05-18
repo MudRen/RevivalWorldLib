@@ -15,84 +15,65 @@
 #include <daemon.h>
 #include <gender.h>
 
+mapping DEFAULT_ATTRIBUTION = 
+([
+	"age"			: 15,
+	"attr/str"		: 10,
+	"attr/phy"		: 10,
+	"attr/int"		: 10,
+	"attr/agi"		: 10,
+	"attr/cha"		: 10,
+	"abi/stamina/max"	: 500,
+	"abi/stamina/cur"	: 500,
+	"abi/health/max"	: 500,
+	"abi/health/cur"	: 500,
+	"abi/energy/max"	: 500,
+	"abi/energy/cur"	: 500,
+	"exp/social/tot"	: 0,
+	"exp/social/cur"	: 0,
+	"exp/combat/tot"	: 0,
+	"exp/combat/cur"	: 0,
+	"stat/drink/max"	: 100,
+	"stat/drink/cur"	: 0,
+	"stat/food/max"		: 100,
+	"stat/food/cur"		: 0
+]);
+
 void create_char(object user, int gender)
 {
 	if( previous_object() != find_object(PPL_LOGIN_D) ) return;
 
-	// 初始年齡
-	set("age", 15, user);
-	
 	// 性別
 	set("gender", gender, user);
 	
-	// 五大屬性
-	set("attr/str", 10, user);
-	set("attr/phy", 10, user);
-	set("attr/int", 10, user);
-	set("attr/agi", 10, user);
-	set("attr/cha", 10, user);
-	
-	// 各項能力值
-	set("abi/stamina/max", 500, user);
-	set("abi/stamina/cur", 500, user);
-	set("abi/health/max", 100, user);
-	set("abi/health/cur", 100, user);
-	set("abi/energy/max", 100, user);
-	set("abi/energy/cur", 100, user);
-	
-	// 各項經驗值
-	set("exp/social/cur", 0, user);
-	set("exp/social/tot", 0, user);
-	
-	// 狀態值
-	set("stat/water/max", 100, user);
-	set("stat/water/cur", 0, user);
-	set("stat/food/max", 100, user);
-	set("stat/food/cur", 0, user);
+	foreach(string attr, int value in DEFAULT_ATTRIBUTION)
+	{
+		if( !query(attr, user) )
+			set(attr, value, user);
+	}
 	
 	set("createtime", time(), user);
 
-	/* 設定標準頻道 */
+	// 設定標準頻道
 	set("channels", CHANNEL_D->query_default_channel(user->query_id(1)), user);
 
+	// 標準暫存訊息
+	set("msg/chat", 1, user);
+	set("msg/rumor", 1, user);
+	set("msg/tell", 1, user);
+	set("msg/say", 1, user);
+	set("msg/emotion", 1, user);
 }
 
 void create_npc(object npc)
 {
 	if( !npc->is_npc() ) return;
 	
-	// 初始年齡
-	if( !query("age", npc) ) set("age", 15, npc);
-	
-	// 各項屬性
-	if( !query("attr", npc) )
+	foreach(string attr, int value in DEFAULT_ATTRIBUTION)
 	{
-		set("attr/str", 10, npc);
-		set("attr/phy", 10, npc);
-		set("attr/int", 10, npc);
-		set("attr/agi", 10, npc);
-		set("attr/cha", 10, npc);
+		if( !query(attr, npc) )
+			set(attr, value, npc);
 	}
-
-	// 各項能力值
-	if( !query("abi", npc) )
-	{
-		set("abi/stamina/max", 500, npc);
-		set("abi/stamina/cur", 500, npc);
-		set("abi/health/max", 100, npc);
-		set("abi/health/cur", 100, npc);
-		set("abi/energy/max", 100, npc);
-		set("abi/energy/cur", 100, npc);
-	}
-	// 各項經驗值
-	set("exp/social/cur", 0, npc);
-	set("exp/social/tot", 0, npc);
-
-	// 狀態值
-	set("stat/water/max", 100, npc);
-	set("stat/water/cur", 0, npc);
-	set("stat/food/max", 100, npc);
-	set("stat/food/cur", 0, npc);
 }
 
 int destruct_char(string id)
@@ -122,6 +103,15 @@ int destruct_char(string id)
 	
 	// 註銷企業成員
 	ENTERPRISE_D->unregister_member(id);
+
+	// 刪除期貨資料
+	FUTURES_D->remove_positions(id);
+	FUTURES_D->remove_orders(id);
+
+	// 刪除棒球球隊資料
+	BASEBALL_D->cancel_game(id);
+	BASEBALL_D->leave_season(id);
+	BASEBALL_D->delete_setup(id);
 
 	backup_path = user_deleted_path(id);
 	intact_path(backup_path);

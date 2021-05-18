@@ -54,6 +54,8 @@
 //
 #define DOOR		41	//ªù
 #define WALL		42	//Àð¾À
+#define RAMPART		43	//«°Àð
+#define TOWER		44	//½b¶ð/¬¶¶ð
 //
 #define FARM		61	//¹A¥Ð
 #define PASTURE		62	//ªª³õ

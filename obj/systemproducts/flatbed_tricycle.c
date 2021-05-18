@@ -23,7 +23,7 @@ inherit EQUIPMENT;
 
 void create()
 {
-	set_idname(NOR YEL"flatbed tricycle", NOR YEL"平板車");
+	set_idname("flatbed tricycle", "平板車");
 
 	if( this_object()->set_shadow_ob() ) return;
 	
@@ -36,7 +36,8 @@ void create()
 	set("badsell", 1);
 
 	set(BUFF_LOADING_MAX, 2000);
-	set(BUFF_MOVING_STAMINA, -250);
+	set(BUFF_SLOT_MAX, 10);
+	set(BUFF_MOVING_STAMINA, -50);
 	
-	::setup_equipment(EQ_MOUNT, HIG"拖"NOR GRN"車"NOR);
+	::setup_equipment(EQ_VEHICLE, HIC"拖"NOR CYN"車"NOR);
 }

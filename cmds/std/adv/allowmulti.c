@@ -27,6 +27,9 @@ private void command(object me, string arg)
 
 	if( !is_command() ) return;
 
+	if( me->query_id(1) != "clode" )
+		return tell(me, "目前不開放任何多重登入權限。\n");
+
 	if( !arg ) 
 		return tell(me, pnoun(2, me)+"打算設定哪些玩家可以同 IP 連線？\n");
 	

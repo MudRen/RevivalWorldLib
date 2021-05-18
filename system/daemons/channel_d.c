@@ -29,14 +29,19 @@
 #define ENT		(1<<14)	//企業
 #define STOCK		(1<<15) //股票
 #define AUC		(1<<16) //拍賣
+#define COMBAT		(1<<17)	//戰鬥
+#define GROUP		(1<<18) //隊伍
+#define RW		(1<<19) //Rwlibcomm
+#define SPORT		(1<<20)	//運動
 
 #include <ansi.h>
+#include <condition.h>
 #include <secure.h>
 #include <daemon.h>
 #include <message.h>
 #include <gender.h>
 
-#define DEFAULT_REFUSE  ( NCH | MUSIC | OTHER | AD )
+#define DEFAULT_REFUSE  ( NCH | MUSIC | OTHER | AD | RW )
 
 class channel_class
 {
@@ -58,7 +63,7 @@ private array info =
     ({
 	REPORT,	
 	"report",
-	GUEST, 
+	ADVISOR, 
 	RED "【"NOR HIR"回報"NOR RED"】"NOR, 	
 	([
 	    "time"		:	1, 
@@ -104,7 +109,7 @@ private array info =
     ({ 
 	WIZ, 
 	"wiz",
-	GUEST,
+	WIZARD,
 	YEL "【"HIY"巫師"NOR YEL"】"NOR,
 	([
 
@@ -113,7 +118,7 @@ private array info =
     ({ 
 	SYS,
 	"sys",
-	GUEST,
+	ADVISOR,
 	WHT "【"HIW"系統"NOR WHT"】"NOR,
 	([
 	    "time"		:	1,
@@ -123,7 +128,7 @@ private array info =
     ({ 
 	NCH,
 	"nch",
-	GUEST,
+	ADVISOR,
 	WHT "【"NOR YEL"監測"NOR WHT"】"NOR,
 	([
 	    "time"		:	1,
@@ -224,10 +229,53 @@ private array info =
 	    "notalk"	:	1,
 	]),
     }),
+    ({
+	COMBAT,
+	"combat",
+	PLAYER,
+	HIY "【"NOR YEL"戰"HIY"鬥" NOR YEL"】"NOR,
+	([
+	    "time"	:	1,
+	    "notalk"	:	1,
+	]),
+    }),
+    ({
+	RW,
+	"rw",
+	WIZARD,
+	WHT "【"NOR YEL"重生" NOR WHT"】"NOR,
+	([
+	    "intermud"	:	RWLIBCOMM_D,
+	    "channel"	:	"twiz",
+	]),
+    }),
+    ({ 
+	GROUP,
+	"gt",
+	PLAYER,
+	HIW"【"NOR WHT"%T"HIW"】"NOR,
+	([
+	    "subchannel":	1,
+	    "filter"	:	(: member_array($2, $1->query_group_members()||({})) != -1 || $1==$2 || wizardp($1) || (stringp($2) && $1->query_group_name()==$2) :),
+	    "newtitle"	:	(: stringp($1) ? $1 : ($1->query_group_name()||"無隊伍") :),
+	]),
+    }),
+     ({ 
+	SPORT,
+	"sport",
+	PLAYER,
+	WHT "【"NOR HIW"運"NOR WHT"動" NOR HIW"】"NOR,
+	([
+	    "time"	:	1,
+	    "notalk"	:	0,
+	]),
+    }),
 });
 
 nosave mapping replace_word = ([
-    "幹你娘":	"******",
+     "幹你娘" : "******",
+     "山。豬" : "三毛",
+     "山豬"   : "三毛",
 ]);
 
 int valid_channel(int level, string channel)
@@ -250,7 +298,7 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 
 	if( !channel || channel == "" || !me ) return;
 
-        if( query("ignore", me) )
+	if( query("invalid_channel", me) )
 		return tell( me, sprintf("您現在無法使用公用頻道, 請通知巫師。\n"));
 
 	// 檢查是否為表情指令
@@ -382,7 +430,8 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 
 		set_temp("lastchat/time", nowtime, me);
 	}
-	// 玩家無法用 News 頻道發言
+
+	// 玩家無法用 notalk 頻道發言
 	if( ch->extra["notalk"] )
 	{	
 		if( !wizardp(me) && interactive(me) )
@@ -397,9 +446,9 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 		if( emote ) intermud_msg = replace_string(msg, my_idname, my_idname[0..<2] + "@RW)");
 
 		if( channel == "gwiz" )
-			ch->extra["intermud"]->send_gwiz_msg(subchannel, ansi_capitalize(me->query_id()), me->query_name(), intermud_msg, emote);
+			ch->extra["intermud"]->send_gwiz_msg(subchannel, capitalize(me->query_id()), me->query_name(), intermud_msg, emote);
 		else
-		if((!internal_flag && subchannel!="") || ( internal_flag && member_array(subchannel,keys(channels))==-1 )) ch->extra["intermud"]->send_gchannel_msg(subchannel, ansi_capitalize(me->query_id()), me->query_name(), intermud_msg, emote);
+		if((!internal_flag && subchannel!="") || ( internal_flag && member_array(subchannel,keys(channels))==-1 )) ch->extra["intermud"]->send_gchannel_msg(subchannel, capitalize(me->query_id()), me->query_name(), intermud_msg, emote);
 		else 	subchannel="站內";
 	}
 
@@ -417,6 +466,9 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 	// replace string
 	foreach(string a , string b in replace_word)
 	send_msg=replace_string(send_msg,a,b);
+	
+	// replace ansi for %^RED%^
+	send_msg = replace_usa_ansi(send_msg);
 
 	// 使用者權限處理, 等級高等於說話者直接顯示名稱
 	if( ch->extra["wizlevel"] )
@@ -425,7 +477,7 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 		string level_send_msg;
 		object *level_fit_users = filter(fit_users, (: wizardp($1) && $(my_level) <= SECURE_D->level_num($1->query_id(1)) :));
 
-		if( random(50) || wizardp(me) )
+		if( (!me->in_condition(GIBAMAN) && random(50)) || wizardp(me) )
 			switch(query("env/rumor", me))
 		{
 		case 1:
@@ -480,21 +532,15 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 	{
 		string city, mycity = query("city", me);
 		string no_ansi_send_msg = remove_ansi(send_msg);
-		object *citizens;
 
 		foreach(city in CITY_D->query_cities())
 		{
-			if( city == mycity ) continue;
-			if( strsrch(no_ansi_send_msg, remove_ansi(CITY_D->query_city_name(city)||"")) != -1	&& strsrch(lower_case(no_ansi_send_msg), city) != -1 )
+			if( city == mycity || city == subchannel) continue;
+			if( strsrch(no_ansi_send_msg, remove_ansi(CITY_D->query_city_name(city)||"")) != -1 && strsrch(lower_case(no_ansi_send_msg), city) != -1 )
 			{
-				citizens = filter_array(users(), (: query("city", $1) == $(city) :));
-
-				if( sizeof(citizens) )
-				{
-					this_object()->channel_broadcast("city", "訊息送往"+CITY_D->query_city_idname(city)+"...", me);
-					this_object()->channel_broadcast("city", "「"+send_msg[0..<2]+"」", citizens[0]);
-					//this_object()->channel_broadcast("city", "坊間傳來消息，"+CITY_D->query_city_idname(mycity)+"的市民似乎正在討論著有關"+CITY_D->query_city_idname(city)+"的事情...", citizens[0]);
-				}
+				this_object()->channel_broadcast("city", "訊息送往"+CITY_D->query_city_idname(city)+"...", me);
+				this_object()->channel_broadcast("city", "「"+send_msg[0..<2]+"」", city);
+				//this_object()->channel_broadcast("city", "坊間傳來消息，"+CITY_D->query_city_idname(mycity)+"的市民似乎正在討論著有關"+CITY_D->query_city_idname(city)+"的事情...", citizens[0]);
 			}
 		}
 	}
@@ -503,18 +549,13 @@ varargs private void do_channel(object me, string channel, string msg, mixed raw
 
 	switch(channel)
 	{
-	case "god":
-		break;
-	case "chat":
-	case "city":
-	case "ent":
-	case "rumor":
-	case "twiz":
-	case "gwiz":
-	case "music":
-	case "wiz":
-		log_file("channel/"+channel, send_msg, -1);
-		break;
+		case "god":
+		case "ad":
+		case "nch":
+			break;
+		default:
+			log_file("channel/"+channel, send_msg, 10);
+			break;
 	}
 }
 

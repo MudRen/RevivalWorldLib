@@ -16,7 +16,6 @@
 #include <feature.h>
 #include <equipment.h>
 #include <buff.h>
-#include <weapon.h>
 #include <daemon.h>
 
 inherit STANDARD_OBJECT;
@@ -36,7 +35,6 @@ void create()
 	set("flag/no_amount", 1);
 	set(BUFF_STR, 5);
 	set(BUFF_STAMINA_REGEN, 5);
-	set("weapon_type", WEAPON_TYPE_SLASH);
 	set("buff/status", HIW"斷"NOR WHT"天"HIW"劍"NOR);
 	
 	::setup_equipment(EQ_HAND, HIY"單"NOR YEL"手"NOR);
@@ -53,7 +51,6 @@ void special_attack(object attacker, object defender)
 	if( !random(5) )
 	{
 		msg("$ME手上的"+this_object()->query_idname()+"突然發出一道白光射向天際並垂直下劈，造成$YOU的嚴重砍傷。\n", attacker, defender, 1);
-		COMBAT_D->damage_message(attacker, defender, damage);
-		defender->cost_health(damage);
+		COMBAT_D->cause_damage(attacker, defender, damage);
 	}
 }

@@ -38,7 +38,11 @@ private void do_command(object me, string arg)
 	}
 	else
 	{
-		arg = replace_string(arg, "#", "");
+		object target = find_player(arg);
+
+		if( objectp(target) && wizardp(target) && query("env/notify_finger", target) && !wizardp(me) )
+			tell(target, me->query_idname()+"正在查詢(finger)"+pnoun(2, target)+"的使用者資訊。\n");
+		
 		tell(me, FINGER_D->finger_user(arg));
 	}
 }

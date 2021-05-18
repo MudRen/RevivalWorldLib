@@ -29,20 +29,20 @@ HELP;
 
 #define OVERDAY		30
 
-nosave string *wiz_levels = ({ "admin", "advisor", "wizard", "guest" });
+nosave string *wiz_levels = ({ "admin", "advisor", "wizard" });
 
 private void do_command(object me, string arg)
 {
 	int online, now_time = time();
 	object user;
 	string color, str;
-	mapping final=allocate_mapping(5), num=allocate_mapping(0);
+	mapping final=allocate_mapping(3), num=allocate_mapping(0);
 	mapping wizards = SECURE_D->query_wizards();
 
 	final["admin"] = 	WHT"─ "HIW"Administrator 系統管理員"NOR WHT"  ─────────────────\n\n  "NOR;
         final["advisor"] = 	WHT"─ "HIW"Advisor 系統顧問"NOR WHT"  ─────────────────────\n\n  "NOR;
         final["wizard"] = 	WHT"─ "HIW"Wizard 巫師"NOR WHT"   ───────────────────────\n\n  "NOR;
-        final["guest"] = 	WHT"─ "HIW"Guest 特別來賓"NOR WHT"  ──────────────────────\n\n  "NOR;
+
 	if( wizardp(me) )
 	foreach( string id in sort_array(keys(wizards), 1) )
 	{

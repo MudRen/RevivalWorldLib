@@ -25,7 +25,7 @@ void create()
 	if( this_object()->set_shadow_ob() ) return;
 	
 	set("long","可用來釀酒或作為粗纖維食品。\n");
-	set("unit", "顆");
+	set("unit", "袋");
 	set("mass", 10);
 	set("value", 10);
 	set("badsell", 1);
@@ -45,13 +45,13 @@ void create()
 	       	//每單位種子或秧苗需要的原料數量
 	       	"material":
 	       	([
-	       		"/obj/materials/water":6,
+	       		"/obj/materials/water":7,
 	       	]),
 			
 	       	//收割產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/farming/product/barley":50,
+	       		"/obj/farming/product/barley":25,
 	       	]),
 
 		//成熟收割時的訊息
@@ -60,7 +60,7 @@ void create()
 		//種植此類產品所需要的技能與其等級
 		"skill":
 		([
-			"farming":10,
+			"farming":30,
 		]),
 
 		//成長時的訊息
@@ -69,8 +69,8 @@ void create()
 			5:	"麥田上小小的幼苗已經漸漸長大了。\n",
 			50:	"只見麥田一片綠意盎然，充滿了生氣。\n",
 			150:	"麥田上的大麥已經漸漸成熟了。\n",
-			300:	"只見一整片金黃色的大麥，已經不用再灌溉了，耐心等一陣子便可以收割。\n",
-			400:	"這片麥田上的大麥已經全部成熟了，終於可以收割了。\n",
+			350:	"只見一整片金黃色的大麥，已經不用再灌溉了，耐心等一陣子便可以收割。\n",
+			450:	"這片麥田上的大麥已經全部成熟了，終於可以收割了。\n",
 		]),
 	
 		// 天氣影響敘述

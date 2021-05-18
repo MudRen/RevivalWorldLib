@@ -33,7 +33,7 @@ HELP;
 #define BUILDING_WALL_TABLE	4
 #define BUILDING_ROOM_TABLE	5
 
-void sell_land(object me, string owner, array loc, mapping data, string moneyunit, string value, string enterprise, string arg)
+void sell_land(object me, string owner, array loc, mapping data, string moneyunit, int value, string enterprise, string arg)
 {
 	int percent;
 	mapping building_table = BUILDING_D->query_building_table();
@@ -50,8 +50,7 @@ void sell_land(object me, string owner, array loc, mapping data, string moneyuni
 	value = ESTATE_D->query_estate_value(loc);
 	
 	percent = SELL_PERCENT + me->query_skill_level("estaterebate")/2;
-
-	value = count(count(value, "*", percent), "/", 100);
+	value = value * percent / 100;
 
 	if( belong_to_enterprise(owner) )
 	{
@@ -73,6 +72,8 @@ void sell_land(object me, string owner, array loc, mapping data, string moneyuni
 	}
 	
 	ESTATE_D->remove_estate(loc);
+	
+	CITY_D->save_city(loc[CITY], loc[NUM]);
 	me->finish_input();
 }
 
@@ -80,9 +81,10 @@ private void do_command(object me, string arg)
 {
 	int percent;
 	mapping data;
-	string value, moneyunit, enterprise;
+	string moneyunit, enterprise;
 	array loc = query_temp("location", me);
 	object env = environment(me);
+	int value;
 	
 	if( !arg ) return tell(me, pnoun(2, me)+"稱芥ぐ或\n");
 
@@ -114,7 +116,6 @@ private void do_command(object me, string arg)
 		value = ESTATE_D->query_estate_value(loc);
 
 		percent = SELL_PERCENT + me->query_skill_level("estaterebate")/2;
-
 		tell(me, "硂矪┬玻基 "HIY+money(moneyunit, value)+NOR"璝Τ縱盢穦 "+percent+"% 基场扳"+pnoun(2, me)+"絋﹚璶芥(y/n)");
 		input_to( (: sell_land, me, data["owner"], loc, data, moneyunit, value, enterprise :) );
 	}

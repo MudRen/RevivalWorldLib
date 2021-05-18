@@ -20,13 +20,26 @@
 
 // 裝備部位定義			({ 代號, 	可裝備數量, 	可同時裝備人數,	是否為外部裝備,	裝備部位衝突 })
 
-#define EQ_FINGER		({ "finger", 	2, 		1, 		0,		({})		})
-#define EQ_MOUNT		({ "mount",	1,		1, 		0,		({})		})
-#define	EQ_BROOCH		({ "brooch",	1,		1, 		0,		({})		})
-#define EQ_EYE			({ "eye",	1,		1,		0,		({})		})
-#define EQ_NOSE			({ "nose",	1,		1,		0,		({})		})
-#define EQ_HAND			({ "hand",	2,		1,		0,		({ "twohand" }) })
-#define EQ_TWOHAND		({ "twohand",	1,		1,		0,		({ "hand" })	})
-#define EQ_BODY			({ "body",	1,		1,		0,		({})		})
-#define EQ_HEAD                 ({ "head",      1,              1,              0,              ({})            })
+#define EQ_FINGER		({ "finger", 		2, 		1, 		0,		({})		})	// 戒指
+#define EQ_NECKLACE		({ "necklace", 		1, 		1, 		0,		({})		})	// 項鍊
+#define EQ_MOUNT		({ "mount",		1,		1, 		0,		({})		})	// 座騎
+#define EQ_VEHICLE		({ "vehicle",		1,		1, 		0,		({})		})	// 車輛
+#define EQ_BOAT			({ "boat",		1,		1, 		0,		({})		})	// 船隻
+#define EQ_AIRCRAFT		({ "aircraft",		1,		1, 		0,		({})		})	// 飛行器
+#define	EQ_BROOCH		({ "brooch",		1,		1, 		0,		({})		})	// 胸針
+#define EQ_EYE			({ "eye",		1,		1,		0,		({})		})	// 眼睛
+#define EQ_NOSE			({ "nose",		1,		1,		0,		({})		})	// 鼻子
+#define EQ_ETC			({ "etc",		1,		1,		0,		({})		})	// 卡片
+#define EQ_HAND			({ "hand",		2,		1,		0,		({ "twohand" }) })	// 單手
+#define EQ_TWOHAND		({ "twohand",		1,		1,		0,		({ "hand" })	})	// 雙手
+#define EQ_BREASTPLATE		({ "breastplate",	1,		1,		0,		({})		})	// 胸甲
+#define EQ_HEAD                 ({ "head",		1,              1,              0,              ({})            })	// 頭盔
+#define EQ_LEGGINGS		({ "leggings",		1,		1,		0,		({})		})	// 腿甲
+#define EQ_GLOVES		({ "gloves",		1,		1,		0,		({})		})	// 手套
+#define EQ_BELT			({ "belt",		1,		1,		0,		({})		})	// 腰帶
+#define EQ_BOOTS		({ "boots",		1,		1,		0,		({})		})	// 鞋子
+#define EQ_BRACERS		({ "bracers",		1,		1,		0,		({})		})	// 護腕
+#define EQ_CLOAK		({ "cloak",		1,		1,		0,		({})		})	// 披風
+#define EQ_MITT			({ "mitt",		1,		1,		0,		({})		})	// 棒球手套
+#define EQ_BAT			({ "bat",		1,		1,		0,		({})		})	// 棒球球棒
 

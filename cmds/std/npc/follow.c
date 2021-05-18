@@ -31,7 +31,8 @@ private void do_command(object me, string arg)
 	object target_ob;
 	object *followers;
 	object following_ob;
-	
+	string *ignore;
+
 	if( !arg )
 	{
 		if( me->is_npc() )
@@ -40,6 +41,16 @@ private void do_command(object me, string arg)
 			return tell(me, pnoun(2, me)+"想要跟隨誰？\n");
 	}
 	
+	//忙碌中不能下指令
+	if( me->is_delaying() )
+	{
+		if( me->is_npc() )
+			return me->do_command("say "+me->query_delay_msg()+"\n");
+
+		tell(me, me->query_delay_msg());
+		return me->show_prompt();
+	}
+
 	if( arg == "-d" )
 	{
 		target_ob = query_temp("following", me);
@@ -105,6 +116,9 @@ private void do_command(object me, string arg)
 			return tell(me, pnoun(2, me)+"無法跟隨"+pnoun(2, me)+"自己。\n");
 	}
 
+	if( BATTLEFIELD_D->inside_battlefield(me) )
+		return tell(me, "戰場中無法使用跟隨指令。\n");
+
 	following_ob = query_temp("following", me);
 
 	if( objectp(following_ob) )
@@ -119,7 +133,30 @@ private void do_command(object me, string arg)
 			
 		msg("$ME停止跟隨$YOU。\n", me, following_ob, 1);	
 	}
+
+	if( !userp(target_ob) )
+		return tell(me, "目前跟隨功能只能夠跟隨玩家。\n");
+
+	ignore = query("ignore", target_ob);
+	
+	if( arrayp(ignore) )
+	{
+		string id;
 		
+		if( me->is_npc() )
+			id = query("boss", me);
+		else
+			id = me->query_id(1);
+		
+		if( stringp(id) && member_array(id, ignore) != -1 )
+		{
+			if( me->is_npc() )
+				return me->do_command("say "+target_ob->query_idname()+"拒絕讓我跟隨。\n");
+			else
+				return tell(me, target_ob->query_idname()+"拒絕讓"+pnoun(2, me)+"跟隨。\n");
+		}
+	}
+
 	followers = query_temp("follower", target_ob) || allocate(0);
 	
 	followers |= ({ me });

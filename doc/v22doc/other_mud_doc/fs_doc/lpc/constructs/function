@@ -1,0 +1,40 @@
+* LPC ㄧ计(┪嘿 "よ猭")
+
+The LPC function is similar but not identical to that provided by C
+(it is most similar to that provided by ANSI C).  The syntax is as follows:
+    LPC ㄧ计摸 C, 琌ぃЧ妓(程钩琌 ANSI C).
+  粂猭:
+
+肚戈篈  ㄧ计嘿(戈篈 把计-1, 戈篈 把计-2, ...)
+{
+	// 跑计玡繷, 硂琌よΑ.
+	戈篈 跑计-1;
+	戈篈 跑计-2;
+	...;
+
+	痹瓃;
+	...;
+
+	return ㄧ计肚;	// 叫皌玡戈篈
+}
+
+    瘤礛爹秆柑Τ弧, 琌Ω眏秸, 肚璶蛤玡
+  戈篈璓. 安ノ void ㄓㄧ计肚篈, ê碞琌
+  ぃゲ肚, 钡ノ return; 硂妓挡ㄧ计. ㄒ:
+
+	void ㄧ计嘿(戈篈 把计, ...)
+	{
+	  痹瓃;
+	  ...;
+	}
+
+    ㊣ㄧ计よ猭璶皌ㄧ计, 妓:
+	ㄧ计嘿(把计-1, 把计-2, ...);
+
+    , ㊣ンいㄧ计, よ猭:
+	ン->ㄧ计嘿(把计-1, 把计-2, ...);
+
+    ┪:
+	call_other(ン, ㄧ计嘿, 把计-1, 把计-2, ...);
+
+    程, 程穝 MudOS Τや穿ㄧ计篈跑计, 叫ǎ跑计篈弧.

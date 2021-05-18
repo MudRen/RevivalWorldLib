@@ -91,7 +91,7 @@ private nomask void create()
   		save();
   	}
   	
-  	set_heart_beat(600);
+  	set_heart_beat(60);
 }
 
 int remove()

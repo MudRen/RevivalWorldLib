@@ -1,0 +1,16 @@
+ceil(3)               LPC ╰参ㄧ计               ceil(3)
+
+嘿
+     ceil() - 礚兵ン秈猭р疊翴计跑Θ俱计(肚疊翴计)
+
+粂猭
+     float ceil( float f );
+
+磞瓃
+     礚兵ン秈猭р疊翴计跑Θ俱计, 肚琌疊翴计.
+
+叫把σ
+     floor(3), to_int(3), to_float(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

@@ -67,7 +67,7 @@ string finger_all()
 	foreach( object	ob in users )
 	{
 		msg += sprintf("%-12s %6s %8s %5d %s\n",
-		    ansi_capitalize(ob->query_id(1)) || NOR WHT"(正在登入)"NOR,
+		    capitalize(ob->query_id(1)) || NOR WHT"(正在登入)"NOR,
 		    query_temp("login/time", ob) ? query_time_short(time() - query_temp("login/time", ob)) : "",
 		    query_temp("login/time", ob) ? query_time_short(query("total_online_time", ob) + (time() - query_temp("login/time", ob))) : "",
 		    query_idle(ob)/60,
@@ -93,6 +93,7 @@ string finger_user(string id)
 	int netstat, login_time, last_login, flag;
 	string msg, status;
 	object me, user;
+	int kwh;
 
 	user = find_player(id);
 	if( !objectp(user) )
@@ -110,6 +111,8 @@ string finger_user(string id)
 	login_time = query_temp("login/time", user);
 	last_login = query("last_login/time", user);
 	
+	kwh = to_int((query("total_online_time", user)/3600.)*200./1000.);
+
 	msg = "───────────────────────────────────\n";
 	msg += sprintf(
 	    "玩家名稱：%-36s "
@@ -117,15 +120,25 @@ string finger_user(string id)
 	    "連線總合：%-36s "
 	    "連線狀態：%s\n"
 	    "電子信箱：%-36s "
-	    "所屬城市：%s\n\n",
+	    "所屬城市：%s\n"
+	    "聯絡電話：%-36s "
+	    "資產總值：%s\n"
+	    "耗電估計：%-36s "
+	    "溫室氣體：%s\n\n",
 	    user->query_idname(),
 	    (query("gender", user) == MALE_GENDER ? "男" : "女")+" "+capitalize(SECURE_D->level_name(id)),
 	    query_time_long(query("total_online_time", user) + (netstat ? 0:time() - query("last_on/time", user))),
 	    (netstat ? (netstat == 1 ? "離線":"斷線") : "線上"),
 	    (flag ? (query("email", user) || "無資料") : "*** 私人資訊 ***"),
 	    CITY_D->query_city_idname(query("city", user)) || "流浪遊民",
+	    (flag ? (query("phone", user) || "無資料") : "*** 私人資訊 ***"),
+	    money(MONEY_D->query_default_money_unit(), MONEY_D->query_assets(user->query_id(1))),
+	    "共計 " + NUMBER_D->number_symbol(kwh) + " 度電",
+	    "已排放 "+NUMBER_D->number_symbol(to_int(kwh*0.75))+" 公斤"
 	);
 	
+	if( !objectp(user) )
+		user = load_user(id);
 
 	flag = (flag ||	!SECURE_D->is_wizard(id));
 
@@ -148,16 +161,19 @@ string finger_user(string id)
 	);
 
 	if( netstat == 2 ) // 狀態為斷線
+	{
+		msg += "───────────────────────────────────\n";
 		return msg;
+	}
 
 	msg += sprintf(
-	    "連線時間：%s\n"
-	    "閒置時間：%s\n",
+	    "壓縮傳輸：%s\n"
+	    "連線時間：%s\n",
+	    compressedp(user) ? HIG"MCCP 啟動"NOR: HIR"MCCP 未啟動"NOR,
 	    query_time_long(time() - login_time),
-	    ( interactive(user) && query_idle(user) > 180 ? query_time_long(query_idle(user)) : "活動中"),
 	);
 	
-	if( !wizardp(user)	)
+	if( !wizardp(user) )
 	{
 		array loc = query_temp("location", user);
 		string location;

@@ -26,8 +26,8 @@ void create()
         
         set("long", "用來交配生產的種畜。\n");
         set("unit", "隻");
-        set("mass", 5000);
-        set("value", 5000);
+        set("mass", 1000);
+        set("value", 8000);
         set("badsell", 1);
 
 	// 種子資訊
@@ -45,19 +45,19 @@ void create()
 	       	//每單位需要的原料種類與數量
 	       	"material":
 	       	([
-	       		"/obj/materials/water":10,
+	       		"/obj/materials/water":5,
 	       		"/obj/farming/product/herbage":25,
 	       	]),
 			
 	       	//產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/pasture/product/venison":8,
-	       		"/obj/pasture/product/antler":2,
+	       		"/obj/pasture/product/leather":3,
+	       		"/obj/pasture/product/antler":3,
 	       	]),
 
 		//生成時的訊息
-		"harvest_msg":"$ME歡喜地屠宰並取出新鮮的鹿肉。\n",
+		"harvest_msg":"$ME歡喜地屠宰並取出新鮮的鹿茸與皮革。\n",
 
 		//種植此類產品所需要的技能與其等級
 		"skill":
@@ -70,9 +70,9 @@ void create()
 		([
 			5:	"進入了濃情蜜意的交配期，種鹿之間開始互相交配。\n",
 			50:	"種鹿們恢復到過去的生活，但可以注意到部份的母鹿行為有些不同。\n",
-			150:	"部份的母鹿肚子漸漸大了起來，似乎是懷孕了。\n",
-			300:	"母鹿們分娩產下了許多健康的小鹿，只見母鹿們細心的圍繞在小鹿身旁並舔拭牠們的身體。\n",
-			600:	"小鹿逐漸的成長，愈長愈壯。\n",
+			200:	"部份的母鹿肚子漸漸大了起來，似乎是懷孕了。\n",
+			500:	"母鹿們分娩產下了許多健康的小鹿，只見母鹿們細心的圍繞在小鹿身旁並舔拭牠們的身體。\n",
+			800:	"小鹿逐漸的成長，愈長愈壯。\n",
 			900:	"小鹿們全部健康的長大成為成鹿，可以進行收成了。\n",
 		]),
 	

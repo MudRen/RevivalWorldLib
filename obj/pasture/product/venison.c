@@ -23,6 +23,6 @@ void create()
 	
 	set("long", "¦×¦âÂA¬õªº³À¦×¡C\n");
 	set("unit", "¶ô");
-	set("mass", 600);
+	set("mass", 500);
 	set("value", 20000);
 }

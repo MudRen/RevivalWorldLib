@@ -1,0 +1,20 @@
+call_out(3)           LPC ╰参ㄧ计           call_out(3)
+
+嘿
+     call_out() - ンい, ┑琘丁㊣ㄤㄧ计
+
+粂猭
+     void call_out ( string | function fun, int delay,  mixed  arg );
+
+磞瓃
+     砞﹚ <delay> ()㊣ンいㄧ计 <fun>. 肚把计 <arg>.
+     猔種: ぃ call_out() ┮㊣ㄧ计いㄏノ write(), say() 单,
+	    call_out() ┮㊣ㄧ计い, this_player() 砞Θ NULL.
+           璶秆∕拜肈,  driver  options.h 柑砞﹚
+		THIS_PLAYER_IN_CALL_OUT
+
+叫把σ
+     remove_call_out(3), call_out_info(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

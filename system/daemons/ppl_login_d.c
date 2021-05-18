@@ -36,41 +36,18 @@
 #define NEW_PLAYER		11
 #define OLD_PLAYER		12
 #define ENTER_GAME		13
-#define FPASS_ID		14
-#define FPASS_EMAIL		15
+#define FORGET_PASSWORD_ID	14
+#define FORGET_PASSWORD_EMAIL	15
+
+#define MAX_NEWCHAR_PER_DAY	5
 
 mapping newchar = allocate_mapping(0);
 private nosave mapping ip_time = allocate_mapping(0);
-private mapping login_ip_num = allocate_mapping(0);
-string *reserved_id = ({  });
+string *reserved_id = ({ "new", "pass" });
 
 nomask void reset_newchar()
 {
 	newchar = allocate_mapping(0);	
-}
-
-nomask void reset_cmdlimit()
-{
-	login_ip_num = allocate_mapping(0);
-}
-
-mapping query_loginip()
-{
-	return login_ip_num;
-}
-
-// 到達上限 30 就設定 banip 24 小時
-private void set_user_cmdlimit( string ip )
-{
-	// 再 check 一次
-	if( login_ip_num[ip] >= 30 )
-	{	
-		if( !(IP_D->query_ip(ip)) )
-		{
-			IP_D->set_ip( this_object(), ip, BAN, 24*3600);
-			IP_D->set_ip_note( this_object(), ip, "同 ip 一天 Login 超過 30 次");
-		}
-	}
 }
 
 private nomask varargs void logon_handle(int state, object ob, string arg)
@@ -84,7 +61,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 		/* 啟始 Login */
 	case INITIALIZE:
 		{
-			string ip = query_ip_number(ob), ban;
+			string ip = query_ip_number(ob);
 
 			foreach(string limitedip, mapping data in IP_D->query_ipdata())
 			if( regexp(ip, limitedip) && data["status"] == BAN )
@@ -95,30 +72,9 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 				return;
 			}
 
-			if(sscanf( query_ip_name(ob), "%*s.%s.edu.tw", ban )==2)
+			if( time() - ip_time[ip] < 10 )
 			{
-				if( ban == "cyut" )
-				{
-					tell( ob, sprintf( HIR"\n警告，您所使用的 IP(%s) 位置目前被系統列為禁止登入。\n"NOR, query_ip_number(ob)));
-					destruct(ob);
-					return;
-				}	
-			}
-
-			if(sscanf( query_ip_name(ob), "%*s.%*s.%s.edu.tw", ban )==3)
-			{
-				if( ban == "cyut" )
-				{
-					tell( ob, HIR"\n警告，您所使用的 IP(%s) 位置目前被系統列為禁止登入。\n"NOR, query_ip_number(ob));
-					destruct(ob);
-					return;
-				}	
-			}			
-
-
-			if( time() - ip_time[ip] < 60 )
-			{
-				tell(ob, sprintf( HIY"此連線 IP 距離前次上線時間僅隔 %d 秒, 請 %d 秒後再試。\n"NOR, time() - ip_time[ip], 60 + ip_time[ip] - time()));
+				tell(ob, sprintf( HIY"此連線 IP 距離前次上線時間僅隔 %d 秒, 請 %d 秒後再試。\n"NOR, time() - ip_time[ip], 10 + ip_time[ip] - time()));
 				CHANNEL_D->channel_broadcast("nch", ip +" 的使用者離上次 login 時間過短, 拒絕登入 !");
 				destruct(ob);
 				return;
@@ -128,9 +84,9 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 			ob->directly_receive("Please input GB/BIG5 to change charset or directly login user.\n");
 
 			tell(ob, sprintf(
-				"創造新的遊戲角色請輸入 'new'。%s\n"
+				"創造新的遊戲角色請輸入「new」、忘記密碼請輸入「pass」。%s\n"
 				"您的英文名字：",
-				(LOGIN_D->query_wiz_lock() < GUEST ? HIC"(允許玩家登入)"NOR:HIR"(禁止玩家登入)"NOR)));
+				(LOGIN_D->query_wiz_lock() < WIZARD ? HIC"(允許玩家登入)"NOR:HIR"(禁止玩家登入)"NOR)));
 
 			input_to( (: logon_handle, INPUT_ID, ob :) );
 			return;
@@ -143,7 +99,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 			if( !arg || arg == "" )
 				return logon_handle(INITIALIZE, ob);
 
-			arg = remove_ansi(remove_fringe_blanks(lower_case(arg)));
+			arg = remove_ansi(trim(lower_case(arg)));
 
 			if( arg == "gb" )
 			{
@@ -156,50 +112,50 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 				return this_object()->logon(ob);
 			}
 
-			if( arg == "new" && LOGIN_D->query_wiz_lock() < GUEST )
+			if( arg == "new" && LOGIN_D->query_wiz_lock() < WIZARD )
 			{
 				string ip = query_ip_number(ob);
 
-				if( ip == "75.84.17.242" )
+if(strsrch(query_ip_number(ob), "118.169") == 0 ||
+   strsrch(query_ip_number(ob), "118.160") == 0 ||
+   strsrch(query_ip_number(ob), "114.45") == 0 ||
+   strsrch(query_ip_number(ob), "140.125") == 0) {
+	tell(ob, "這ㄍ IP 最近不准註冊，請改天再來ㄅ。\n");
+	destruct(ob);
+	return;
+}
+
+				if( ++newchar[ip] > MAX_NEWCHAR_PER_DAY )
 				{
-					tell(ob, "抱歉您所使用的 ip ，無法再註冊新角色。\n");
-					return logon_handle(INITIALIZE, ob);
-				}
-				
-				if( query_ip_name(ob)[<13..] == "csupomona.edu" ) 
-				{
-					tell(ob, "抱歉您所使用的 ip ，無法再註冊新角色。\n");
-					return logon_handle(INITIALIZE, ob);
-				}
-				
-				if( ++newchar[ip] >= 5 )
-				{
-					CHANNEL_D->channel_broadcast("sys", "登入："+ip+" 的使用者本日新角色已註冊超過 "+5+" 位，無法再註冊新角色。");
-					tell(ob, "抱歉您本日新角色已註冊超過 "+5+" 位，無法再註冊新角色。\n");
+					CHANNEL_D->channel_broadcast("sys", "登入："+ip+" 的使用者本日新角色已註冊超過 "+MAX_NEWCHAR_PER_DAY+" 位，無法再註冊新角色。");
+					tell(ob, "抱歉您本日新角色已註冊超過 "+MAX_NEWCHAR_PER_DAY+" 位，無法再註冊新角色。\n");
 					return logon_handle(INITIALIZE, ob);
 				}
 
 				tell(ob, "請輸入您想使用的英文ID：");
 				input_to( (: logon_handle, INPUT_NEW_ID, ob :) ); return;
 			}
+
 			if( arg == "pass" )
 			{
-				tell(ob, "請輸入您的英文ID：");
-				input_to( (: logon_handle, FPASS_ID, ob :) ); return;
+				tell(ob, "請輸入您的角色英文ID：");
+				input_to( (: logon_handle, FORGET_PASSWORD_ID, ob :) ); return;
 			}
 
 			level_num = SECURE_D->level_num(arg);
 
-			if( sizeof(users()) > MAX_USERS && level_num < GUEST )
+			if( sizeof(users()) > MAX_USERS && level_num < WIZARD )
 			{
 				tell(ob, "抱歉本遊戲玩家上線人數之最大上限為 "+MAX_USERS+" 位，請耐心等候。\n");
-				return logon_handle(INITIALIZE, ob);
+				destruct(ob);
+				return;
 			}
 
 			if( level_num < LOGIN_D->query_wiz_lock() )
 			{
 				tell(ob, HIY"系統更新維護中，目前僅允許權限在 "+SECURE_D->level_num_to_level_name(LOGIN_D->query_wiz_lock())+" 以上的使用者連線。\n"NOR);
-				return logon_handle(INITIALIZE, ob);
+				destruct(ob);
+				return;
 			}
 
 			if( file_size(user_data(arg)) <= 0 )
@@ -217,37 +173,67 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 				set("id", arg, ob);
 
 			if( level_num > PLAYER )
-				tell(ob, "您的使用者權限為 "+SECURE_D->level_num_to_level_name(level_num)+"，提醒您必須由連接埠 "+WIZ_PORT+" 上線才能擁有巫師權限。\n");
+				tell(ob, "您的使用者權限為 "+SECURE_D->level_num_to_level_name(level_num)+"，提醒您必須由連接埠 "+implode(map(WIZ_PORT, (: $1+"" :)), ",")+" 上線才能擁有巫師權限。\n");
 
 			tell(ob, "請輸入密碼：");
 
 			input_to( (: logon_handle, INPUT_PASSWORD, ob :), 1 );
 			return;           
 		}
-	case FPASS_ID:
+	case FORGET_PASSWORD_ID:
 		{
-			tell(ob, "該服務尚未啟用。");
-			destruct(ob);
-			return;
-
-			if( file_size(user_data(arg)) <= 0 )
+			if( find_player(arg) )
 			{
-				tell(ob, "本遊戲沒有 "+arg+" 這位玩家。\n");
+				tell(ob, find_player(arg)->query_idname()+"正在線上。\n");
 				return logon_handle(INITIALIZE, ob);
 			}
+			if( !user_exists(arg) )
+			{
+				tell(ob, "本遊戲沒有 "+capitalize(arg)+" 這位玩家。\n");
+				return logon_handle(INITIALIZE, ob);
+			}
+			
 			set("id", arg, ob);
-			tell(ob, "請輸入該角色的信箱位置：");
-			input_to( (: logon_handle, FPASS_EMAIL, ob :) ); return;
+			tell(ob, "請輸入該角色當初設定的 E-mail 信箱位置：");
+			input_to( (: logon_handle, FORGET_PASSWORD_EMAIL, ob :) ); return;
 		}
-	case FPASS_EMAIL:
+	case FORGET_PASSWORD_EMAIL:
 		{
 			object user_ob = load_user(query("id", ob));
-			if( query("email", user_ob) == arg )
+			string email = query("email", user_ob);
+			string new_password = "00000000";
+			
+			for(int i=0;i<8;i++)
 			{
-				tell(ob, "系統已將新密碼 Email 至您的信箱。\n");
-				SMTP_D->mail(arg, "該服務尚未啟用", "重生的世界 - "+query("id", ob)+" 角色密碼");
+				switch(random(3))
+				{
+					case 0:
+						new_password[i] = range_random('0', '9');
+						break;
+					case 1:
+						new_password[i] = range_random('a', 'z');
+						break;
+					case 2:
+						new_password[i] = range_random('A', 'Z');
+						break;
+				}
 			}
-			else tell(ob, "您輸入的資料該角色不符。\n");
+
+			if( !email )
+			{
+				tell(ob, user_ob->query_idname()+"這個角色當初未設定 E-mail 地址，無法索取新的密碼。\n");
+
+			}
+			else if( email == arg )
+			{
+				tell(ob, "系統已將新密碼寄送至您的信箱("+arg+")，請使用新密碼登入系統並隨即更改密碼。\n");
+				destruct(find_object(SMTP_D));
+				SMTP_D->mail(arg, "重生的世界玩家"+user_ob->query_idname()+"，"+pnoun(2, user_ob)+"好：\n\n系統已隨機幫"+pnoun(2, user_ob)+"的角色密碼已變更為「"+new_password+"」\n請隨即使用新的密碼(請注意大小寫)登入遊戲，並馬上利用 passwd 指令更改角色密碼。\n\n\n重生的世界(http://www.revivalworld.org)", "重生的世界-"+user_ob->query_idname()+"新密碼啟用");
+				PASSWORD_D->set_password(query("id", ob), crypt(new_password, 0));
+			}
+			else
+				tell(ob, "您輸入的 E-mail 地址與該角色原本設定的 E-mail 不符。\n");
+			
 			destruct(user_ob);
 			destruct(ob);
 			return;
@@ -259,6 +245,8 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 
 			if( !arg || crypt(arg, password) != password )
 			{
+				CHANNEL_D->channel_broadcast("sys", query_ip_number(ob)+" 嘗試登入帳號 "+query("id", ob)+" 輸入密碼錯誤");
+					
 				tell(ob, "密碼輸入錯誤。\n");
 
 				if( LOGIN_D->input_wrong_password(ob) >= 3 )
@@ -296,48 +284,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 	case INPUT_NEW_ID:
 		{
 			int len;
-			string ban;
 
-			if( sscanf( query_ip_name(ob), "%*s-%*s-%*s-%*s.dynamic.%s.net", ban ) ==5 ) 
-			{
-				if( ban == "hinet" )
-				{
-					tell( ob, sprintf(HIR"\n警告，您所使用的 IP(%s) 位置目前被系統列為禁止登錄新角色。\n"NOR, query_ip_number(ob)));
-					destruct(ob);
-					return;
-				}			
-			}
-
-			if( sscanf( query_ip_name(ob), "%*s-%*s-%*s-%*s..HINET-IP.%s.net", ban ) ==5 ) 
-			{
-				if( ban == "hinet" )
-				{
-					tell( ob, sprintf(HIR"\n警告，您所使用的 IP(%s) 位置目前被系統列為禁止登錄新角色。\n"NOR, query_ip_number(ob)));
-					destruct(ob);
-					return;
-				}			
-			}
-
-			if(sscanf( query_ip_name(ob), "%*s.%s.edu.tw", ban )==2)
-			{
-				if( ban = "cyut" )
-				{
-					tell( ob, HIR"\n警告，您所使用的 IP(%s) 位置目前被系統列為禁止登錄新角色。\n"NOR, query_ip_number(ob));
-					destruct(ob);
-					return;
-				}	
-			}
-			
-			if(sscanf( query_ip_name(ob), "%*s.%*s.%s.edu", ban )== 3)
-			{
-				if( ban = "csupomona" )
-				{
-					tell( ob, HIR"\n警告，您所使用的 IP(%s) 位置目前被系統列為禁止登錄新角色。\n"NOR, query_ip_number(ob));
-					destruct(ob);
-					return;
-				}	
-			}
-			
 			if( !arg || arg == "" )
 			{
 				tell(ob, "請輸入您想使用的英文代號(ID)：");
@@ -364,7 +311,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 				tell(ob, "本 ID 為系統保留字，請換另一個名字。\n請輸入您想使用的英文代號(ID)：");
 				input_to( (: logon_handle, INPUT_NEW_ID, ob :) );return;
 			}
-
+				
 			if( file_size(user_data(arg)) > 0 )
 			{
 				tell(ob, "本遊戲已有玩家使用 "+capitalize(arg)+"，請換另一個名字。\n請輸入您想使用的英文代號(ID)：");
@@ -444,7 +391,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 
 			PASSWORD_D->set_password(query("id", ob), query("password", ob));
 
-			tell(ob, "您的信箱位址將作為日後索取角色備份檔案的依據，或直接按 Enter 放棄輸入。\n您的信箱位址：");
+			tell(ob, "您的信箱位址將作為日後索取角色備份檔案或忘記角色密碼時的依據。\n您的信箱將會保密無法讓其他玩家查詢，您也可以直接按 Enter 放棄輸入。\n您的信箱位址：");
 			input_to( (: logon_handle, INPUT_EMAIL, ob :) ); return;
 		}
 
@@ -452,7 +399,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 	case INPUT_EMAIL:
 		{
 			if( !arg || arg=="" )
-				tell(ob, "您自願放棄意外喪失角色時，向巫師申請備份檔案的權利。\n");
+				tell(ob, "您自願放棄意外喪失角色時或遺忘密碼時，向巫師申請備份檔案的權利。\n");
 			else if( sscanf(arg,"%*s@%*s.%*s") != 3 )
 			{
 				tell(ob, "此信箱位址格式有問題。\n請重新輸入您的信箱位址：");
@@ -548,7 +495,7 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 		{
 			object reconnect_ob;
 
-			if( !arg || remove_ansi(remove_fringe_blanks(lower_case(arg))) != "y" )
+			if( !arg || remove_ansi(trim(lower_case(arg))) != "y" )
 			{
 				tell(ob, "您決定不取代遊戲中相同的人物。\n");
 				ob->reset_database();
@@ -603,21 +550,10 @@ private nomask varargs void logon_handle(int state, object ob, string arg)
 			string ip = query_ip_number(ob);
 			ip_time[ip] = time();
 			
-			// 記錄該 ip 上線次數
-			if( !login_ip_num[ip] )
-				login_ip_num[ip] = 1;
-			else
-			if( login_ip_num[ip] >= 30 )
-			{
-				login_ip_num[ip] = 30;
-				set_user_cmdlimit(ip);
-			} else
-				login_ip_num[ip] = ( login_ip_num[ip] + 1 );
-			
+						
 			// 進入遊戲
 			LOGIN_D->enter_game(ob);
 			return;
-
 		}/* ENTER_GAME */
 
 	default: return logon_handle(INITIALIZE, ob);
@@ -661,7 +597,7 @@ int remove()
 {
 	foreach(object user in users())
 	{
-		if( !user->is_login_ob() ) continue;
+		if( !objectp(user) || !user->is_login_ob() ) continue;
 		tell(user, HIR"\n很抱歉，登錄系統更新，麻煩您再重新登錄。\n"NOR);
 		flush_messages(user);
 		destruct(user);

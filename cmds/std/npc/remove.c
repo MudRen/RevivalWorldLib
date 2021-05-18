@@ -34,7 +34,7 @@ private void do_command(object me, string arg)
 	if( !arg )
 	{
 		string msg;
-		object equipments = me->query_equipment_objects();
+		object *equipments = me->query_equipment_objects();
 		
 		if( !sizeof(equipments) )
 			return tell(me, pnoun(2, me)+"目前身上沒有任何裝備。\n");
@@ -46,11 +46,30 @@ private void do_command(object me, string arg)
 			
 		return tell(me, msg+"\n");
 	}
-		
+	
+	//忙碌中不能下指令
+	if( me->is_delaying() )
+	{
+		tell(me, me->query_delay_msg());
+		return me->show_prompt();
+	}
+
+	if( COMBAT_D->in_fight(me) )
+		return tell(me, "戰鬥中無法卸除裝備。\n");
+
+	if( arg == "all" )
+	{
+		foreach(ob in all_inventory(me))
+			if( me->unequip(ob, ref status) )
+				msg("$ME卸除了裝備在「"+ob->query_part_name()+"」部位上的"+ob->query_idname()+"。\n", me, 0, 1);
+				
+		return;
+	}
+
 	if( !objectp(ob = present(arg, me)) )
 		return tell(me, pnoun(2, me)+"的身上並沒有 "+arg+" 這個物品。\n");
 
-	if( !me->unequip(ob, &status) )
+	if( !me->unequip(ob, ref status) )
 	{
 		switch(status)
 		{
@@ -63,5 +82,5 @@ private void do_command(object me, string arg)
 		}
 	}
 	else
-		msg("$ME卸除了裝備在「"+ob->query_part_name()+"」部位上的$YOU。\n", me, ob, 1);
+		msg("$ME卸除了裝備在「"+ob->query_part_name()+"」部位上的"+ob->query_idname()+"。\n", me, ob, 1);
 }

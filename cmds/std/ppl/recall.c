@@ -19,8 +19,7 @@
 inherit COMMAND;
 
 string help = @HELP
-這個指令可以讓您在迷路的時候快速地回到巫師大廳
-
+recall		- 這個指令可以讓您在迷路的時候快速地回到巫師大廳
 
 HELP;
 
@@ -32,25 +31,16 @@ private void do_command(object me, string arg)
 	object env = environment(me);
 	object *inv;
 
-	// 是犯人
-	if( query("prisoner", me) )
-	{
-		msg("$ME的手腳被鐵鍊銬住，無法自由行動。\n", me, 0, 1);
-		return;
-	}
-
-	//忙碌中不能下指令
-	if( me->is_delaying() )
-	{
-		tell(me, me->query_delay_msg());
-		return me->show_prompt();
-	}
-
+	if( BATTLEFIELD_D->in_battle(me) )
+		return tell(me, pnoun(2, me)+"正在戰場中，若確定要離開戰場請使用 battle cancel 指令。\n");
+		
 	if( wizardp(me) )
 		recallroom = load_object(WIZ_HALL_UP);
+	else if( query("total_online_time", me) > 60*60*24*30 )
+		return tell(me, pnoun(2, me)+"的累計上線時間已經超過 30 天，無法再使用快速 recall 的服務，請步行或善用城市中的各種交通設施。\n");
 	else
 		recallroom = load_object(WIZ_HALL);
-		
+
 	inv = all_inventory(recallroom);
 
 	if( env && env == recallroom ) 

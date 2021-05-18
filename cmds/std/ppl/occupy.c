@@ -65,8 +65,12 @@ void confirm_occupy_section_city(object me, string arg)
 	city = query("city", me);
 	
 	total_num = CITY_D->query_city_num(city);
-	needed_flourish = 50000 + (total_num-1)*5000;
+	needed_flourish = 50000 + (total_num-1)*10000;
 
+	if( total_num >= 4 )
+		return tell(me, "目前最高只能佔領四座城市。\n");
+
+	if( !wizardp(me) )
 	for(int num=0;num<total_num;num++)
 	{
 		if( CITY_D->query_section_info(city, num, "flourish") < needed_flourish )
@@ -160,8 +164,8 @@ private void do_command(object me, string arg)
 		if( query("total_online_time", me) < 30*24*60*60 )
 			return tell(me, pnoun(2, me)+"的上線時間至少必須超過一個月才能佔領新城市。\n");
 			
-		if( count(MONEY_D->query_all_cash(me->query_id(1), MONEY_D->query_default_money_unit()), "<", "10000000000") )
-			return tell(me, pnoun(2, me)+"的必須擁有至少 $"+MONEY_D->query_default_money_unit()+" 100 億的現金才能佔領新城市。\n");
+		if( MONEY_D->query_all_cash(me->query_id(1), MONEY_D->query_default_money_unit()) < 10000000000 )
+			return tell(me, pnoun(2, me)+"必須擁有至少 $"+MONEY_D->query_default_money_unit()+" 100 億的現金才能佔領新城市。\n");
 			
 		CHANNEL_D->channel_broadcast("news", me->query_idname()+"正在考慮於"+CITY_D->query_city_idname(loc[CITY])+"建立全新城市");
 		tell(me, WARNING+NOR CYN"\n第一步："HIC"請替"+pnoun(2, me)+"的新城市取一個彩色中文名稱(1 - 5 個中文字)\n"NOR CYN"："NOR);

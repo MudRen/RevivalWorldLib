@@ -14,7 +14,6 @@
 #include <bank.h>
 #include <ansi.h>
 #include <map.h>
-#include <citydata.h>
 #include <daemon.h>
 #include <money.h>
 #include <roommodule.h>
@@ -22,7 +21,6 @@
 
 #define DATA		"/data/daemon/money.o"
 
-#define DEFAULT_EXCHANGE	0.7
 #define DEFAULT_PRICE_INDEX	1.
 
 #define CITY_ELEM		0
@@ -69,7 +67,7 @@ int create_new_finance_system(string city, string money_unit)
 {
 	if( !stringp(city) || !stringp(money_unit) || !CITY_D->city_exist(city) ) return 0;
 	
-	money_unit = remove_fringe_blanks(upper_case(money_unit));
+	money_unit = trim(upper_case(money_unit));
 	
 	if( strlen(money_unit) != 2 ) return 0; 
 	
@@ -77,7 +75,7 @@ int create_new_finance_system(string city, string money_unit)
 		return 0;
 
 	// 建立國際匯率資訊
-	if( !EXCHANGE_D->create_new_exchange(money_unit, DEFAULT_EXCHANGE) )
+	if( !EXCHANGE_D->create_new_exchange(money_unit) )
 		return 0;
 
 	// 建立物價指數資訊
@@ -148,11 +146,11 @@ string real_prices(string city, int num, mixed amount)
 }
 
 // 計算世界中該貨幣的總數
-string query_world_cash(string query_unit)
+int query_world_cash(string query_unit)
 {
 	string id;
 	mapping data;
-	string totalcash;
+	int totalcash = 0;
 	string bank;
 	object bankroom;
 	
@@ -160,15 +158,13 @@ string query_world_cash(string query_unit)
 	{
 		if( SECURE_D->is_wizard(id) ) continue;
 
-		totalcash = count(totalcash, "+", data["cash"][query_unit]);
+		totalcash += to_int(data["cash"][query_unit]);
 		
 		foreach(bank in keys(data["bank"]))
 		{
-			if( !file_exists(bank) ) continue;
-			
-			if( !objectp(bankroom = load_object(bank)) ) continue;
+			if( !file_exists(bank) || !objectp(bankroom = load_object(bank)) ) continue;
 				
-			totalcash = count(totalcash, "+", query("savings/"+id+"/"+query_unit, bankroom));
+			totalcash += to_int(query("savings/"+id+"/"+query_unit, bankroom));
 		}
 	}
 
@@ -176,12 +172,12 @@ string query_world_cash(string query_unit)
 }
 
 // 回傳所有現金資料
-varargs string query_all_cash(string id, string query_unit)
+varargs int query_all_cash(string id, string query_unit)
 {
 	mixed data;
 	mapping money, banks;
 	object bankroom;
-	string all_cash;
+	int all_cash;
 
 	if( undefinedp(moneydata[id]) )
 	{
@@ -194,10 +190,10 @@ varargs string query_all_cash(string id, string query_unit)
 	if( mapp(money = moneydata[id]["cash"]) )
 	{
 		if( !undefinedp(query_unit) )
-			all_cash = money[query_unit];
+			all_cash = to_int(money[query_unit]);
 		else
 		foreach( string unit, string m in money )
-			all_cash = count(all_cash, "+", EXCHANGE_D->convert(m, unit, DEFAULT_MONEY_UNIT));
+			all_cash += EXCHANGE_D->convert(to_int(m), unit, DEFAULT_MONEY_UNIT);
 	}
 	
 	if( mapp(banks = moneydata[id]["bank"]) )
@@ -218,20 +214,44 @@ varargs string query_all_cash(string id, string query_unit)
 			if( mapp(data) && mapp(data = data["money"]) )
 			{
 				if( !undefinedp(query_unit) )
-					all_cash = count(all_cash, "+", data[query_unit]);
+					all_cash += to_int(data[query_unit]);
 				else
 				foreach( string unit, string m in data )
-					all_cash = count(all_cash, "+", EXCHANGE_D->convert(m, unit, DEFAULT_MONEY_UNIT));
+					all_cash += EXCHANGE_D->convert(to_int(m), unit, DEFAULT_MONEY_UNIT);
 			}
 		}
 	}
 	return all_cash;
 }
 
-// 以 RW 為標準單位計算財富
-string query_assets(string id)
+int query_all_stock(string id)
 {
-	return count(query_all_cash(id), "+", ESTATE_D->query_all_estate_value(id, 1));
+	mapping stockdata;	
+	object user = load_user(id);
+	int assets = 0;
+
+	if( !objectp(user) ) return 0;
+
+	stockdata = query("stock", user);
+	if( mapp(stockdata) && sizeof(stockdata) )
+	{
+		mapping stocks = STOCK_D->query_stocks();
+		foreach(string stock, mapping data in stockdata) {
+			if( undefinedp(stocks[to_int(stock)]) ) continue;
+				assets += data["amount"] * 10000 * stocks[to_int(stock)]["收盤"];
+		}
+	}
+	
+	if( !userp(user) )
+		destruct(user);
+
+	return assets;
+}
+
+// 以 RW 為標準單位計算財富
+int query_assets(string id)
+{
+	return query_all_stock(id) + query_all_cash(id) + ESTATE_D->query_all_estate_value(id, 1);
 }
 
 // 計算國民總生產毛額(轉成 $RW)
@@ -242,23 +262,22 @@ string calculate_GNP(string city)
 	string unit;
 	string *citizens = CITY_D->query_citizens(city);
 	
-	if( !sizeof(citizens) ) return 0;
-
 	unit = C2M[city];
 
 	// 市民所有財產
+	if( sizeof(citizens) )
 	foreach( string citizen in citizens )
 	{
 		if( SECURE_D->is_wizard(citizen) ) continue;
 	
-		GNP = count(GNP, "+", query_all_cash(citizen));
-		GNP = count(GNP, "+", ESTATE_D->query_all_estate_value(citizen, 1));
+		reset_eval_cost();
+		GNP = count(GNP, "+", query_assets(citizen));
 		EST = count(EST, "+", ESTATE_D->query_all_estate_value(citizen));
 	}
 	
 	// 加上市政府資產
-	GNP = count(GNP, "+", EXCHANGE_D->convert(CITY_D->query_city_info(city, "assets"), C2M[city], DEFAULT_MONEY_UNIT));
-	
+	GNP = count(GNP, "+", EXCHANGE_D->convert(to_int(CITY_D->query_city_info(city, "assets")), C2M[city], DEFAULT_MONEY_UNIT));
+
 	CITY_D->set_city_info(city, "GNP", GNP);
 	CITY_D->set_city_info(city, "EST", EST);
 	CITY_D->set_city_info(city, "world_cash", query_world_cash(unit));
@@ -270,6 +289,8 @@ string calculate_NNP(string city)
 	string old_GNP = CITY_D->query_city_info(city, "GNP");
 	string NNP = count(calculate_GNP(city), "-", old_GNP);
 
+	CITY_D->set_city_info(city, "old_GNP", old_GNP);
+	
 	CITY_D->set_city_info(city, "NNP", NNP);
 	return NNP;
 }
@@ -277,7 +298,7 @@ string calculate_NNP(string city)
 void broadcast_GNP()
 {
 	float rate;
-	string GNP, NNP;
+	string GNP, NNP, oldGNP;
 	string *cities = CITY_D->query_cities(), city_idname;
 	
 	if( !sizeof(cities) )
@@ -291,29 +312,29 @@ void broadcast_GNP()
 		
 		GNP = CITY_D->query_city_info(city, "GNP");
 		NNP = CITY_D->query_city_info(city, "NNP");
-		rate = to_float(count(count(NNP, "*", 10000), "/", GNP))/100.;
+		oldGNP = CITY_D->query_city_info(city, "oldGNP") || GNP;
+		rate = to_float(count(count(NNP, "*", 10000), "/", oldGNP))/100.;
 
 		city_idname = CITY_D->query_city_idname(city);
-		CHANNEL_D->channel_broadcast("news", sprintf("%-25s "HIW"市民總資產為"HIY" $RW %20s "HIW"，本月經濟成長率為"+(rate>0?HIG:HIR)+"%6.2f%%"HIW"。"NOR, city_idname, NUMBER_D->number_symbol(GNP), rate));
+		CHANNEL_D->channel_broadcast("news", sprintf("%-25s "HIW"市民總資產為"HIY" $RW %20s "HIW"，本月經濟成長率為"+(rate>0?HIC:HIR)+"%6.2f%%"HIW"。"NOR, city_idname, NUMBER_D->number_symbol(GNP), rate));
 	}
 }
 
-varargs int spend_money(string id, string unit, mixed money, int payment)
+varargs int spend_money(string id, string unit, int money, int payment)
 {
 	if( !id || !unit || !money ) return 0;
 	
 	unit = upper_case(unit);
-	money = big_number_check(money);
 	
 	if( !moneydata[id] || count(money, "<=", 0) ) return 0;
 
 	// 現金足夠則支付現金
-	if( count( moneydata[id]["cash"][unit], ">=", money ) )
+	if( to_int(moneydata[id]["cash"][unit]) >= money )
 	{
-		moneydata[id]["cash"][unit] = count( moneydata[id]["cash"][unit], "-", money );
+		moneydata[id]["cash"][unit] = to_int(moneydata[id]["cash"][unit]) - money;
 		
 		// 錢剛好花光了
-		if( count( moneydata[id]["cash"][unit], "==", 0 ) )
+		if( moneydata[id]["cash"][unit] == 0 )
 			map_delete(moneydata[id]["cash"], unit);
 			
 		return 1;
@@ -321,47 +342,52 @@ varargs int spend_money(string id, string unit, mixed money, int payment)
 	else
 	{
 		int bankflag;
-		string bank, bankmoney, allmoney;
+		string bank;
 		object bankob;
+		int allmoney = 0;
+		int autotransfermoney = 0;
+		int bankmoney;
 
 		// 不進行銀行轉帳的付款動作
 		if( !payment ) return 0;
 
-		allmoney = moneydata[id]["cash"][unit];
+		allmoney = autotransfermoney = to_int(moneydata[id]["cash"][unit]);
 		
 		// 掃瞄所有銀行存款, 檢查是否有轉帳
 		foreach( bank, bankflag in moneydata[id]["bank"] )
 		{
-			// 若是強迫付費 || (轉帳付費 && 轉帳銀行)
-			if( payment & FORCED_PAYMENT || (payment & BANK_PAYMENT && bankflag & AUTOTRANSFER) )
+			if( !file_exists(bank) )
 			{
-				if( !file_exists(bank) )
-				{
-					map_delete(moneydata[id]["bank"], bank);
-					continue;
-				}
-
-				bankob = load_object(bank);
-				
-				if( !objectp(bankob) ) continue;
-				
-				bankmoney = query("savings/"+id+"/money/"+unit, bankob);
-				
-				allmoney = count( allmoney, "+", bankmoney );
+				map_delete(moneydata[id]["bank"], bank);
+				continue;
 			}
+
+			bankob = load_object(bank);
+			
+			if( !objectp(bankob) ) continue;
+			
+			bankmoney = to_int(query("savings/"+id+"/money/"+unit, bankob));
+			
+			allmoney += bankmoney;
+			
+			if( bankflag & AUTOTRANSFER )
+				autotransfermoney += bankmoney;
 		}
 		
-		// 全部現金 + 存款的錢都不夠
-		if( count( allmoney, "<", money ) ) return 0;
+		// 強迫付款時, 現金 + 所有存款的錢都不夠
+		if( (payment & FORCED_PAYMENT) && allmoney < money ) return 0;
+		
+		// 銀行轉帳時, 現金 + 自動轉帳存款的錢都不夠
+		if( (payment & BANK_PAYMENT) && autotransfermoney < money ) return 0;
 		
 		// 先扣掉現金
-		money = count( money, "-", moneydata[id]["cash"][unit] );
+		money -= to_int(moneydata[id]["cash"][unit]);
 		map_delete(moneydata[id]["cash"], unit);
 		
-		// 掃瞄所有銀行存款, 檢查是否有轉帳
+		// 先掃瞄自動轉帳銀行存款, 檢查是否有轉帳
 		foreach( bank, bankflag in moneydata[id]["bank"] )
 		{
-			if( payment & FORCED_PAYMENT || (payment & BANK_PAYMENT && bankflag & AUTOTRANSFER) )
+			if( bankflag & AUTOTRANSFER )
 			{
 				if( !file_exists(bank) )
 				{
@@ -373,14 +399,14 @@ varargs int spend_money(string id, string unit, mixed money, int payment)
 				
 				if( !objectp(bankob) ) continue;
 				
-				bankmoney = query("savings/"+id+"/money/"+unit, bankob);
+				bankmoney = to_int(query("savings/"+id+"/money/"+unit, bankob));
 				
-				if( count( bankmoney, ">=", money ) )
+				if( bankmoney >= money )
 				{
-					bankmoney = count( bankmoney, "-", money );
+					bankmoney -= money;
 					
 					// 剛好花完
-					if( count( bankmoney, "==", 0 ) )
+					if( bankmoney == 0 )
 						delete("savings/"+id+"/money/"+unit, bankob);
 					else
 						set("savings/"+id+"/money/"+unit, bankmoney, bankob);
@@ -389,14 +415,49 @@ varargs int spend_money(string id, string unit, mixed money, int payment)
 				}
 				else
 				{
-					money = count( money, "-", bankmoney );
+					money -= bankmoney;
 					delete("savings/"+id+"/money/"+unit, bankob);
 				}
 			}
 		}
+		
+		// 若是強迫付款，且金額尚未足夠
+		if( payment & FORCED_PAYMENT )
+		foreach( bank, bankflag in moneydata[id]["bank"] )
+		{
+			if( !file_exists(bank) )
+			{
+				map_delete(moneydata[id]["bank"], bank);
+				continue;
+			}
+			
+			bankob = load_object(bank);
+			
+			if( !objectp(bankob) ) continue;
+			
+			bankmoney = to_int(query("savings/"+id+"/money/"+unit, bankob));
+			
+			if( bankmoney >= money )
+			{
+				bankmoney -= money;
+				
+				// 剛好花完
+				if( bankmoney == 0 )
+					delete("savings/"+id+"/money/"+unit, bankob);
+				else
+					set("savings/"+id+"/money/"+unit, bankmoney, bankob);
+					
+				return 1;
+			}
+			else
+			{
+				money -= bankmoney;
+				delete("savings/"+id+"/money/"+unit, bankob);
+			}
+		}
 	}
 
-	return 1;
+	return 0;
 }
 
 // 檢查該 bank 是否有啟動 autotransfer
@@ -409,14 +470,13 @@ int is_bank_autotransfer(string id, string bank)
 	return moneydata[id]["bank"][bank] & AUTOTRANSFER;
 }
 
-varargs string earn_money(string id, string unit, mixed money, int payment)
+varargs int earn_money(string id, string unit, int money, int payment)
 {
 	if( !id || !unit || !money ) return 0;
 	
 	unit = upper_case(unit);
-	money = big_number_check(money);
 	
-	if( count(money, "<=", 0) ) return 0;
+	if( money <= 0 ) return 0;
 	
 	if( !user_exists(id) ) return 0;
 
@@ -427,7 +487,7 @@ varargs string earn_money(string id, string unit, mixed money, int payment)
 		moneydata[id]["bank"] = allocate_mapping(0);
 	}
 	
-	moneydata[id]["cash"][unit] = count( moneydata[id]["cash"][unit], "+", money );
+	moneydata[id]["cash"][unit] = to_int(moneydata[id]["cash"][unit]) + money;
 	
 	return moneydata[id]["cash"][unit];
 }
@@ -476,10 +536,30 @@ varargs void clear_money(string id, string unit)
 {
 	if( !mapp(moneydata[id]) ) return;
 
-	if( !undefinedp(unit) && stringp(unit) )
-		map_delete(moneydata[id], unit);
-	else
-		map_delete(moneydata, id);
+	if( !undefinedp(unit) )
+	{
+		map_delete(moneydata[id]["cash"], unit);
+		return;
+	}
+		
+	foreach(string bank, int flag in moneydata[id]["bank"])
+	{
+		object bankob = load_object(bank);
+		
+		if( objectp(bankob) )
+		{
+			object master = bankob->query_master();
+			delete("savings/"+id, master);
+			master->save();
+		}	
+	}
+	
+	map_delete(moneydata, id);
+}
+
+void set_money(string id, mixed data)
+{
+	moneydata[id] = data;
 }
 
 varargs mapping query_moneydata(string id)
@@ -488,6 +568,20 @@ varargs mapping query_moneydata(string id)
 		return moneydata;
 	
 	return moneydata[id];
+}
+
+void calculate_all_GNP()
+{
+	// 關閉系統心跳計算
+	set_heartbeat_interval(0);
+
+	foreach( string city in CITY_D->query_cities() )
+		calculate_NNP(city);
+		
+	broadcast_GNP();
+
+	// 重新啟動系統心跳計算
+	set_heartbeat_interval(1);
 }
 
 void heart_beat()
@@ -524,7 +618,7 @@ private void create()
 	C2M[DEFAULT_MONEY_UNIT] = DEFAULT_MONEY_UNIT;
 	M2C[DEFAULT_MONEY_UNIT] = DEFAULT_MONEY_UNIT;
 
-	set_heart_beat(300);
+	set_heart_beat(30);
 }
 
 string query_default_money_unit()

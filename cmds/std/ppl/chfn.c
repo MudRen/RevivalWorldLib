@@ -18,8 +18,9 @@
 #define CH_ID		(1<<0)
 #define CH_NAME		(1<<1)
 #define CH_EMAIL	(1<<2)
+#define CH_PHONE	(1<<3)
 
-#define DEFAULT		CH_ID | CH_NAME | CH_EMAIL
+#define DEFAULT		CH_ID | CH_NAME | CH_EMAIL | CH_PHONE
 #define HELP		"/doc/help/color"
 
 inherit COMMAND;
@@ -32,11 +33,12 @@ string help = @HELP
 -i	修改玩家英文代號色彩
 -n	修改玩家名稱及色彩
 -e	修改玩家電子郵件信箱
+-p	修改玩家的聯絡電話
 
 如不加參數則表示全部修改
 
 指令格式:
-chfn [-i] [-n] [-e]
+chfn [-i] [-n] [-e] [-p]
 
 相關指令: finger, nick
 HELP;
@@ -51,6 +53,7 @@ private void do_command(object me, string arg)
 		if( sscanf(arg, "%*s-i%*s", arg) == 2 )	flag |= CH_ID;
 		if( sscanf(arg, "%*s-n%*s", arg) == 2 )	flag |= CH_NAME;
 		if( sscanf(arg, "%*s-e%*s", arg) == 2 ) flag |= CH_EMAIL;
+		if( sscanf(arg, "%*s-p%*s", arg) == 2 ) flag |= CH_PHONE;
 	}
 	if( !flag ) flag = DEFAULT;
 	tell(me, "跳過請輸入 [ENTER]，取消請輸入 '~q'，色彩協助請輸入 '~h'\n");
@@ -76,6 +79,13 @@ private void change_prompt(object me, int flag)
 		tell(me, HIR"\n注意：信箱位址將作為日後索取角色備份檔案之依據。\n"NOR);
 		tell(me, "EMAIL - [" + query("email", me) + "]\n");
 		tell(me, "請輸入" + pnoun(2, me) + "的電子郵件信箱：");
+		input_to( (: change_input, me, flag :), 2 );
+	}
+	else if( flag & CH_PHONE )
+	{
+		tell(me, HIR"\n注意：聯絡電話將用於身份認證之依據。\n"NOR);
+		tell(me, "PHONE - [" + query("phone", me) + "]\n");
+		tell(me, "請輸入" + pnoun(2, me) + "的聯絡電話(手機)：");
 		input_to( (: change_input, me, flag :), 2 );
 	}
 	return;
@@ -106,7 +116,12 @@ private void change_input(object me, int flag, string arg)
 			tell(me, "跳過彩色英文代號設定。\n");
 		else
 		{
-			if( !(res = me->set_idname(ansi(arg), 0)) )
+			arg = ansi(arg);
+			arg = lower_case(arg);
+			arg = trim(arg);
+			arg = kill_repeat_ansi(arg+NOR);
+			
+			if( !(res = me->set_idname(arg, 0)) )
 			{
 				tell(me, "新設定的英文代號與原有英文代號不同，請重新設定。\n");
 				return change_prompt(me, flag);
@@ -124,7 +139,11 @@ private void change_input(object me, int flag, string arg)
 		else
 		{
 			arg = ansi(arg);
+			arg = trim(arg);
+			arg = kill_repeat_ansi(arg+NOR);
+
 			len = noansi_strlen(arg);
+
 			if( len > 12 || len < 2 )
 			{
 				tell(me, "名稱必須在 1 到 12 個字母之間，請重新設定。\n");
@@ -160,6 +179,19 @@ private void change_input(object me, int flag, string arg)
 				tell(me, "電子郵件信箱 '" + arg + "' 設定完成。\n");
 		}
 		flag ^= CH_EMAIL;
+	}
+	else if( flag & CH_PHONE )
+	{
+		if( arg == "" )
+			tell(me, "跳過聯絡電話設定。\n");
+		else
+		{
+			if( !set("phone", arg, me) )
+				tell(me, "聯絡電話 '" + arg + "' 設定失敗。\n");
+			else
+				tell(me, "聯絡電話 '" + arg + "' 設定完成。\n");
+		}
+		flag ^= CH_PHONE;
 	}
 	if( flag ) return change_prompt(me, flag);
 	return me->finish_input();

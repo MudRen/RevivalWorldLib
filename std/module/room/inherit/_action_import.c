@@ -15,13 +15,15 @@
 #include <daemon.h>
 #include <message.h>
 
-int over_capacity(object env, string database, string amount, mixed capacity);
-void input_object(object env, string database, string basename, string amount);
+int over_capacity(object env, string database, int amount, int capacity);
+void input_object(object env, string database, string basename, int amount);
 
 // 物品輸入指令
 void do_import(object me, string arg, string database, int capacity)
 {
-	string amount, basename, env_city;
+	int amount;
+	string option;
+	string basename, env_city;
 	object ob, env, master, *obs;
 	
 	if( !arg )
@@ -30,7 +32,9 @@ void do_import(object me, string arg, string database, int capacity)
 	env = environment(me);
 	master = env->query_master();
 
-	if( query("owner", env) != me->query_id(1) )
+	if( !userp(me) ) return;
+
+	if( !wizardp(me) && query("owner", env) != me->query_id(1) )
 		return tell(me, pnoun(2, me)+"無法在別人的建築中輸入物品。\n");
 
 	env_city = env->query_city();
@@ -39,18 +43,21 @@ void do_import(object me, string arg, string database, int capacity)
 		obs = filter_array(all_inventory(me)+all_inventory(env), (: !$1->is_keeping() && !query("flag/no_import", $1) && count(query("value", $1),">",0) :));		
 	else
 	{
-		if( sscanf(arg, "%s %s", amount, arg) == 2 )
+		if( sscanf(arg, "%s %s", option, arg) == 2 )
 		{
-			if( amount == "all" ) ;
-			// 如果 amount 並不是數字單位
-			else if( !big_number_check(amount) )
+			if( option == "all" ) ;
+			// 如果 option 並不是數字單位
+			else if( !big_number_check(option) )
 			{
-				arg = amount + " " + arg;
-				amount = "1";	
+				arg = option + " " + arg;
+				amount = 1;	
 			}	
-			else if( count(amount, "<", 1) ) amount = "1";
+			else if( to_int(option) < 1 )
+				amount = 1;
+			else
+				amount = to_int(option);
 		}
-		else amount = "1";
+		else amount = 1;
 	
 		if( !objectp(ob = present(arg, me) || present(arg, env)) )
 			return tell(me, "這附近並沒有 "+arg+" 這樣東西。\n");
@@ -61,10 +68,13 @@ void do_import(object me, string arg, string database, int capacity)
 		if( query("flag/no_import", ob) )
 			return tell(me, ob->query_idname()+"不允許輸入。\n");
 
-		if( amount == "all" )
-			amount = query_temp("amount", ob)||"1";
+		if( query_temp("decorated", ob) )
+			return tell(me, pnoun(2, me)+"必須先取消"+ob->query_idname()+"的裝潢。\n");
 
-		if( count(amount, ">", query_temp("amount", ob)||1) )
+		if( option == "all" )
+			amount = ob->query_amount();
+
+		if( amount > ob->query_amount() )
 			return tell(me, "這附近並沒有那麼多"+(query("unit", ob)||"個")+ob->query_idname()+"。\n");
 	
 		if( ob->is_living() )
@@ -81,7 +91,7 @@ void do_import(object me, string arg, string database, int capacity)
 		basename = base_name(ob);
 		
 		if( arg == "all" )
-			amount = query_temp("amount", ob)||"1";
+			amount = ob->query_amount();
 
 		if( count(query("value", ob), "<", 1) )
 		{
@@ -89,7 +99,13 @@ void do_import(object me, string arg, string database, int capacity)
 			continue;
 		}
 
-		if( query_temp("endurance", ob) < 0 )
+		if( query_temp("decorated", ob) )
+		{
+			tell(me, pnoun(2, me)+"必須先取消"+ob->query_idname()+"的裝潢。\n");
+			continue;
+		}
+
+		if( !undefinedp(query_temp("endurance", ob)) && query_temp("endurance", ob) <= 0 )
 		{
 			tell(me, ob->query_idname()+"已經損壞了，無法輸入。\n");
 			continue;
@@ -97,7 +113,10 @@ void do_import(object me, string arg, string database, int capacity)
 
 		// 超過容量
 		if( over_capacity(master, database, amount, capacity) )
+		{
+			master->delay_save(300);
 			return tell(me, env->query_room_name()+"無法再容納那麼多物品了。\n");
+		}
 		
 		input_object(master, database, basename, amount);
 		
@@ -105,8 +124,6 @@ void do_import(object me, string arg, string database, int capacity)
 
 		destruct(ob, amount);
 	}
-	// hmm....
-	if( master->query_building_type() == "warehouse" )
-		master->save();
+	
+	master->delay_save(300);
 }
-

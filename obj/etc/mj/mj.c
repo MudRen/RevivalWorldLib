@@ -5,12 +5,14 @@
  * Author : Clode@RevivalWorld
  * Date   : 2002-12-10
  * Note   : 臺灣十六張麻將桌
+ * Adviser: 
  * Update :
  *  o 2003-04-15 Clode Update v1.05 to v1.06
     o 2003-04-17 Clode Update v1.06 to v1.07
     o 2003-04-19 Clode Update v1.07 to v1.08
     o 2003-05-25 Sinji Update v1.08 to v1.09
     o 2003-06-25 Ekac 讓 onlooker 也看的到打牌訊息
+    o 2004-12-28 Update v1.09 to v1.10
     o 2004-12-28 Clode Update v1.10 to v1.11 補強 AI
     o 2004-12-31 Clode Update v1.11 to v1.12 AI 程式獨立, 可自行發展各種 AI
     o 2005-03-06 Clode Update v1.12 to v1.13 修復部份重大 bug
@@ -217,7 +219,7 @@ int is_player(object me)
 string full_chinese(string tile)
 {
 	if( member_array(tile, Tsort) == -1 ) return "ERROR";
-	return kill_repeat_ansi(NOR+MJtile[tile][COLOR1]+MJtile[tile][CHINESE][0..1]+NOR+MJtile[tile][COLOR2]+MJtile[tile][CHINESE][2..3]+NOR);
+	return NOR+MJtile[tile][COLOR1]+MJtile[tile][CHINESE][0..1]+NOR+MJtile[tile][COLOR2]+MJtile[tile][CHINESE][2..3]+NOR;
 }
 
 // 嗶嗶聲
@@ -540,7 +542,7 @@ void do_top(object me, string arg)
 	str += NOR WHT"局數 100 局以上								      v"VERSION"\n"NOR;
 
 	str += NOR WHT"──────────────────────────────────────────\n"NOR;
-	me->more("\n"+kill_repeat_ansi(str)+"\n");
+	me->more("\n"+str+"\n");
 }
 
 // 加入牌局
@@ -886,8 +888,8 @@ void show_tile(object me)
 		if( sizeof(mydata[FLOWER]) ) str = HIW"  ┌"+repeat_string("─┬",sizeof(mydata[FLOWER])-1)+"─┐";
 		if( sizeof(mydata[OTILE]) ) str += (sizeof(mydata[FLOWER])?"":HIW"  ")+"┌"+repeat_string("─┬",sizeof(mydata[OTILE])-1)+"─┐"NOR;
 		spec_line_msg(me, str, 9);
-		spec_line_msg(me, NOR WHT"  "+kill_repeat_ansi(replace_string(arr[0], WHT, NOR)), 10);
-		spec_line_msg(me, NOR WHT"  "+kill_repeat_ansi(arr[1])+NOR, 11);
+		spec_line_msg(me, NOR WHT"  "+replace_string(arr[0], WHT, NOR), 10);
+		spec_line_msg(me, NOR WHT"  "+arr[1]+NOR, 11);
 		str = replace_string(str, "┬", "┴");
 		str = replace_string(str, "┌", "└");
 		str = replace_string(str, "┐", "┘");
@@ -965,9 +967,6 @@ void show_tile(object me)
 
 		str = " "+(nextdata[PLAYER]==Psort[MASTER]?HIG"莊"+(MJdata[CMASTER]?"連"+CHINESE_D->chinese_number(MJdata[CMASTER]):"")+" "NOR:"") + (sizeof(nextdata[LISTEN])?HIC"聽 "NOR:"");
 
-		arr[0] = kill_repeat_ansi(arr[0]);
-		arr[1] = kill_repeat_ansi(arr[1]);
-
 		spec_line_msg(me, sprintf("%66s"NOR"%-s", repeat_string(" ",strlen(sizeof(nextdata[TILE])+""))+arr[0], str), 7);
 		spec_line_msg(me, sprintf("%66s"NOR"%-s", HIW+sizeof(nextdata[TILE])+NOR+arr[1], (member_array(nextdata[PLAYER], Psort)==MJdata[TURN] ?HBCYN" "NOR HIREV HIC+remove_ansi(nextdata[IDNAME])+NOR HBCYN" ":" "+nextdata[IDNAME]+" ")+NOR" "), 8);
 	}
@@ -979,9 +978,6 @@ void show_tile(object me)
 
 		str = " "+(lastdata[PLAYER]==Psort[MASTER]?HIG"莊"+(MJdata[CMASTER]?"連"+CHINESE_D->chinese_number(MJdata[CMASTER]):"")+" "NOR:"") + (sizeof(lastdata[LISTEN])?HIC"聽 "NOR:"");
 
-		arr[0] = kill_repeat_ansi(arr[0]);
-		arr[1] = kill_repeat_ansi(arr[1]);
-
 		spec_line_msg(me, str+repeat_string(" ",noansi_strlen(lastdata[IDNAME])-noansi_strlen(str)+2)+arr[0]+NOR, 5);
 		spec_line_msg(me, (member_array(lastdata[PLAYER], Psort)==MJdata[TURN]?HBCYN" "NOR HIREV HIC+remove_ansi(lastdata[IDNAME])+NOR HBCYN" ":" "+lastdata[IDNAME]+" ")+repeat_string(" ",noansi_strlen(str)-noansi_strlen(lastdata[IDNAME])-1)+NOR+arr[1]+HIW+sizeof(lastdata[TILE])+NOR, 6);
 	}
@@ -992,9 +988,6 @@ void show_tile(object me)
 		otile_display(ref arr, oppodata, 1);
 
 		str = " "+(oppodata[PLAYER]==Psort[MASTER]?HIG"莊"+(MJdata[CMASTER]?"連"+CHINESE_D->chinese_number(MJdata[CMASTER]):"")+" "NOR:"") + (sizeof(oppodata[LISTEN])?HIC"聽 "NOR:"");
-
-		arr[0] = kill_repeat_ansi(arr[0]);
-		arr[1] = kill_repeat_ansi(arr[1]);
 
 		spec_line_msg(me, "	   "+str+repeat_string(" ",noansi_strlen(oppodata[IDNAME])-noansi_strlen(str)+2)+arr[0]+NOR, 2);
 		spec_line_msg(me, "	   "+(member_array(oppodata[PLAYER], Psort)==MJdata[TURN]?HBCYN" "NOR HIREV HIC+remove_ansi(oppodata[IDNAME])+NOR HBCYN" ":" "+oppodata[IDNAME]+" ")+repeat_string(" ",noansi_strlen(str)-noansi_strlen(oppodata[IDNAME])-1)+NOR+arr[1]+HIW+sizeof(oppodata[TILE])+NOR, 3);
@@ -1026,8 +1019,8 @@ void show_sea(object me)
 				str1 += NOR+MJtile[tile][COLOR1]+MJtile[tile][CHINESE][0..1]+HIW"∣"NOR;
 				str2 += NOR+MJtile[tile][COLOR2]+MJtile[tile][CHINESE][2..3]+HIW"∣"NOR;
 				spec_line_msg(me, HIW"┌"+repeat_string("─┬", 19)+"─┐"NOR, i+3);
-				spec_line_msg(me, kill_repeat_ansi(str1), i+4);
-				spec_line_msg(me, kill_repeat_ansi(str2), i+5);
+				spec_line_msg(me, str1, i+4);
+				spec_line_msg(me, str2, i+5);
 				spec_line_msg(me, HIW"└"+repeat_string("─┴", 19)+"─┘"NOR, i+6);
 				i+=4;
 				str1 = str2 = HIW"∣"NOR;
@@ -1042,8 +1035,8 @@ void show_sea(object me)
 		if( j%20 )
 		{
 			spec_line_msg(me, HIW"┌"+repeat_string("─┬", j%20-1)+"─┐"NOR, i+3);
-			spec_line_msg(me, kill_repeat_ansi(str1), i+4);
-			spec_line_msg(me, kill_repeat_ansi(str2), i+5);
+			spec_line_msg(me, str1, i+4);
+			spec_line_msg(me, str2, i+5);
 			spec_line_msg(me, HIW"└"+repeat_string("─┴", j%20-1)+"─┘"NOR, i+6);
 		}
 	}
@@ -2412,8 +2405,8 @@ void win_process(object winner, int cheat)
 			if( sizeof(data[FLOWER]) ) str = HIW"  ┌"+repeat_string("─┬",sizeof(data[FLOWER])-1)+"─┐";
 			if( sizeof(data[OTILE]) ) str += (sizeof(data[FLOWER])?"":HIW"	")+"┌"+repeat_string("─┬",sizeof(data[OTILE])-1)+"─┐"NOR;
 			spec_line_msg(ppl, str, 2);
-			spec_line_msg(ppl, NOR WHT"  "+kill_repeat_ansi(replace_string(arr[0], WHT, NOR)), 3);
-			spec_line_msg(ppl, NOR WHT"  "+kill_repeat_ansi(arr[1])+NOR, 4);
+			spec_line_msg(ppl, NOR WHT"  "+replace_string(arr[0], WHT, NOR), 3);
+			spec_line_msg(ppl, NOR WHT"  "+arr[1]+NOR, 4);
 			str = replace_string(str, "┬", "┴");
 			str = replace_string(str, "┌", "└");
 			str = replace_string(str, "┐", "┘");
@@ -3081,7 +3074,7 @@ void do_tin(object me, string arg)
 void show_all(object me)
 {
 	int i=1;
-	string arr, tile, str="";
+	string *arr, tile, str="";
 
 	clear_screen(me);
 
@@ -3315,7 +3308,7 @@ void create()
 
 	reset_all_data();
 	
-	set_heart_beat(3000);
+	set_heart_beat(300);
 }
 
 void delete_data(string id)

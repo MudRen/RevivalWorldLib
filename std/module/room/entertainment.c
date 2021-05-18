@@ -28,7 +28,7 @@ nosave mapping action_info =
 	"line"	:
 	([
 		"short"	: HIM"生產"NOR MAG"線"NOR,
-		"heartbeat":30,	// 實際時間 1 秒為單位
+		"heartbeat":1,	// 實際時間 1 秒為單位
 		"job": WORKER,
 		"master":1,
 		"help"	:
@@ -41,15 +41,16 @@ HELP,
 "line":
 @HELP
 生產線控制指令，用法如下：[管理指令]
-  line 2			- 設定製造生產研發中心編號為 2 的產品
-  line start			- 啟動生產線的運作
+  line 				- 查詢目前生產中的產品原料狀態
+  line setup 2			- 設定製造生產研發中心編號為 2 的產品
+  line start			- 啟動生產線的運作(無限量)
+  line start 10			- 啟動生產線的運作並限定生產數量為 10 個
   line stop			- 停止生產線的運作
 HELP,
 
 "setup":
 @HELP
 設定生產線資料的指令，用法如下：[管理指令]
-  setup reserach 1 21,33 	- 設定全球研發中心座標在第一衛星都市的 21,33
   setup warehouse 1 75,90	- 設定倉庫中心座標在第一衛星都市的 75,90
 HELP,
 
@@ -87,20 +88,20 @@ nosave array building_info = ({
 	,INDUSTRY_REGION
 
 	// 開張儀式費用
-	,"15000000"
+	,500000000
 
 	// 建築物關閉測試標記
-	,1
+	,0
 
 	// 繁榮貢獻度
 	,9
 	
 	// 最高可加蓋樓層
-	,2
+	,10
 	
 	// 最大相同建築物數量(0 代表不限制)
 	,0
 	
 	// 建築物時代
-	,2
+	,3
 });

@@ -22,8 +22,14 @@ object object_parse(string arg, object* objects)
 	if( !arg || !arg[0] || !sizeof(objects) ) return 0;
 	
 	// 試著取得 which
-	if( sscanf(arg, "%s %d", objectname, which) != 2 )
-		objectname = arg;
+	if( sscanf(arg, "%s%d", objectname, which) == 2 )
+	{
+		if( objectname == "" ) return 0;
+			
+		objectname = trim(objectname);
+	}
+	else
+		objectname = arg;	
 
 	if( which < 1 ) return 0;
 

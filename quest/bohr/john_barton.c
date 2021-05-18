@@ -26,7 +26,7 @@
 #include <daemon.h>
 #include <quest.h>
 
-inherit STANDARD_NPC;
+inherit STANDARD_PERSON;
 
 void do_command(string cmd);
 
@@ -54,9 +54,15 @@ void reply_say(object me, string msg)
 		
 	if( strsrch(msg, "花") != -1 )
 	{
+		if( me->query_quest_finish(QUEST_BOHR) )
+		{
+			do_command("say 哦？"+pnoun(2, me)+"不是上次那位送我花的人嗎？真的很謝謝"+pnoun(2, me)+"啊。");
+			return;
+		}
+
 		do_command("say 找怎樣的花啊，我也不知道，我想大概是比較漂亮一點的花吧。");
 		
-		if( !me->query_quest_finish(QUEST_BOHR) && me->query_quest_step(QUEST_BOHR) == 0 )
+		if( me->query_quest_step(QUEST_BOHR) == 0 )
 		{
 			me->set_quest_note(QUEST_BOHR, QUEST_BOHR_NAME, "遇見了強尼‧巴頓，他似乎在找一種花。");
 			me->set_quest_step(QUEST_BOHR, 1);
@@ -159,7 +165,23 @@ void create()
 	set("age", 19);
 	set("gender", MALE_GENDER);
 	set("long", "一位來自國外的俊俏青年，看他的樣子似乎正在苦惱著。");
-	
+	set("heartbeat", 1); // 永久性心跳
+
+	set("attr/str", 500);
+	set("attr/phy", 500);
+	set("attr/int", 500);
+	set("attr/agi", 500);
+	set("attr/cha", 500);
+
+	set("abi/stamina/max", 30000);
+	set("abi/stamina/cur", 30000);
+	set("abi/health/max", 10000);
+	set("abi/health/cur", 10000);
+	set("abi/energy/max", 1000);
+	set("abi/energy/cur", 1000);
+
+	set("no_fight", 1);
+
 	// 啟動主動行為
 	set_behavior();
 

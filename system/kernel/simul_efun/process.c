@@ -19,10 +19,8 @@ void process_function(array fp)
 	
 	if( functionp(fp[0]) )
 	{
-		catch{
-			if( evaluate(fp[0]) == -1 )
-				return;
-		};
+		if( !objectp(function_owner(fp[0])) || evaluate(fp[0]) == -1 )
+			return;
 	}
 	
 	if( intp(fp[0]) )

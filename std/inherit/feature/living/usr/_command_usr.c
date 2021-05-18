@@ -17,17 +17,19 @@
 private nosave int total_timecost = 0;
 private nosave int total_commands = 0;
 private nosave int force_quit_times = 0;
-private nosave string timecost_record;
+private nosave int timecost_record;
 
 private nomask void do_action(mapping fit_actions, string verb, string arg);
 
-#define MAX_TIMECOST				3000000
+#define MAX_TIMECOST				5000000
+#define TIMECOST_DECAY_PER_SECOND		50000
 #define MAX_COMMANDS				500
-#define TIMECOST_DECAY_PER_SECOND		100000
-#define COMMANDS_DECAY_PER_SECOND		10
-#define FORCE_QUIT_LIMIT			50
+#define MAX_COMMANDS_WITH_MCCP			1000
+#define COMMANDS_DECAY_PER_SECOND		2
+#define COMMANDS_DECAY_PER_SECOND_WITH_MCCP	4
+#define FORCE_QUIT_LIMIT			30
 
-string query_timecost_record()
+int query_timecost_record()
 {
 	return timecost_record;
 }
@@ -92,10 +94,8 @@ private nomask void process_command(string verb, string args, string input)
 {
 	object me = this_object();
 	int command_timecost;
-	int commands_limit;
 
-	if( wizardp(me) )
-		log_file("command/etc/"+me->query_id(1), verb+(args?" "+args:""));
+	if( !objectp(me) ) return;
 
 	// 檢查是否被限制指令速度
 	if( query("cmdlimit") )
@@ -115,37 +115,33 @@ private nomask void process_command(string verb, string args, string input)
 	{
 		tell(me, pnoun(2, me)+"連續 "+FORCE_QUIT_LIMIT+" 次無視系統警告，對系統造成過大的負擔，強制離線。\n");
 		CHANNEL_D->channel_broadcast("sys", "LOGOUT_D: "+me->query_idname()+"連續 "+FORCE_QUIT_LIMIT+" 次無視系統警告，對系統造成過大的負擔，強制離線。\n");
-		LOGOUT_D->quit(me);
+		set_temp("quiting", 1);
+		LOGOUT_D->quit(me, "");
 		return;
 	}
 
-	// 負荷太大
-	if( total_timecost > MAX_TIMECOST && !wizardp(me) )
+	// 速度太快(有開 mccp)
+	if( compressedp(me) )
 	{
-		tell(me, pnoun(2, me)+"的指令負荷超過系統限制，"+(((total_timecost - MAX_TIMECOST)/TIMECOST_DECAY_PER_SECOND)||1)+" 秒後才能再下達指令。\n");
+		if( total_commands > MAX_COMMANDS_WITH_MCCP && !wizardp(me))
+		{
+			tell(me, pnoun(2, me)+"的指令速度超過系統限制("+COMMANDS_DECAY_PER_SECOND_WITH_MCCP+" 指令數/秒)，"+(((total_commands - MAX_COMMANDS_WITH_MCCP)/COMMANDS_DECAY_PER_SECOND_WITH_MCCP)||1)+" 秒後才能再下達指令。\n");
+	
+			force_quit_times++;
+			
+			return;
+		}
+	}
+	// 速度太快(未開 mccp)
+	else if( total_commands > MAX_COMMANDS && !wizardp(me) )
+	{
+		tell(me, pnoun(2, me)+"未啟動 MCCP 功能，指令速度超過系統限制("+COMMANDS_DECAY_PER_SECOND+" 指令數/秒)，"+(((total_commands - MAX_COMMANDS)/COMMANDS_DECAY_PER_SECOND)||1)+" 秒後才能再下達指令。\n");
 		
-		CHANNEL_D->channel_broadcast("nch", me->query_idname()+"下達指令負荷超過系統限制");
-
 		force_quit_times++;
 		
 		return;
 	}
-	
-	// 速度太快
-	if( total_commands > MAX_COMMANDS && !wizardp(me) )
-	{
 
-		commands_limit = COMMANDS_DECAY_PER_SECOND;
-
-		tell(me, pnoun(2, me)+"的指令速度超過系統限制("+commands_limit+"指令數/秒)，"+(((total_commands - MAX_COMMANDS)/commands_limit)||1)+" 秒後才能再下達指令。\n");
-		
-		CHANNEL_D->channel_broadcast("nch", me->query_idname()+"下達指令速度超過系統限制");
-
-		force_quit_times++;
-		
-		return;
-	}
-	
 	force_quit_times = 0;
 
 	command_timecost = time_expression 
@@ -157,13 +153,23 @@ private nomask void process_command(string verb, string args, string input)
 	if( !objectp(me) ) return;
 		
 	if( command_timecost > 100000 )
-		CHANNEL_D->channel_broadcast("nch", sprintf("%s下達指令 %s 超過系統限制，執行時間(%fs) \n", me->query_idname(1), wizardp(me) ? "" : input, to_float(command_timecost)/1000000));
+		CHANNEL_D->channel_broadcast("nch", sprintf("%s下達指令 %s 超過系統限制，執行時間(%fs) \n", me->query_idname(1), input, to_float(command_timecost)/1000000));
 
 	// 累計 timecost
-	timecost_record = count(timecost_record, "+", command_timecost);
+	timecost_record += command_timecost;
 
 	total_timecost += command_timecost;
 	total_commands++;
+}
+
+int query_total_timecost()
+{
+	return total_timecost;
+}
+
+int query_total_command()
+{
+	return total_commands;
 }
 
 private void process_heartbeat_command_decay()
@@ -171,6 +177,9 @@ private void process_heartbeat_command_decay()
 	if( total_timecost > TIMECOST_DECAY_PER_SECOND )
 		total_timecost -= TIMECOST_DECAY_PER_SECOND;
 
-	if( total_commands > COMMANDS_DECAY_PER_SECOND )
+	if( total_commands > COMMANDS_DECAY_PER_SECOND_WITH_MCCP && compressedp(this_object()) )
+		total_commands -= COMMANDS_DECAY_PER_SECOND_WITH_MCCP;
+
+	else if( total_commands > COMMANDS_DECAY_PER_SECOND )
 		total_commands -= COMMANDS_DECAY_PER_SECOND;
 }

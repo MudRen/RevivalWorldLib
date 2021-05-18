@@ -33,7 +33,7 @@
         spock@muds.net          2000.May.21.    v22 ª©
 */
 int valid_read(string file, object from, string func)
-{
+{	
 	return SECURE_D->valid_check(file, from, func, READ);
 }
 
@@ -57,6 +57,6 @@ int valid_read(string file, object from, string func)
         spock@muds.net          2000.May.21.    v22 ª©
 */
 int valid_write(string file, object from, string func)
-{
+{	
 	return SECURE_D->valid_check(file, from, func, WRITE);
 }

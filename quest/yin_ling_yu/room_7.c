@@ -73,7 +73,7 @@ void do_push(object me, string arg)
 	{
 		delete_temp("/quest/yin_ling_yu/stone", me);
 		msg("$ME的眼前突然一陣模糊，消失了。\n", me, 0, 1);
-		me->move(({ 81, 71, 0, "lightforest", 8, 0, "81/71/0/lightforest/8/0" }));
+		me->move(({ 10, 70, 0, "lightforest", 7, 0, "10/70/0/lightforest/7/0" }));
 		msg("$ME的眼前突然一陣模糊，眼睛一亮就跑到了這裡。\n", me, 0, 1);
 		
 		if( !random(5) )

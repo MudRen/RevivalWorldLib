@@ -27,7 +27,7 @@ void create()
 		printf("Error: 無法載入檔案 " + file + "。\n");
 		return;
 	}
-	//set_heart_beat(10);
+	//set_heart_beat(1);
 	return;
 }
 int load_data(string file)

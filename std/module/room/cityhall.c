@@ -16,15 +16,20 @@
 #include <daemon.h>
 #include <feature.h>
 #include <message.h>
+#include <condition.h>
+#include <object.h>
+#include <buff.h>
 
 inherit ROOM_ACTION_MOD;
 
 #define LAND_DOMINIUM	"/obj/etc/land_dominium"
 
-#define UNREGISTER_MONEY		"100000"
-#define DEFAULT_NEWBIE_MONEY		"1000"
+#define UNREGISTER_MONEY		100000
+#define DEFAULT_NEWBIE_MONEY		1000
 
-#define CITY_IDNAME_CHANGE_COST		"500000000"
+#define CITY_IDNAME_CHANGE_COST		500000000
+#define TAXRATE_MIN			0
+#define TAXRATE_MAX			10
 
 // 登記市民指令
 void do_register(object me, string arg)
@@ -43,6 +48,9 @@ void do_register(object me, string arg)
 	if( wizardp(me) && city != "wizard" )
 		return tell(me, "巫師不能入籍玩家城市必免造成遊戲不公。\n");
 
+	if( !userp(me) )
+		return tell(me, "只有玩家可以入籍城市。\n");
+
 	if( CITY_D->register_citizen(me->query_id(1), city) )
 	{
 		set("city", city, me);
@@ -57,7 +65,8 @@ void do_register(object me, string arg)
 		me->earn_money(money_unit, DEFAULT_NEWBIE_MONEY);
 		
 		msg("櫃台小姐站起身來奉上了一份土地所有權狀給$ME，並發放 "HIY+money(money_unit, DEFAULT_NEWBIE_MONEY)+NOR" 的市民救助金給$ME。\n", me, 0, 1);
-		
+		msg("櫃台小姐說道："HIG"新進的市民記得常來這裡閱讀(read)「新手培育術」喔！可以免費提供您短暫 50% 經驗值加成，請善加利用！\n"NOR, me, 0, 1);
+
 		CHANNEL_D->channel_broadcast("news", me->query_idname()+"向"+CITY_D->query_city_idname(city)+"市政府正式登記成為市民。");
 		CHANNEL_D->channel_broadcast("city", me->query_idname()+"向"+CITY_D->query_city_idname(city)+"市政府正式登記成為市民。", me);
 		me->save();
@@ -93,7 +102,7 @@ void do_confirm_unregister(object me, string city, string arg)
 
 	if( query("total_online_time", me) > 7*24*60*60 && !me->spend_money(money_unit, UNREGISTER_MONEY) )
 	{
-		tell(me, pnoun(2, me)+"註銷市籍需要繳交 $"+money_unit+" "+UNREGISTER_MONEY+"。\n");
+		tell(me, pnoun(2, me)+"註銷市籍需要繳交 "+money(money_unit, UNREGISTER_MONEY)+"。\n");
 		me->finish_input();
 		return;
 	}
@@ -106,6 +115,8 @@ void do_confirm_unregister(object me, string city, string arg)
 		
 		if( present("land dominium", me) )
 			destruct(present("land dominium", me));
+
+		delete("taxrate", me);
 
 		me->spend_money(money_unit, DEFAULT_NEWBIE_MONEY);
 
@@ -214,6 +225,7 @@ void heart_beat(object env)
 	{
 		case "election":
 		{
+			int heart_beat_tick;
 			int time = time();
 			mapping election = query("election", env) || allocate_mapping(0);
 			
@@ -225,7 +237,12 @@ void heart_beat(object env)
 					CHANNEL_D->channel_broadcast("city", "市政府正在舉辦「"+election["title"]+"」的投票活動，請踴躍參與投票。", env);
 			}
 			
-			if( !(time%1800) )
+			if( !query_temp("heart_beat_tick", env) )
+				heart_beat_tick = set_temp("heart_beat_tick", random(3600), env);
+			else
+				heart_beat_tick = addn_temp("heart_beat_tick", 1, env);
+
+			if( !(heart_beat_tick%3600) )
 				env->save();
 
 			if( election["announced"] )
@@ -253,36 +270,30 @@ void heart_beat(object env)
 void do_refresh(object me, string arg)
 {
 	object env = environment(me);
-	string msg, estatetax;
+	string msg;
+	int estatetax;
 	string city = env->query_city();
 	string moneyunit = MONEY_D->city_to_money_unit(city);
-	int num = CITY_D->query_city_num(city);
 	mapping fund = CITY_D->query_city_info(city, "fund") || allocate_mapping(0);
 	mapping facilities = CITY_D->query_public_facility(city);
 	mapping money = CITY_D->query_city_fund(city);
-	string totalreceipt, totalexpense, estatecost;
+	int totalreceipt, totalexpense, estatecost;
 
 	estatetax = TAX_D->query_city_tax(city);
 
-	totalreceipt = count(estatetax, "+", totalreceipt);
+	totalreceipt = estatetax;
 	
-	foreach( string id, mixed m in money )
-		totalexpense = count( totalexpense, "+", m );
+	foreach( string id, int m in money )
+		totalexpense += m;
 
 	foreach( string citizen in CITY_D->query_citizens(city) )
-		estatecost = count( estatecost, "+", count(ESTATE_D->query_all_estate_value(citizen), "/", 15000));
+		estatecost += ESTATE_D->query_all_estate_value(citizen) / 15000;
 	
-	totalexpense = count( totalexpense, "+", estatecost);
+	totalexpense += estatecost;
 
 	msg  = "┌──────────────── "HIG"更新時間 "+TIME_D->replace_ctime(time())+NOR"  ┐\n";
 	msg += "｜"+sprintf("%-60s", CITY_D->query_city_idname(city)+"的財政資訊")+"｜\n";
 	msg += "├─────────────"HIR"市政"NOR RED"支出"NOR"─────────────┤\n";
-
-	msg += "｜"HIW"自然資源          數量       自然保育             所需金額"NOR"  ｜\n";
-	msg += sprintf("｜  %-16s%-12s%7s"HIR"%21s"NOR"  ｜\n", NOR YEL"山脈"NOR, num+" 座城", query_pcolor(fund["山脈"]), money(moneyunit, money["山脈"]));
-	msg += sprintf("｜  %-16s%-12s%7s"HIR"%21s"NOR"  ｜\n", NOR HIG"森林"NOR, num+" 座城", query_pcolor(fund["森林"]), money(moneyunit, money["森林"]));
-	msg += sprintf("｜  %-16s%-12s%7s"HIR"%21s"NOR"  ｜\n", NOR HIB"河流"NOR, num+" 座城", query_pcolor(fund["河流"]), money(moneyunit, money["河流"]));
-	msg += "｜                                                            ｜\n";
 	msg += "｜"HIW"維護支出          數量       維護保養             所需金額"NOR"  ｜\n";
 	msg += sprintf("｜  %-16s%-12d%7s"HIR"%21s"NOR"  ｜\n", NOR WHT"道路"NOR, facilities["道路"], query_pcolor(fund["道路"]), money(moneyunit, money["道路"]));
 	msg += sprintf("｜  %-16s%-12d%7s"HIR"%21s"NOR"  ｜\n", NOR RED"橋樑"NOR, facilities["橋樑"], query_pcolor(fund["橋樑"]), money(moneyunit, money["橋樑"]));
@@ -443,7 +454,7 @@ void do_election_manage(object me, string arg)
 	env->save();
 }
 
-void do_election_register(object me, string arg)
+void do_election_join(object me, string arg)
 {
 	object env = environment(me);
 	string city = env->query_city();
@@ -554,7 +565,7 @@ void do_officer(object me, string arg)
 		return;
 	}
 	
-	if( !CITY_D->is_mayor(city, me) )
+	if( !CITY_D->is_mayor(city, me) && !wizardp(me) )
 		return tell(me, pnoun(2, me)+"不是市長不能設定"+pnoun(2, me)+"的官員。\n");
 		
 	if( !arg )
@@ -586,7 +597,7 @@ void do_officer(object me, string arg)
 		if( CITY_D->query_section_info(city, num, "vicemayor") )
 			return tell(me, pnoun(2, me)+"必須先解除 "+capitalize(CITY_D->query_section_info(city, num, "vicemayor"))+" 副市長的職位。\n");
 
-		officers[id] = CITY_D->query_section_info(city, num, "name")+"副市長";
+		officers[id] = (CITY_D->query_section_info(city, num, "name")||"第"+(num+1)+"分區")+"副市長";
 
 		CITY_D->set_city_info(city, "government/officer", officers);
 	
@@ -599,24 +610,38 @@ void do_officer(object me, string arg)
 
 	if( title == "-d" )
 	{
+		int deleted = 0;
+		
 		officer = find_player(id);
 		
-		if( undefinedp(officers[id]) )
-			return tell(me, (objectp(officer) ? officer->query_idname() : capitalize(id)+" ")+"原本就不是本城市官員。\n");
-			
 		for(int i=0;CITY_D->city_exist(city, i);i++)
 		{
 			if( CITY_D->query_section_info(city, i, "vicemayor") == id )
+			{
+				deleted = 1;
 				CITY_D->delete_section_info(city, i, "vicemayor");
+			}
 		}
 
-		map_delete(officers, id);
-		CITY_D->set_city_info(city, "government/officer", officers);
-		CHANNEL_D->channel_broadcast("city", "市長"+me->query_idname()+"解除了"+(objectp(officer) ? officer->query_idname() : " "+capitalize(id)+" ")+"的官員職務。", me);
+		if( !undefinedp(officers[id]) )
+		{
+			map_delete(officers, id);
+			CITY_D->set_city_info(city, "government/officer", officers);
+			deleted = 1;
+		}
+		
+		if( deleted )
+			CHANNEL_D->channel_broadcast("city", "市長"+me->query_idname()+"解除了"+(objectp(officer) ? officer->query_idname() : " "+capitalize(id)+" ")+"的官員職務。", me);			
+		else
+			tell(me, (objectp(officer) ? officer->query_idname() : capitalize(id)+" ")+"原本就不是本城市官員。\n");
+			
 		return;	
 	}
 
 	title = kill_repeat_ansi(title+NOR);
+
+	if( noansi_strlen(title) > 24 )
+		return tell(me, "職務名稱最長 24 個字元。\n");
 
 	if( !objectp(officer = find_player(id)) )
 		return tell(me, "線上沒有 "+capitalize(id)+" 這位玩家。\n");
@@ -708,10 +733,12 @@ void do_denominate(object me, string arg)
 		if( lower_case(remove_ansi(arg)) != city )
 			return tell(me, "英文字母必須與現有的城市英文字母相同，"+pnoun(2, me)+"只能更改大小寫與色彩。\n");
 			
-		if( !CITY_D->change_assets(city, "-"+CITY_IDNAME_CHANGE_COST) )
+		if( count(CITY_D->query_assets(city), "<", CITY_IDNAME_CHANGE_COST) )
 			return tell(me, "市政府的資產不足 "HIY+money(moneyunit, CITY_IDNAME_CHANGE_COST)+NOR" 無法變更英文名稱。\n");
+
+		CITY_D->change_assets(city, "-"+CITY_IDNAME_CHANGE_COST);
 			
-		arg = remove_fringe_blanks(kill_repeat_ansi(arg+NOR));
+		arg = kill_repeat_ansi(arg+NOR);
 
 		CHANNEL_D->channel_broadcast("news", CITY_D->query_city_idname(city)+"市長"+me->query_idname()+"發佈消息：自今日起本城市之英文名稱改名為「"+arg+"」。\n");
 		tell(me, pnoun(2, me)+"花費市府資產 "HIY+money(moneyunit, CITY_IDNAME_CHANGE_COST)+NOR" 變更城市的英文名稱。\n");
@@ -731,10 +758,12 @@ void do_denominate(object me, string arg)
 		if( !is_chinese(arg) )
 			return tell(me, "城市的中文名稱只能使用中文。\n");
 			
-		if( !CITY_D->change_assets(city, "-"+CITY_IDNAME_CHANGE_COST) )
+		if( count(CITY_D->query_assets(city), "<", CITY_IDNAME_CHANGE_COST) )
 			return tell(me, "市政府的資產不足 "HIY+money(moneyunit, CITY_IDNAME_CHANGE_COST)+NOR" 無法變更中文名稱。\n");
 
-		arg = remove_fringe_blanks(kill_repeat_ansi(arg+NOR));
+		CITY_D->change_assets(city, "-"+CITY_IDNAME_CHANGE_COST);
+
+		arg = kill_repeat_ansi(arg+NOR);
 
 		CHANNEL_D->channel_broadcast("news", CITY_D->query_city_idname(city)+"市長"+me->query_idname()+"發佈消息：自今日起本城市之中文名稱改名為「"+arg+"」。\n");
 		tell(me, pnoun(2, me)+"花費市府資產 "HIY+money(moneyunit, CITY_IDNAME_CHANGE_COST)+NOR" 變更城市的中文名稱。\n");
@@ -744,7 +773,7 @@ void do_denominate(object me, string arg)
 		return;
 	}
 
-	if( sscanf(arg, "-symbol %d %s", num, arg) == 2 )
+	if( sscanf(arg, "symbol %d %s", num, arg) == 2 )
 	{
 		int strlen;
 		string *emblem = CITY_D->query_city_info(city, "emblem");
@@ -782,8 +811,29 @@ void do_denominate(object me, string arg)
 		msg("$ME對城市徽記作了「"+arg+"」部份的變更。\n", me, 0, 1);
 		return;
 	}
+	
+	if( sscanf(arg, "banner %s", arg) == 1 )
+	{
+		string banner = CITY_D->query_city_info(city, "banner");
+
+		if( arg == "-d" )
+		{
+			if( !banner )
+				return tell(me, "原本就沒有設定旗幟圖檔。\n");
+			
+			CITY_D->delete_city_info(city, "banner");
+			msg("$ME取消了旗幟圖檔的設定。\n", me, 0, 1);
+			HTML_D->create_map_html();
+			return;
+		}
 		
+		CITY_D->set_city_info(city, "banner", arg);
 		
+		tell(me, pnoun(2, me)+"將"+CITY_D->query_city_idname(city)+"之旗幟圖檔設定為「"+arg+"」。\n");
+		CHANNEL_D->channel_broadcast("city", me->query_idname()+"將"+CITY_D->query_city_idname(city)+"之旗幟圖檔設定為「"+arg+"」。", me);
+		HTML_D->create_map_html();
+		return;
+	}
 		
 	if( sscanf(arg, "%d %s", num, arg) != 2 )
 		return tell(me, "請參考 help denominate 正確指令格式。\n");
@@ -807,6 +857,7 @@ void do_donate(object me, string arg)
 	object env = environment(me);
 	string city = env->query_city();
 	string moneyunit = MONEY_D->city_to_money_unit(city);
+	int money;
 	
 	if( !CITY_D->is_citizen(myid, city) )
 		return tell(me, pnoun(2, me)+"不是本城市市民無法捐獻。\n");
@@ -821,25 +872,25 @@ void do_donate(object me, string arg)
 			
 		msg = "市政經費捐獻名單如下：\n";
 		foreach(string id, mapping data in donate)
-			msg += sprintf("%-40s%s\n", data["idname"], "$"+moneyunit+" "+NUMBER_D->number_symbol(data["money"]));
+			msg += sprintf("%-40s%s\n", data["idname"], money(moneyunit, data["money"]));
 			
 		return me->more(msg+"\n");
 	}
 	
-	else if(!(arg = big_number_check(arg)))
+	else if(!(money = to_int(big_number_check(arg))))
 		return tell(me, "請輸入正確的捐款金額。\n");
 		
-	if( count(arg, "<", 10000) )
-		return tell(me, "最少捐款金額為 $"+moneyunit+" 10,000 元。\n");
+	if( money < 10000 )
+		return tell(me, "最少捐款金額為 "+money(moneyunit, 10000)+" 元。\n");
 	
-	if( !me->spend_money(moneyunit, arg) )
+	if( !me->spend_money(moneyunit, money) )
 		return tell(me, pnoun(2, me)+"身上沒有這麼多的 $"+moneyunit+" 現金。\n");
 	
-	set("donate/"+myid, (["idname" : me->query_idname(), "money" : count(arg, "+", query("donate/"+myid+"/money", env)) ]), env);
+	set("donate/"+myid, (["idname" : me->query_idname(), "money" : money + to_int(query("donate/"+myid+"/money", env)) ]), env);
 
 	env->save();
-	CITY_D->change_assets(city, arg);
-	CHANNEL_D->channel_broadcast("city", me->query_idname()+"捐獻了 $"+moneyunit+" "+NUMBER_D->number_symbol(arg)+" 作為市政經費之用。", me);
+	CITY_D->change_assets(city, money);
+	CHANNEL_D->channel_broadcast("city", me->query_idname()+"捐獻了 $"+moneyunit+" "+NUMBER_D->number_symbol(money)+" 作為市政經費之用。", me);
 
 	return tell(me, pnoun(2, me)+"捐獻了 $"+moneyunit+" "+NUMBER_D->number_symbol(arg)+" 作為市政經費之用。\n");
 }
@@ -849,7 +900,7 @@ void do_fire(object me, string arg)
 	object env = environment(me);
 	string city = env->query_city();
 	
-	if( !CITY_D->is_mayor(city, me) )
+	if( !CITY_D->is_mayor(city, me) && !wizardp(me) )
 		return tell(me, pnoun(2, me)+"不是市長無法使用此功能。\n");
 		
 	if( !arg )
@@ -883,6 +934,80 @@ void do_fire(object me, string arg)
 		error("註銷失敗，請通知巫師處理。\n");
 }
 
+void do_taxrate(object me, string arg)
+{
+	string target_id;
+	object target;
+	int rate;
+	string city = environment(me)->query_city();
+
+	if( !CITY_D->is_mayor(city, me) )
+		return tell(me, pnoun(2, me)+"不是市長無法使用此功能。\n");	
+	
+	if( !arg )
+		return tell(me, "請輸入正確的指令格式(help taxrate)。\n");
+
+	if( sscanf(arg, "%s %d", target_id, rate) == 2 )
+	{
+		if( !user_exists(target_id) )
+			return tell(me, "遊戲中並沒有 "+capitalize(target_id)+" 這位玩家。\n");
+	
+		if( rate < TAXRATE_MIN || rate > TAXRATE_MAX )
+			return tell(me, "稅收倍率只能介於 "+TAXRATE_MIN+" 至 "+TAXRATE_MAX+" 之間。\n");
+	
+		if( !CITY_D->is_citizen(target_id, city) )
+			return tell(me, capitalize(target_id)+" 不是本城市的市民。\n");
+	
+		target = load_user(target_id);
+	
+		set("taxrate", rate, target);
+		
+		target->save();
+		
+		msg("$ME將$YOU的稅收倍率調整為 "+rate+"。\n", me, target, 1);
+		
+		if( !userp(target) )
+			destruct(target);
+	}
+	else if( sscanf(arg, "%s -d", target_id) )
+	{
+		if( !user_exists(target_id) )
+			return tell(me, "遊戲中並沒有 "+capitalize(target_id)+" 這位玩家。\n");
+
+		if( !CITY_D->is_citizen(target_id, city) )
+			return tell(me, capitalize(target_id)+" 不是本城市的市民。\n");
+
+		target = load_user(target_id);
+		
+		delete("taxrate", target);
+		
+		target->save();
+
+		msg("$ME取消$YOU的稅收倍率設定。\n", me, target, 1);
+		
+		if( !userp(target) )
+			destruct(target);
+	}
+	else
+	{
+		if( !user_exists(arg) )
+			return tell(me, "遊戲中並沒有 "+capitalize(arg)+" 這位玩家。\n");
+
+		if( !CITY_D->is_citizen(arg, city) )
+			return tell(me, capitalize(arg)+" 不是本城市的市民。\n");
+
+		target = load_user(arg);
+		
+		if( !undefinedp(query("taxrate", target)) )
+			tell(me, target->query_idname()+"的稅收倍率目前設定為 "+query("taxrate", target)+"。\n");
+		else
+			tell(me, target->query_idname()+"的稅收倍率目前尚未設定。\n");
+		
+		if( !userp(target) )
+			destruct(target);
+	}
+}
+
 void do_fund(object me, string arg)
 {
 	int percent;
@@ -899,8 +1024,8 @@ void do_fund(object me, string arg)
 	
 	if( sscanf(arg, "%s稅 %d", tax, taxrate) == 2 )
 	{
-		if( taxrate < 0 || taxrate > 10000 )
-			return tell(me, "稅率不可低於 0 或高於 10000。\n");
+		if( taxrate < 0 || taxrate > 10000000 )
+			return tell(me, "稅率不可低於 0 或高於 10000000。\n");
 			
 		switch(tax)
 		{
@@ -922,9 +1047,6 @@ void do_fund(object me, string arg)
 			
 		switch(arg)
 		{
-			case "山脈":
-			case "森林":
-			case "河流":
 			case "道路":
 			case "橋樑":
 				fund[arg] = percent;
@@ -940,6 +1062,330 @@ void do_fund(object me, string arg)
 		return tell(me, pnoun(2, me)+"將「"+arg+"」的相關財政經費調整為 "+query_pcolor(percent)+"。\n", me);
 	}
 	return tell(me, "請參考 help fund 輸入正確格式。\n");
+}
+
+void do_read(object me, string arg)
+{
+	if( !userp(me) ) return;
+
+        if( query("total_online_time", me) > 86400*45 )
+                return tell(me, pnoun(2, me)+"的總上線時間已經超過 45 天，無法再享用這個輔助法術了。\n");
+
+        msg("$ME仔細地翻了翻「"HIG"新手"NOR GRN"培育術"NOR"」，突然全身上泛起一陣綠光，社會經驗值與戰鬥經驗值獲得 50% 的加成。\n", me, 0, 1);
+
+        me->start_condition(NEWBIE);
+}
+
+void do_temple(object me, string arg)
+{
+	object env = environment(me);
+	string city = env->query_city();
+	int num = env->query_city_num();
+
+	CITY_D->set_section_info(city, num, "wizhall", base_name(env));
+	
+	msg("$ME將地板上的石板移開，往一道深不見底的樓梯走了進去。\n", me, 0, 1);
+	me->move(WIZ_HALL);
+	msg("$ME來到了"HIW"地底"NOR WHT"神殿"NOR"。\n", me, 0, 1);
+}
+
+void do_reward(object me, string arg)
+{
+	object env = environment(me);
+	string city = env->query_city();
+	int money;
+
+	if( !CITY_D->is_citizen(me->query_id(1), city) )
+		return tell(me, pnoun(2, me)+"不是本城市的市民。\n");
+
+	if( !arg )
+	{
+		int area_influence = query("area_influence", me);
+		int area_influence_reward = CITY_D->query_city_info(city, "area_influence_reward");
+
+		if( area_influence <= 0 )
+			return tell(me, pnoun(2, me)+"沒有資源佔領貢獻度可以用來兌換獎金。\n");
+
+		if( area_influence_reward <= 0 )
+			return tell(me, CITY_D->query_city_idname(city)+"沒有提供任何資源佔領貢獻度獎金。\n");
+		
+		money = area_influence * area_influence_reward;
+		
+		if( count(CITY_D->query_assets(city), "<", money) )
+			return tell(me, CITY_D->query_city_idname(city)+"的政府資金不足以支付貢獻度獎金了。\n");
+
+		me->earn_money(env->query_money_unit(), money);
+		CITY_D->change_assets(city, "-"+money);
+		
+		delete("area_influence", me);
+		me->save();
+
+		CHANNEL_D->channel_broadcast("city", me->query_idname()+"兌換 "+NUMBER_D->number_symbol(area_influence)+" 點資源佔領貢獻度，獲得 "HIY+money(env->query_money_unit(), money)+NOR"。", me);	
+	}
+	else if( sscanf(arg, "setup %d", money) == 1 )
+	{
+		if( !CITY_D->is_mayor(city, me) )
+			return tell(me, pnoun(2, me)+"不是市長無法使用此功能。\n");
+
+		if( money < 0 || money > 1000000 )
+			return tell(me, "請輸入正確的獎金數值(0~1000000)。\n");
+			
+		CITY_D->set_city_info(city, "area_influence_reward", money);
+		CHANNEL_D->channel_broadcast("city", me->query_idname()+"將每 1 點資源佔領貢獻度提撥的獎金調整為「"HIY+money(env->query_money_unit(), money)+NOR"」。", me);
+	}
+	else
+		return tell(me, "請輸入正確的指令格式(help reward)。\n");
+}
+
+int battlereward_leadership_point(int level)
+{
+		switch(level)
+		{
+			case 0..4: return 200; break;
+			case 5: return 1000; break;
+			case 6: return 2000; break;
+			case 7: return 3000; break;
+			case 8: return 4000; break;
+			case 9: return 5000; break;
+			default: return 9999999999; break;
+		}
+}
+
+int battlereward_conditiontime_bonus_point(int level)
+{
+		switch(level)
+		{
+			case 0: return 500; break;
+			case 1: return 1000; break;
+			case 2: return 1500; break;
+			case 3: return 2000; break;
+			case 4: return 2500; break;
+			default: return 9999999999; break;
+		}
+}
+
+int battlereward_combat_bonus_point(int level, int base)
+{
+		if( base == 1 )
+		{
+			switch(level)
+			{
+				case 0: return 500; break;
+				case 1: return 1000; break;
+				case 2: return 2000; break;
+				case 3: return 3000; break;
+				case 4: return 4000; break;
+				default: return 9999999999; break;
+			}
+		}
+		else if( base == 5 )
+		{
+			switch(level)
+			{
+				case 0: return 500; break;
+				case 5: return 1000; break;
+				case 10: return 2000; break;
+				case 15: return 3000; break;
+				case 20: return 4000; break;
+				default: return 9999999999; break;
+			}
+		}
+		
+		return 9999999999;
+}
+
+void do_exchange(object me, string arg)
+{
+	int battle_insigne = query("battle_insigne", me);
+	
+	if( !arg )
+	{	
+		string msg = "";
+		string syntax = HIC"%3d"NOR CYN". "HIY"%-40s "NOR YEL"%d\n"NOR;
+				
+		msg += NOR WHT"────────────────────────────────────────\n"NOR;
+		msg += sprintf(HIW"%4s %-40s %s\n"NOR, "編號", "物品/能力", "需求勳章數");
+		msg += NOR WHT"────────────────────────────────────────\n"NOR;
+		
+		msg += sprintf(syntax, 1, "員工雇用數獎勵", battlereward_leadership_point(query("battlereward/leadership", me)));
+		msg += sprintf(syntax, 2, "「劍」產品之研發技術", 1000);
+		msg += sprintf(syntax, 3, "「斧」產品之研發技術", 1000);
+		msg += sprintf(syntax, 4, "「戟」產品之研發技術", 1000);
+		msg += sprintf(syntax, 5, "正面加持有效時間延長 10%", battlereward_conditiontime_bonus_point(query("battlereward/conditiontime_bonus", me)));
+		msg += sprintf(syntax, 6, "增加「防暴」角色屬性 1%", battlereward_combat_bonus_point(query("battlereward/"+BUFF_ANTIFATAL_CHANCE, me), 1));
+		msg += sprintf(syntax, 7, "增加「反擊」角色屬性 1%", battlereward_combat_bonus_point(query("battlereward/"+BUFF_COUNTERATTACK_CHANCE, me), 1));
+		msg += sprintf(syntax, 8, "增加「瞬傷」角色屬性 5%", battlereward_combat_bonus_point(query("battlereward/"+BUFF_FATAL_POWER, me), 5));
+		msg += sprintf(syntax, 9, "增加「連攻」角色屬性 1%", battlereward_combat_bonus_point(query("battlereward/"+BUFF_COMBO_CHANCE, me), 1));
+		msg += sprintf(syntax, 10, "增加「刺棘」角色屬性 1%", battlereward_combat_bonus_point(query("battlereward/"+BUFF_THORN_CHANCE, me), 1));
+		
+		msg += NOR WHT"────────────────────────────────────────\n"NOR;
+		
+		return me->more(msg);
+	}
+	
+	if( battle_insigne <= 0 )
+		return tell(me, pnoun(2, me)+"沒有任何戰爭勳章點數。\n");
+	
+	switch(to_int(arg))
+	{
+		case 1:
+			{
+				int battlereward_leadership = query("battlereward/leadership", me);
+				int point = battlereward_leadership_point(battlereward_leadership);
+			
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換員工雇用數獎勵至 "+(battlereward_leadership+1)+" 名。");
+				
+				addn("battlereward/leadership", 1, me);
+				addn("battle_insigne", -point, me);
+				me->save();
+				
+				break;
+			}
+		case 2:
+			if( query("battlereward/swordbook", me) )
+				return tell(me, pnoun(2, me)+"已兌換過此項物品，無法再兌換。\n");
+				
+			if( battle_insigne < 1000 )
+				return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+			
+			CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+1000+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換「劍」產品之研發技術。");
+			
+			set("battlereward/swordbook", 1, me);
+			addn("battle_insigne", -1000, me);
+			me->save();
+
+			break;
+		case 3:
+			if( query("battlereward/axebook", me) )
+				return tell(me, pnoun(2, me)+"已兌換過此項物品，無法再兌換。\n");
+				
+			if( battle_insigne < 1000 )
+				return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+			
+			CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+1000+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換「斧」產品之研發技術。");
+			
+			set("battlereward/axebook", 1, me);
+			addn("battle_insigne", -1000, me);
+			me->save();
+
+			break;
+		case 4:
+			if( query("battlereward/halberdbook", me) )
+				return tell(me, pnoun(2, me)+"已兌換過此項物品，無法再兌換。\n");
+				
+			if( battle_insigne < 1000 )
+				return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+			
+			CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+1000+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換「戟」產品之研發技術。");
+			
+			set("battlereward/halberdbook", 1, me);
+			addn("battle_insigne", -1000, me);
+			me->save();
+
+			break;
+		case 5:
+			{
+				int battlereward_conditiontime_bonus = query("battlereward/conditiontime_bonus", me);
+				int point = battlereward_conditiontime_bonus_point(battlereward_conditiontime_bonus);
+				
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換正面加持有效時間延長至 "+((battlereward_conditiontime_bonus+1)*10)+"%。");
+				
+				addn("battlereward/conditiontime_bonus", 1, me);
+				addn("battle_insigne", -point, me);
+				me->save();
+				
+				break;
+			}
+		case 6:
+			{
+				int battlereward_combat_bonus = query("battlereward/"+BUFF_ANTIFATAL_CHANCE, me);
+				int point = battlereward_combat_bonus_point(battlereward_combat_bonus, 1);
+				
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換增加「防暴」角色屬性至 "+(battlereward_combat_bonus+1)+"%。");
+				
+				addn("battlereward/"+BUFF_ANTIFATAL_CHANCE, 1, me);
+				addn("battle_insigne", -point, me);
+				me->reset_buff_cache();
+				me->save();
+				break;
+			}
+		case 7:
+			{
+				int battlereward_combat_bonus = query("battlereward/"+BUFF_COUNTERATTACK_CHANCE, me);
+				int point = battlereward_combat_bonus_point(battlereward_combat_bonus, 1);
+				
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換增加「反擊」角色屬性至 "+(battlereward_combat_bonus+1)+"%。");
+				
+				addn("battlereward/"+BUFF_COUNTERATTACK_CHANCE, 1, me);
+				addn("battle_insigne", -point, me);
+				me->reset_buff_cache();
+				me->save();
+				break;
+			}
+		case 8:
+			{
+				int battlereward_combat_bonus = query("battlereward/"+BUFF_FATAL_POWER, me);
+				int point = battlereward_combat_bonus_point(battlereward_combat_bonus, 5);
+				
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換增加「瞬傷」角色屬性至 "+(battlereward_combat_bonus+5)+"%。");
+				
+				addn("battlereward/"+BUFF_FATAL_POWER, 5, me);
+				addn("battle_insigne", -point, me);
+				me->reset_buff_cache();
+				me->save();
+				break;
+			}
+		case 9:
+			{
+				int battlereward_combat_bonus = query("battlereward/"+BUFF_COMBO_CHANCE, me);
+				int point = battlereward_combat_bonus_point(battlereward_combat_bonus, 1);
+				
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換增加「連攻」角色屬性至 "+(battlereward_combat_bonus+1)+"%。");
+				
+				addn("battlereward/"+BUFF_COMBO_CHANCE, 1, me);
+				addn("battle_insigne", -point, me);
+				me->reset_buff_cache();
+				me->save();
+				break;
+			}
+		case 10:
+			{
+				int battlereward_combat_bonus = query("battlereward/"+BUFF_THORN_CHANCE, me);
+				int point = battlereward_combat_bonus_point(battlereward_combat_bonus, 1);
+				
+				if( battle_insigne < point )
+					return tell(me, pnoun(2, me)+"的戰爭勳章點數不足。\n");
+							
+				CHANNEL_D->channel_broadcast("news", me->query_idname()+"以 "+point+" 點"HIC"戰"NOR CYN"爭"HIC"勳"NOR CYN"章"NOR"兌換增加「刺棘」角色屬性至 "+(battlereward_combat_bonus+1)+"%。");
+				
+				addn("battlereward/"+BUFF_THORN_CHANCE, 1, me);
+				addn("battle_insigne", -point, me);
+				me->reset_buff_cache();
+				me->save();
+				break;
+			}
+		default:
+			return tell(me, "請輸入正確的編號。\n");
+			break;
+	}
 }
 
 // 設定建築物內房間型態種類
@@ -961,10 +1407,19 @@ HELP,
   donate '金錢'		- 捐獻金錢作為市政府資金使用
   donate		- 捐獻名單
 HELP,
+
+"reward":
+@HELP
+領取資源佔領貢獻獎金，用法如下：
+  reward		- 將身上所有資源佔領貢獻值兌換成獎金
+  reward setup '金錢'	- 設定每 1 點貢獻值的獎金
+HELP,
 			]),
 		"action":
 			([
 				"donate"	: (: do_donate :),
+				"temple"	: (: do_temple :),
+				"reward"	: (: do_reward :),
 			]),
 	]),
 	
@@ -990,12 +1445,19 @@ HELP,
   register		- 註銷市籍
 HELP,
 
+"read":
+@HELP
+閱讀新手培育術，用法如下：
+  read			- 閱讀新手培育術書籍，可獲得經驗值加持
+HELP,
+
 			]),
 		"action":
 			([
 				"register"	: (: do_register :),
 				"unregister"	: (: do_unregister :),
 				"citizen"	: (: do_citizen :),
+				"read"		: (: do_read :),
 			]),
 	]),
 
@@ -1009,6 +1471,29 @@ HELP,
 			]),
 	]),
 	
+	"battlefield":
+	([
+		"short" : HIR"城市防衛部"NOR,
+		"help"	: 
+			([
+"topics":
+@HELP
+    處理城市防衛相關業務。
+HELP,
+
+"exchange":
+@HELP
+　　使用戰爭勳章向城市兌換物品或能力：
+  exchange		- 顯示可以兌換的物品能力與對應的勳章數
+  exchange '數字'	- 選擇兌換物品
+HELP,
+			]),
+		"action":
+			([
+				"exchange"	: (: do_exchange :),
+			]),
+	]),
+
 	"election"	:
 	([
 		"short"	: HIG"選舉委員會"NOR,
@@ -1019,10 +1504,10 @@ HELP,
     選舉委員會負責各項投票相關業務。
 HELP,
 
-"register":
+"join":
 @HELP
 登記或取消參選，用法如下：
-  register		- 登記參選本次選舉(再按一次取消)
+  join		- 登記參選本次選舉(再按一次取消)
 HELP,
 
 "vote":
@@ -1047,7 +1532,7 @@ HELP,
 		"action":
 			([
 				"manage"	: (: do_election_manage :),
-				"register"	: (: do_election_register :),
+				"join"		: (: do_election_join :),
 				"vote"		: (: do_election_vote :),
 			]),
 	]),
@@ -1069,12 +1554,27 @@ HELP,
   fund 河流 80		- 設定河流環境保育經費為 80%
   fund 地產稅 20	- 將地產稅調整為 20
 HELP,
+
+"refresh":
+@HELP
+重新整理財政資訊，用法如下：
+  refresh		- 更新財政資訊
+HELP,
+
+"taxrate":
+@HELP
+設定個人稅收倍率，用法如下：
+  taxrate '玩家ID'	- 查詢某位市民目前的稅收倍率設定
+  taxrate '玩家ID' 2	- 將某位市民的稅收倍率設定為 2 倍(倍率可為 0 至 10 之間)
+  taxrate '玩家ID' -d	- 取消某位市民的稅收倍率設定
+HELP,
 			]),
 		"heartbeat":0,
 		"action":
 			([
 				"fund"		: (: do_fund :),
 				"refresh"	: (: do_refresh :),
+				"taxrate"	: (: do_taxrate :),
 			]),
 	]),
 
@@ -1107,12 +1607,14 @@ HELP,
 "denominate":
 @HELP
 都市命名指令，用法如下：
-  denominate -symbol 1 '徽記'	- 變更城市徽記第 1 行
-  denominate -symbol 2 '徽記'	- 變更城市徽記第 2 行
-  denominate -symbol 3 '徽記'	- 變更城市徽記第 3 行
+  denominate symbol 1 '徽記'	- 變更城市徽記第 1 行
+  denominate symbol 2 '徽記'	- 變更城市徽記第 2 行
+  denominate symbol 3 '徽記'	- 變更城市徽記第 3 行
   denominate '編號' '名稱'	- 設定某編號衛星都市的各別名稱
   denominate id '英文'		- 設定新的城市英文名稱 (只能變更色彩與大小寫)(需花費 5 億的市府資產)
   denominate name '中文'	- 設定新的城市中文名稱 (需花費 5 億的市府資產)
+  denominate banner '圖片網址'	- 設定城市的旗幟圖檔(顯示在官網 2D 地圖上)
+  denominate banner -d		- 取消城市的旗幟圖檔設定
 HELP,
 
 "fire":
@@ -1151,7 +1653,7 @@ nosave array building_info = ({
 	,AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION
 
 	// 開張儀式費用
-	,"0"
+	,0
 	
 	// 建築物關閉測試標記
 	,0

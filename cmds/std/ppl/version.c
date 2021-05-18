@@ -29,6 +29,6 @@ private void do_command(object me, string arg)
 	
 	str =  "遊戲名稱 : "+MUD_FULL_NAME+"\n";
 	str += "程式庫   : "+MUDLIB_NAME+" "+MUDLIB_VERSION_NUMBER+"\n";
-	str += "驅動程式 : "+__VERSION__+" on "+__ARCH__+"\n";
+	str += "驅動程式 : "+__VERSION__+"-"+(SIZEOFINT*8)+"bits on "+__ARCH__+"\n";
 	tell(me, str, CMDMSG);
 }

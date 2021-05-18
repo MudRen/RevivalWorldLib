@@ -33,6 +33,7 @@ decorate function		列出可設定之房間型態
 decorate function -d		取消目前此房間之功能型態
 decorate master 主部門座標  	可於房間中設定相對應的主要連鎖部門所在都市與座標(例 2 50,50)
 decorate master -d		刪除房間中的主要連鎖部門設定
+decorate '物品'			將某物品裝潢在房間內(再按一次取消裝潢)
 
 HELP;
 
@@ -55,7 +56,7 @@ private varargs void input_room_short(object me, object env, string arg, int no_
 	if( !no_encode && query("encode/gb", me) ) arg = G2B(arg);
 
 	arg = ansi(arg);
-	arg = remove_fringe_blanks(arg);
+	arg = trim(arg);
 	arg = kill_repeat_ansi(arg+NOR);
 
 	if( (env->is_maproom() && noansi_strlen(arg) > MAX_SHORT_WIDTH_MAP) || noansi_strlen(arg) > MAX_SHORT_WIDTH )
@@ -127,6 +128,7 @@ private void input_room_long(object me, object env, string arg)
 private void do_command(object me, string arg)
 {
 	object env = environment(me);
+	object ob;
 	string option;
 	array loc = query_temp("location", me);
 	string owner = query("owner", env);
@@ -155,6 +157,34 @@ private void do_command(object me, string arg)
 	else if( owner != me->query_id(1) )
 		return tell(me, "這間房間不是"+pnoun(2, me)+"的，無法裝潢這間房間。\n");
 
+	if( objectp(ob = present(arg, env)) )
+	{
+		if( ob->is_living() )
+			return tell(me, ob->query_idname()+"無法用來裝潢。\n");
+
+		if( !query_temp("decorated", ob) )
+		{
+			set_temp("decorated", 1, ob);
+
+			if( env->is_maproom() )
+				msg("$ME將$YOU裝潢在此地。\n", me, ob, 1);
+			else
+			{
+				msg("$ME將$YOU裝潢在"+env->query_room_name(3)+"內。\n", me, ob, 1);
+
+				env->delay_save(300);	
+			}
+		}
+		else
+		{
+			msg("$ME取消了$YOU的裝潢。\n", me, ob, 1);
+			delete_temp("decorated", ob);
+
+			env->delay_save(300);	
+		}
+
+		return;
+	}
 	sscanf(arg, "%s %s", arg, option);
 
 	switch(arg)
@@ -230,8 +260,50 @@ private void do_command(object me, string arg)
 			if( !wizardp(me) && strsrch(query("long", env), "油漆氣味") != -1 )
 				return tell(me, "這間房間還沒有仔細裝潢過，太過雜亂無法設定房間功能。\n");
 
-			if( option == "scenery" && env->query_floor() != 100 && env->query_floor() != 120 && env->query_floor() != 140 && env->query_floor() != 160 )
-				return tell(me, "觀景台只有在 100F / 120F / 140F / 160F 等樓層可以設置。\n");
+			if( option == "scenery" )
+			{
+				int floor = env->query_floor();
+				
+				switch(floor)
+				{
+					case 100:
+					case 120:
+					case 140:
+					case 160:
+					case 180:
+					case 200:
+					case 220:
+					case 240:
+					case 260:
+					case 280:
+						break;
+					default:
+						return tell(me, "觀景台只有在 100F / 120F / 140F / 160F / 180F / 200F / 220F / 240F / 260F / 280F 等樓層可以設置。\n");
+						break;
+				}
+			}
+			else if( option == "radio" )
+			{
+				int floor = env->query_floor();
+				
+				switch(floor)
+				{
+					case 110:
+					case 130:
+					case 150:
+					case 170:
+					case 190:
+					case 210:
+					case 230:
+					case 250:
+					case 270:
+					case 290:
+						break;
+					default:
+						return tell(me, "廣播電台只有在 110F / 130F / 150F / 170F / 190F / 210F / 230F / 250F / 270F / 290F 等樓層可以設置。\n");
+						break;
+				}
+			}
 			
 			if( query("function", env) == option )
 				return tell(me, "此房間已經設定為此功能。\n");
@@ -333,10 +405,8 @@ private void do_command(object me, string arg)
 				return tell(me, "此間房間是連鎖中心，已經被其他門部連鎖，無法再連鎖至其他門部。\n");
 
 			if( !file_exists(master_basename) )
-			{
-				tell(find_player("sinji"), master_basename);
 				return tell(me, "座標"+loc_short(newloc)+"處並沒有任何建築物。\n");
-			}
+
 			master = load_object(master_basename);
 
 			if( query("owner", master) == "GOVERNMENT/"+envloc[CITY] )

@@ -93,13 +93,16 @@ private void do_command(object me, string arg)
 		msg = pnoun + "目前共有 " + i + " 組指令別名如下: \n";
 
 		foreach(verb in sort_array(keys(alias), 1))
-			msg += sprintf(WHT" ["NOR HIW"%12|s"NOR WHT"]"NOR" %s\n", verb, alias[verb]);
+			msg += sprintf(WHT" ["NOR HIW"%12|s"NOR WHT"]"NOR" %s"NOR"\n", verb, alias[verb]);
 
 		return me->more(msg);
 	}
 	// 設定/刪除 指令別名
-	if( sscanf(arg, "%s %s", verb, cmd) != 2 || verb == "alias" )
+	if( sscanf(arg, "%s %s", verb, cmd) != 2 || verb == "alias" || cmd=="" )
 		return tell(me, "指令格式錯誤，請參考 help alias 以取得更多的使用資訊。\n");
+
+        if( stringp(verb) && !strlen(verb) )
+                return tell(me, "請輸入正確的指令格式。\n");
 
 	// 刪除
 	if( verb == "-d" )
@@ -111,7 +114,7 @@ private void do_command(object me, string arg)
 		return tell(me, "指令別名 " + cmd + " 刪除完成。\n");
 	}
 	// 設定
-	if( sizeof(me->query_alias()) > MAX_ALIASES )
+        if( sizeof(me->query_alias()) > MAX_ALIASES && !wizardp(me) )
 		return tell(me, "您的指令別名數量己達上限。");
 
 	if( !undefinedp(COMMAND_D->query_default_alias()[verb]) )

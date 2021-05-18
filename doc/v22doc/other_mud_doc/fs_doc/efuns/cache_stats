@@ -1,0 +1,26 @@
+cache_stats(3)        LPC ╰参ㄧ计        cache_stats(3)
+
+嘿
+     cache_stats() - 穦厨ㄇ璶癟.
+
+粂猭
+     void cache_stats( void );
+
+磞瓃
+     セ╰参ㄧ计Τ臱笆祘Α options.h いΤ﹚竡 CACHE_STATS 
+     Τノ. セㄧ计穦穦厨ㄇ璶癟, 珹:
+
+	% cache hits:         91.64
+	% slots used:         50.59
+	% collisions:          2.72
+	call_others:          18383
+	cache hits:           16847
+	cache size:            2048
+	slots used:            1036
+	collisions:             500
+
+叫把σ
+     opcprof(3), mud_status(3)
+
+MudOS                Last change: 5 Sep 1994                    1
+

@@ -31,7 +31,7 @@
 // 函式庫目錄位置
 #define LIBRARY_PATH			"/home/rw/mud/lib"
 // 主機 IP
-#define MUD_IP				"59.124.167.216"
+#define MUD_IP				"210.59.236.38"
 
 // Mudlib 資訊 -------------------------------------------------------------------------
 
@@ -40,8 +40,8 @@
 // Mudlib Major Version
 #define MUDLIB_MAJOR_VERSION 		1
 // Mudlib Minor Version
-#define MUDLIB_MINOR_VERSION		0
+#define MUDLIB_MINOR_VERSION		1
 // Mudlib Release
-#define MUDLIB_RELEASE			1
+#define MUDLIB_RELEASE			0
 // Mudlib Version Number
 #define MUDLIB_VERSION_NUMBER		MUDLIB_MAJOR_VERSION+"."+MUDLIB_MINOR_VERSION+"."+MUDLIB_RELEASE

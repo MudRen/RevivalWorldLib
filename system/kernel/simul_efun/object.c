@@ -21,30 +21,39 @@ object *present_objects(object ob)
 {
 	// env 為目前物件所在的空間
 	object env = environment(ob);
-
+	
 	// 沒有環境！？
 	if( !env ) return allocate(0);
-
+	
 	// 只有在 map_d	的地圖系統才需要判斷
 	if( env->is_maproom() )
 		return MAP_D->coordinate_inventory(query_temp("location", ob));
-
+	
 	// 如果在 map_d	系統以外直接傳回 efun:all_inventory 的值
 	return all_inventory(env);
 }
 
 
-private	int sort_objects_sortfunc(object ob1, object ob2)
+int sort_objects_sortfunc(object ob1, object ob2)
 {
 	if( ob1->is_board() ) return 1;
 	if( ob2->is_board() ) return -1;
-
-	if( userp(ob1) ) return	1;
-	if( userp(ob2) ) return	-1;
-
-	if( !ob1->is_npc() ) return 1;
-	if( !ob2->is_npc() ) return -1;
-
+	
+	if( ob1->is_dead() ) return 1;
+	if( ob2->is_dead() ) return -1;
+	
+	if( ob1->is_user_ob() ) return	1;
+	if( ob2->is_user_ob() ) return	-1;
+	
+	if( ob1->is_npc() ) return 1;
+	if( ob2->is_npc() ) return -1;
+	
+	if( ob1->is_equipping() ) return 1;
+	if( ob2->is_equipping() ) return -1;
+	
+	if( ob1->is_keeping() ) return 1;
+	if( ob2->is_keeping() ) return -1;
+	
 	return -1;
 }
 
@@ -56,21 +65,32 @@ object *sort_objects(object *obarr)
 {
 	object *retarr = allocate(0);
 	array uniarr;
-
+	
 	if( !sizeof(obarr) )	
 		return retarr;
-
+	
 	// 進行分類	
-	uniarr = unique_array(obarr, (:	userp($1) ? 1 :	$1->is_npc() ? 2 : $1->is_board() ? 3 :	4 :));
-
+	uniarr = unique_array(obarr, 
+	    (:	
+		$1->is_dead() 		? 1 : 
+		userp($1) 		? 2 : 
+		$1->is_npc() 		? 3 : 
+		$1->is_board() 		? 4 : 
+		$1->is_equipping() 	? 5 : 
+		$1->is_keeping() 	? 6 : 
+		7
+	    :)
+	);
+	
 	// 對分類排序
 	uniarr = sort_array(uniarr, (: sort_objects_sortfunc($1[0], $2[0]) :));
-
+	
 	foreach( object* unique	in uniarr )
-	retarr += unique;
-
+	retarr += sort_array(unique, (: -strcmp($1->query_id(1)||base_name($1), $2->query_id(1)||base_name($2)) :));
+	
 	return retarr;
 }
+
 
 /* 根據	str 找尋物件 */
 //note:	object str 刪除不用 (就是:「str」也可以是一個物件，則「str」是尋找，而非呼叫函式 id()。這個)
@@ -78,9 +98,9 @@ object *sort_objects(object *obarr)
 varargs	object present(	string str, object ob )
 {
 	object *inv;
-
+	
 	if( !str || !str[0] ) return 0;
-
+	
 	// 有沒有 ob 傳入，有則檢查是否位於特殊	map_d system
 	if( objectp(ob)	)
 	{
@@ -96,7 +116,7 @@ varargs	object present(	string str, object ob )
 		object obj = previous_object(-1)[<1];
 		object env = environment(obj);
 		inv = sort_objects(all_inventory(obj));
-
+		
 		// 對於上個物件而言，有兩部分物件，一個是所在區的物件，另一個是身上物件
 		if( objectp(env) )
 		{
@@ -107,7 +127,7 @@ varargs	object present(	string str, object ob )
 				inv += sort_objects(all_inventory(env));
 		}
 	}
-
+	
 	return object_parse(str, inv);
 }
 
@@ -130,46 +150,51 @@ varargs	int is_daemon(object ob)
 }
 
 /* 摧毀傳入的 ob , ob 可為 str or object type */
-varargs	int destruct(mixed ob, mixed amount)
+varargs	int destruct(mixed ob, int amount)
 {
 	object env, *obarr;
 
 	if( stringp(ob)	) 
 		ob = find_object(ob);
-
+	
 	if( objectp(ob)	)
 		obarr =	({ ob });
 	else if( arrayp(ob) )
 		obarr =	ob;
 	else
 		return 0;
-
+	
 	foreach( ob in obarr )
 	{
 		if( !objectp(ob) ) continue;
-
+		
 		/* only for debug */
-		/*		if( !clonep(ob) )
-				{
-					CHANNEL_D->channel_broadcast("nch", sprintf("主物件 %s 遭 %O 摧毀",  base_name(ob), previous_object()));
-					log_file("root_object", sprintf("主物件 %s 遭 %O 摧毀",  base_name(ob), previous_object()));
-				}
+		/*
+		if( !clonep(ob) )
+		{
+			CHANNEL_D->channel_broadcast("nch", sprintf("主物件 %s 遭 %O 摧毀",  base_name(ob), previous_object()));
+			log_file("root_object", sprintf("主物件 %s 遭 %O 摧毀",  base_name(ob), previous_object()));
+		}
 		*/
-		if( ob->query_database() && objectp(env = environment(ob)) ) 
+		
+		if( ob->query_database() ) 
 		{
 			// 摧毀數量少於總數
-			if( amount && count(amount, "<", query_temp("amount", ob)||1) && count(amount, ">", 0) )
+			if( !undefinedp(amount) && amount > 0 && amount < ob->query_amount() )
 			{
-				set_temp("amount", count(query_temp("amount", ob),"-",amount), ob);
-
+				ob->add_amount(-amount);
 				continue;
 			}
-			// 全部摧毀
-			else
+			// 全部摧毀(移除環境設定)
+			else if( objectp(env = environment(ob)) )
 			{
 				if( env->is_maproom() )
+				{
+					if( ob->is_living() )
+						MAP_D->remove_living_icon(ob, query_temp("location", ob));
+					
 					MAP_D->leave_coordinate(query_temp("location", ob), ob);
-
+				}
 				else if( env->is_living() )
 					env->remove_action(ob);
 			}
@@ -184,13 +209,13 @@ varargs	int destruct(mixed ob, mixed amount)
 			if( sizeof(equippers) )
 			{
 				foreach(object equipper in equippers)
-					if( objectp(equipper) )
-						equipper->unequip(ob, &status);	
+				if( objectp(equipper) )
+					equipper->unequip(ob, ref status);	
 			}
 		}
-
-		catch( ob->remove());
-
+		
+		catch(ob->remove());
+		
 		// 呼叫	efun 摧毀物件
 		efun::destruct(ob);
 	}
@@ -200,19 +225,19 @@ varargs	int destruct(mixed ob, mixed amount)
 object load_user(string	id)
 {
 	object user;
-
+	
 	if( !stringp(id) )
 		return 0;
-
+	
 	if( objectp(user = find_player(id)) )
 		return user;
-
+	
 	if( !objectp(user = load_object(user_file_name(id))) )
 		return 0;
-
+	
 	if( user->restore() )
 		return user;
-
+	
 	destruct(user);
 	return 0;
 }
@@ -220,37 +245,38 @@ object load_user(string	id)
 int user_exists(string id)
 {
 	object user;
-
+	object online = find_player(id);
+	
 	if( !stringp(id) ) return 0;
-
+	
 	user = load_user(id);
-
+	
 	if( !user ) return 0;
-
-	if( !userp(user) )
+	
+	if( !online )
 		destruct(user);
-
+	
 	return 1;
 }
 
 object load_module(mixed filename)
 {
 	if( !filename ) return 0;
-
+	
 	if( arrayp(filename) )
 	{
 		foreach( string room in this_object()->city_roomfiles(filename) )
 		{
 			if( sscanf(room, "/city/%*s/%*d/room/%*d_%*d_%*d_%*s") == 6 )
 				continue;
-
+			
 			return load_object(room[0..<3]);
 		}			
 		return 0;
 	}			
-
+	
 	if( !stringp(filename) || !file_exists(filename) ) return 0;
-
+	
 	return load_object(filename);
 }
 

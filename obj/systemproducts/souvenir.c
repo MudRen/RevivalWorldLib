@@ -33,7 +33,7 @@ varargs void create(string file, string type)
         set("long","純手工製造的城市紀念品，具有珍藏與紀念價值。\n");
         set("unit", "個");
         set("mass", 100);
-        set("value", 1000);
+        set("value", 15000);
         
         objects( (: base_name($1)[0..16] == "/product/souvenir" :) )->set_shadow_ob(this_object());
 }

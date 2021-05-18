@@ -346,9 +346,4 @@ string smtp_error(int reply_code)
 		break;
 	}
 	return msg;
-}
-
-string query_name()
-{
-	return "信件傳輸協定系統(SMTP_D)";
-}
+}         

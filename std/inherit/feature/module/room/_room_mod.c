@@ -17,15 +17,15 @@
 #include <estate.h>
 #include <location.h>
 #include <lock.h>
+#include <areadata.h>
 #include <citydata.h>
 
 #define DISTRIBUTION_TIME	600
 
 // 房間指令集
 nosave mapping actions;
-nosave int heartbeattick;
-nosave int heartbeattime;
 nosave int heartbeatcallout;
+nosave int heartbeattick;
 
 object query_master();
 
@@ -43,7 +43,7 @@ string query_module_file()
 // 往 Action File 查詢功能資料
 varargs mapping query_action_info(string roomfunction)
 {
-	mapping action_info = fetch_variable("action_info", load_object(query_module_file()));
+	mapping action_info = query_module_file()->query_action_info();
 	
 	if( !mapp(action_info ) )
 		return 0;
@@ -56,7 +56,7 @@ varargs mapping query_action_info(string roomfunction)
 
 void startup_heart_beat()
 {
-	set_heart_beat(1);
+	set_heart_beat(heartbeattick);
 }
 
 void stop_heart_beat()
@@ -84,8 +84,7 @@ int enable_action(string roomfunction)
 	// 分散式啟動 heart_beat
 	if( action_info[roomfunction]["heartbeat"] > 0 && this_object()->query_master() == this_object() )
 	{
-		heartbeattime = action_info[roomfunction]["heartbeat"] * 10;
-		heartbeattick = random(heartbeattime);
+		heartbeattick = action_info[roomfunction]["heartbeat"];
 		heartbeatcallout = call_out((:startup_heart_beat:), random(DISTRIBUTION_TIME)+1);
 	}
 	else
@@ -133,14 +132,43 @@ int remove_room_function()
 	return this_object()->save();
 }
 
-string query_room_name()
+varargs string query_room_name(int options)
 {
 	int num, x, y;
-	string city;
+	string zone;
+	string basename = base_name(this_object());
 
-	sscanf(base_name(this_object()), "/city/%s/%d/room/%d_%d_%*s", city, num, x, y);
+	if( sscanf(basename, "/city/%s/%d/room/%d_%d_%*s", zone, num, x, y) != 5 )
+		sscanf(basename, "/area/%s/%d/room/%d_%d_%*s", zone, num, x, y);
+	
+	if( !options )
+		return query("short")+NOR WHT"<"+(CITY_D->query_city_id(zone)||AREA_D->query_area_id(zone))+" "+HIW+(num+1)+" "+(x+1)+NOR WHT","HIW+(y+1)+NOR WHT">"NOR;
+	else if( options == 1 )
+		return query("short")+NOR WHT"<"HIW+(num+1)+" "+(x+1)+NOR WHT","HIW+(y+1)+NOR WHT">"NOR;
+	else if( options == 2 )
+		return query("short")+NOR WHT"<"HIW+(x+1)+NOR WHT","HIW+(y+1)+NOR WHT">"NOR;
+	else if( options == 3 )
+		return query("short");
+}
 
-	return query("short")+HIG"<"+(x+1)+","+(y+1)+">"NOR;
+// 查詢房間所在郊區名稱
+string query_area()
+{
+	string area;
+	
+	sscanf(base_name(this_object()), "/area/%s/%*s", area);
+
+	return area;	
+}
+
+// 查詢房間所在郊區分區
+int query_area_num()
+{
+	int num;
+	
+	sscanf(base_name(this_object()), "/area/%*s/%d/room/%*s", num);
+	
+	return num;
 }
 
 // 查詢房間所在城市名稱
@@ -172,12 +200,13 @@ string query_money_unit()
 array query_location()
 {
 	int num, x, y;
-	string place;
+	string zone;
+	string basename = base_name(this_object());
 
-	sscanf(base_name(this_object()), "/city/%s/%d/room/%d_%d_%*s", place, num, x, y);
-	sscanf(base_name(this_object()), "/area/%s/%d/room/%d_%d_%*s", place, num, x, y);
+	if( sscanf(basename, "/city/%s/%d/room/%d_%d_%*s", zone, num, x, y) != 5 )
+		sscanf(basename, "/area/%s/%d/room/%d_%d_%*s", zone, num, x, y);
 
-	return arrange_city_location(x, y, place, num);
+	return arrange_city_location(x, y, zone, num);
 }
 
 string query_coor_short()
@@ -186,7 +215,9 @@ string query_coor_short()
 	string basename = base_name(this_object());
 	
 	if( sscanf(basename, "/city/%*s/%*d/room/%d_%d_%d_%*s", x, y, z) != 6 )
-		sscanf(basename, "/city/%*s/%*d/room/%d_%d_%*s", x, y);
+		if( sscanf(basename, "/city/%*s/%*d/room/%d_%d_%*s", x, y) != 5 )
+			if( sscanf(basename, "/area/%*s/%*d/room/%d_%d_%d_%*s", x, y, z) != 6 )
+				sscanf(basename, "/area/%*s/%*d/room/%d_%d_%*s", x, y) != 5;
 	
 	if( z )
 		return city_coor_short(x, y)+HIW+" "+(z+1)+NOR WHT"F"NOR;
@@ -335,7 +366,7 @@ void query_building_rooms(object ref *rooms)
 		{
 			if( member_array(room, rooms) == -1 )
 			{
-				room->query_building_rooms(&rooms);
+				room->query_building_rooms(ref rooms);
 			}
 		}
 	}
@@ -370,8 +401,6 @@ void heart_beat()
 {
 	int time;
 	object module_ob;
-	
-	if( (heartbeattick++%heartbeattime) ) return;
 
 	module_ob = find_object(query_module_file());
 
@@ -389,37 +418,18 @@ void heart_beat()
 
 void init(object ob)
 {
-	if( ob->is_module_npc() )
-	{
-		mapping data = query("objects") || allocate_mapping(0);	
-		
-		data[base_name(ob)] = "1";
-		
-		set("objects", data);
-		
-		this_object()->save();
-	}
+	if( userp(ob) || ob->is_train_ob() ) return;
+
+	this_object()->delay_save(300);
 	
 	query_module_file()->init(this_object(), ob);
 }
 
 void leave(object ob)
 {
-	if( ob->is_module_npc() )
-	{
-		mapping data = query("objects");
-		
-		if( !mapp(data) ) return;
-		
-		map_delete(data, base_name(ob));
-		
-		if( sizeof(data) )
-			set("objects", data);
-		else
-			delete("objects");
-			
-		this_object()->save();
-	}
+	if( userp(ob) || ob->is_train_ob() ) return;
+
+	this_object()->delay_save(300);
 	
 	query_module_file()->leave(this_object(), ob);
 }
@@ -434,7 +444,7 @@ void reset_inventory()
 	{
 		if( userp(inv) ) continue;
 
-		objects[base_name(inv)] = query_temp("amount", inv) || "1";
+		objects[base_name(inv)] = inv->query_amount();
 	}
 	
 	if( sizeof(objects) )

@@ -1,10 +1,10 @@
 /* This program is a part of RW mudlib
  * See /doc/help/copyright for more info
  -----------------------------------------
- * File   : standard_module_room.c
+ * File   : standard_module_npc.c
  * Author : Clode@RevivalWorld
  * Date   : 2002-08-24
- * Note   : 標準城市建築物房間繼承檔
+ * Note   : 標準員工繼承檔
  * Update :
  *  o 2000-00-00  
  *
@@ -16,7 +16,7 @@
 
 inherit SAVE;
 
-inherit STANDARD_NPC;
+inherit STANDARD_PERSON;
 
 inherit NPC_MOD;
 

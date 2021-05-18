@@ -16,9 +16,9 @@
 #include <message.h>
 #include <npc.h>
 
-int over_capacity(object env, string database, string amount, mixed capacity);
-void input_object(object env, string database, string basename, string amount);
-void output_object(object env, string database, string basename, string amount);
+int over_capacity(object env, string database, int amount, int capacity);
+void input_object(object env, string database, string basename, int amount);
+void output_object(object env, string database, string basename, int amount);
 
 
 #define STORE_CAPACITY		100000
@@ -31,9 +31,10 @@ void do_buy(object me, string arg, string database, string buyer)
 	int i, which = 1, size, capacity;
 	object env, product, newproduct, delivery, delivery_master;
 	mapping products;
-	string tmp, amount = "1", env_city, cost, earn, productname, delivery_city;
-	int delivery_x, delivery_y, num;
-	string *productlist, pamount, basename;
+	string tmp, env_city, productname, delivery_city;
+	int delivery_x, delivery_y, num, amount = 1, pamount, cost, earn;
+	string basename, option;
+	array productlist;
 	array loc;
 	
 	env = environment(me)->query_master();
@@ -92,12 +93,12 @@ void do_buy(object me, string arg, string database, string buyer)
 			return tell(me, pnoun(2, me)+"欲運送的商品地點不能與此地相同或有相同連鎖中心。\n");
 	}
 		
-	sscanf(arg, "%s %s", amount, productname);
+	sscanf(arg, "%s %s", option, productname);
 	
-	if( !productname || (amount != "all" && !(amount = big_number_check(amount))) )
+	if( !productname || (option != "all" && !(amount = to_int(option))) )
 	{
 		productname = arg;
-		amount = "1";
+		amount = 1;
 	}
 	
 	if( sscanf( productname, "%s %d", tmp, which ) == 2 )
@@ -120,7 +121,7 @@ void do_buy(object me, string arg, string database, string buyer)
 	for(i=0;i<size;i+=2)
 	{
 		basename = productlist[i];
-		pamount = productlist[i+1];
+		pamount = to_int(productlist[i+1]);
 
 		if( catch(product = load_object(basename)) )
 			continue;
@@ -134,23 +135,26 @@ void do_buy(object me, string arg, string database, string buyer)
 
 		if( (i+2)/2 == to_int(big_number_check(productname)) || (product->query_id(1) == lower_case(productname) && !(--which)) )
 		{
-			if( amount == "all" )
+			if( option == "all" )
 			{
-				if( count(pamount, "<", 1) )
+				if( pamount < 1 )
 					return tell(me, pnoun(2, me)+"無法買下所有的"+product->query_idname()+"。\n");
 				else
 					amount = pamount;
 			}
-			else if( pamount != "-1" && count(amount,">",pamount) )
+			else if( pamount != -1 && amount > pamount )
 				return tell(me, "這裡並沒有販賣這麼多"+(query("unit", product)||"個")+product->query_idname()+"。\n");
-			else if( count(amount, "<", 1) )
+			else if( amount < 1 )
 				return tell(me, "請輸入正確的購買數量。\n");
 			
+			if( query("flag/no_give", product) )
+				return tell(me, "無法購買"+product->query_idname()+"這項產品。\n");
+
 			foreach(string shelf, array data in products)
-				if( member_array(basename, data) != -1 && !shelf )
-					return tell(me, product->query_idname()+"目前僅供展示。\n");
+				if( member_array(basename, data) != -1 && (!shelf || shelf=="內銷"))
+					return tell(me, product->query_idname()+"目前僅供展示或供內銷(NPC購買)。\n");
 			
-			cost = count(amount,"*",copy(query("setup/price/"+replace_string(basename, "/", "#"), env)||query("value", product)));
+			cost = amount * to_int(query("setup/price/"+replace_string(basename, "/", "#"), env)||query("value", product));
 			earn = cost;
 
 			if( delivery_master )
@@ -158,10 +162,10 @@ void do_buy(object me, string arg, string database, string buyer)
 				// 直接運送的額外收費 1%
 				if( query("function", env) == "lobby" )
 				{
-					if( count(cost, "/", 1000) == "0" )
-						cost = count(cost, "+", 1*(100-price_skill_level));
+					if( cost/1000 == 0 )
+						cost += 100 - price_skill_level;
 					else
-						cost = count(cost, "+", count((100-price_skill_level), "*", count(cost, "/", 1000)));
+						cost += (100-price_skill_level) * (cost / 1000);
 				}
 				// 數量超過可上架數量
 				if( over_capacity(delivery_master, database, amount, capacity) )
@@ -188,15 +192,18 @@ void do_buy(object me, string arg, string database, string buyer)
 				newproduct = new(basename);
 				
 				if( !query("flag/no_amount", newproduct) )
-					set_temp("amount", amount, newproduct);
+					newproduct->set_amount(amount);
 	
-				if( !me->get_object(newproduct, amount) )
+				if( !me->available_get(newproduct, amount) )
 				{
 					me->earn_money(MONEY_D->city_to_money_unit(env_city), cost);
 					tell(me, pnoun(2, me)+"身上的物品太多或太重無法再拿更多東西了。\n");
 					return;
 				}
+				else
+					newproduct->move(me, amount);
 				
+				me->delay_save(300);
 				msg("$ME花了"HIY+QUANTITY_D->money_info(env_city, cost)+NOR" 購買了"+QUANTITY_D->obj(product, amount)+"。\n",me,0,1);
 				//log_file("command/buy", me->query_idname()+"花了"HIY+QUANTITY_D->money_info(env_city, cost)+NOR" 購買了"+QUANTITY_D->obj(product, amount)+"。");
 			}
@@ -206,16 +213,16 @@ void do_buy(object me, string arg, string database, string buyer)
 				case "GOVERNMENT":
 					break;
 				case "ENVIRONMENT":
-					set("money", count(copy(query("money", env)), "+", earn), env);
+					addn("money", earn, env);
 					break;
 			}
 
-			if( pamount != "-1" )
+			if( pamount != -1 )
 				output_object(env, database, basename, amount);
 
 			if( !userp(me) && product->is_module_object() && !SECURE_D->is_wizard(query("produce/designer", product)) )
 			{
-				set("sells", count(query("sells", product), "+", amount), product);
+				set("sells", to_int(query("sells", product)) + amount, product);
 				
 				//hmm
 				product->save();

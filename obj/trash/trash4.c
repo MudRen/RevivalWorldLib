@@ -2,7 +2,7 @@
  * See /doc/help/copyright for more info
  -----------------------------------------
  * File	  : Trash.c
- * Author :
+ * Author : 
  * Date	  : 2003-5-3
  * Note	  : йUзг
  * Update :

@@ -51,18 +51,19 @@ string time_description(string type, int regtime)
 varargs string show_estate(string owner, array myestates, string title, int enterprise)
 {
 	string level;
-	string list, sloc;
+	string list;
 	array loc;
 	mapping estdata;
 	mapping buildingtable = BUILDING_D->query_building_table();
 	int floors, totalfloors, lands, totallands, flourish, totalflourish;
-	string value, totalvalue;
-	object room;
+	int value, totalvalue;
+	string *getdir;
+	string dir;
 
-	list = HIW"房地產種類  "HIG"建"NOR"/"HIR"回收"NOR"時間 位置座標              佔地 總樓層 總繁榮 總價值\n";
+	list = HIW"房地產種類  "HIG"建"NOR"/"HIR"回收"NOR"時間 位置座標    防禦 佔地 房間 總繁榮 總價值\n";
 	
 	if( !enterprise )
-		list += NOR WHT"───────────────────────────────────────\n"NOR;
+		list += NOR WHT"─────────────────────────────────────\n"NOR;
 	
 	foreach(estdata in sort_array(myestates, (: strcmp($1["type"], $2["type"]) || ($1["regtime"] - $2["regtime"]) :)))
 	{
@@ -72,25 +73,31 @@ varargs string show_estate(string owner, array myestates, string title, int ente
 		value = 0;
 		
 		loc = restore_variable(estdata["walltable"][0]);
-		value = ESTATE_D->query_estate_value(loc);
+		
+		if( CITY_D->is_city_location(loc) )
+		{
+			value = ESTATE_D->query_estate_value(loc);
+
+			if( dir != CITY_NUM_ROOM(loc[CITY], loc[NUM]) )
+			{
+				dir = CITY_NUM_ROOM(loc[CITY], loc[NUM]);
+				getdir = get_dir(dir);
+			}
 	
+			flourish = ESTATE_D->query_estate_flourish(estdata, getdir);
+		}
+		else
+		{
+			value = 0;
+			flourish = 0;
+		}
+
 		lands = sizeof(estdata["walltable"]) + sizeof(estdata["roomtable"]);
 		
 		if( !sizeof(estdata["roomtable"]) )
-			floors = sizeof(estdata["walltable"]);
+			floors = 0;
 		else
-		{
-			foreach(sloc in estdata["roomtable"])
-			{
-				loc = restore_variable(sloc);
-				room = find_object(CITY_ROOM_MODULE(loc[CITY], loc[NUM], loc[X], loc[Y], estdata["type"]));
-				
-				if( objectp(room) )
-					floors += query("floor", room)+1;
-			}
-		}
-					
-		flourish = ESTATE_D->query_estate_flourish(estdata);
+			floors = ESTATE_D->query_estate_floors(loc);
 		
 		switch(estdata["type"])
 		{
@@ -106,10 +113,11 @@ varargs string show_estate(string owner, array myestates, string title, int ente
 			default:
 				level = ""; break;
 		}
-		list += sprintf("%-12s%11s %-22s%-5d%-7d%-7d"HIY"%s\n"NOR,
+		list += sprintf("%-12s%11s %-12s%3d%% "NOR YEL"%-5d"NOR CYN"%-5d"HIC"%-7d"HIY"%s\n"NOR,
 				buildingtable[estdata["type"]][ROOMMODULE_SHORT] + level,
 				time_description(estdata["type"], estdata["regtime"]),
-				loc_short(loc), 
+				loc_short(loc, 1),
+				estdata["maintain"],
 				lands,
 				floors,
 				flourish,
@@ -119,17 +127,14 @@ varargs string show_estate(string owner, array myestates, string title, int ente
 		totalfloors += floors;
 		totallands += lands;
 		totalflourish += flourish;
-		totalvalue = count(totalvalue, "+", value);
+		totalvalue += value;
 	}
 
 	if( !enterprise )
-		list += NOR WHT"───────────────────────────────────────\n"NOR;
-	
-	list += sprintf("%-46s%-5d%-7d%-7d"HIY"%s\n"NOR,"總數", totallands, totalfloors, totalflourish, NUMBER_D->number_symbol(totalvalue));
-	
-	if( !enterprise)
 	{
-		list += NOR WHT"───────────────────────────────────────\n"NOR;
+		list += NOR WHT"─────────────────────────────────────\n"NOR;
+		list += sprintf("%-41s"NOR YEL"%-5d"NOR CYN"%-5d"HIC"%-7d"HIY"%s\n"NOR, CITY_D->query_city_idname(loc[CITY]), totallands, totalfloors, totalflourish, NUMBER_D->number_symbol(totalvalue));
+		list += NOR WHT"─────────────────────────────────────\n"NOR;
 		list += HIW+title+"目前共有 "+sizeof(myestates)+" 筆房地產\n"NOR;
 	}
 	
@@ -148,8 +153,51 @@ private void do_command(object me, string arg)
 	if( !city ) 
 		return tell(me, pnoun(2, me)+"必須先加入某個城市之後才能開始擁有房地產。\n");
 	
+	if( find_player("clode") )
+		tell(find_player("clode"), me->query_idname()+"show_estate\n");
+	
+	if( arg == "enhance" )
+	{
+		int maintain;
+		string value;
+		object env = environment(me);
+		array loc = query_temp("location", me);
+		string money_unit;
+		string zone;
 
-	if( arg && wizardp(me) )
+		zone = env->query_city() || env->query_area() ;
+		
+		if( !arrayp(loc) || !zone )
+			return tell(me, pnoun(2, me)+"無法在這裡強化建築物的防禦工事。\n");
+
+		//if( MAP_D->query_coor_data(loc, "owner") != me->query_id(1) )
+		//	return tell(me, "這裡不是"+pnoun(2, me)+"的土地。\n");
+
+		maintain = 100 - ESTATE_D->query_loc_estate_data(loc, "maintain");
+		
+		if( maintain <= 0 )
+			return tell(me, "這裡的防禦不需要加強。\n");
+
+		value = ESTATE_D->query_estate_value(loc);
+		
+		value = count(count(value, "*", maintain), "/", 10000);
+
+		if( CITY_D->is_city_location(loc) )
+			money_unit = MONEY_D->city_to_money_unit(zone);
+		else if( AREA_D->is_area_location(loc) )
+			money_unit = MONEY_D->query_default_money_unit();
+
+		if( !me->spend_money(money_unit, value) )
+			return tell(me, pnoun(2, me)+"身上的錢不足 "HIY+money(money_unit, value)+NOR"，無法強化建築物防禦工事。\n");
+			
+		ESTATE_D->set_loc_estate_data(loc, "maintain", 100);
+		
+		msg("$ME花費 "HIY+money(money_unit, value)+NOR" 將此建築物的防禦工事強化至 "HIG"100"NOR GRN"%"NOR"。\n", me, 0, 1);
+		
+		return;
+		
+	}
+	else if( arg && wizardp(me) )
 	{
 		ob = find_player(arg);
 		
@@ -171,12 +219,10 @@ private void do_command(object me, string arg)
 		myestates = ESTATE_D->query_player_estate(arg);
 		title = pnoun(2, me);
 	}
-	
 
 	if( !sizeof(myestates) )
 		return tell(me, title+"目前沒有任何房地產。\n");
 
-	
 	list = show_estate(arg, myestates, title);
 
 	me->more(list+"\n");

@@ -18,10 +18,10 @@
 #define DATA_PATH	"/data/daemon/enterprise.o"
 #define MRTGDATA	"/data/daemon/mrtg/stock/"
 
-#define STOCK_MAX_VALUE		1000.0
-#define STOCK_MIN_VALUE		1.0
-#define STOCK_DEFAULT_VALUE	50.0
-#define STOCK_DEFAULT_AMOUNT	5000
+#define STOCK_MAX_VALUE				1000.0
+#define STOCK_MIN_VALUE				1.0
+#define STOCK_DEFAULT_VALUE			50.0
+#define STOCK_DEFAULT_AMOUNT		5000
 
 mapping enterprises;
 nosave private mapping special_stockvalue;
@@ -140,7 +140,7 @@ void unregister_enterprise(string enterprise_id)
 
 	ESTATE_D->remove_estate("ENTERPRISE/"+enterprise_id);
 
-	//MRTG_D->removemrtg("stock_"+enterprises[enterprise_id]["enterprise_id_number"]);
+	MRTG_D->removemrtg("stock_"+enterprises[enterprise_id]["enterprise_id_number"]);
 	
 	foreach(member_id, member_data in enterprises[enterprise_id]["member"])
 	{
@@ -307,7 +307,6 @@ void fix_enterprise_database()
 
 void add_enterprise_to_mrtg(string enterprise_id, int enterprise_id_number, float new_stockvalue)
 {
-/*
 	mapping info = ([
 		"Directory":"stock/"+enterprise_id_number,
 		"Target":"`cat \""LIBRARY_PATH+MRTGDATA+enterprise_id_number+"\"`",
@@ -326,7 +325,6 @@ void add_enterprise_to_mrtg(string enterprise_id, int enterprise_id_number, floa
 
 	MRTG_D->addmrtg("stock_"+enterprise_id_number, info);
 	write_file(MRTGDATA+enterprise_id_number, sprintf("%.2f", new_stockvalue)+"\n"+0, 1);
-*/
 }
 
 
@@ -337,7 +335,7 @@ void set_special_stockvalue(string reason, int value)
 		
 	special_stockvalue[reason] = value;
 }
-
+/*
 void heart_beat()
 {
 	string enterprise_id;
@@ -401,7 +399,7 @@ void heart_beat()
 			assets_scale = sizeof(query_enterprise_assets(enterprise_id));
 
 			// 基穨羆 scale
-			//new_stockvalue += pow(to_float(assets_scale+"."+to_string(assets_scale)[0..0]), 1.3);
+			//new_stockvalue += pow(to_float(assets_scale+"."+(assets_scale+"")[0..0]), 1.3);
 			
 			if( new_stockvalue < STOCK_MIN_VALUE )
 				new_stockvalue = STOCK_MIN_VALUE;
@@ -447,14 +445,14 @@ void heart_beat()
 				-randomvalue/100.,
 				new_stockvalue));
 
-/*
+
 		if( stockvalue_change > 0. )
 			CHANNEL_D->channel_broadcast("stock", sprintf("%-20s 基 "HIR"《%5.2f"NOR"Θ "HIW"%7.2f"NOR" 翴", query_enterprise_color_id(enterprise_id), stockvalue_change, new_stockvalue));
 		else if( stockvalue_change < 0. )
 			CHANNEL_D->channel_broadcast("stock", sprintf("%-20s 基 "HIG"】%5.2f"NOR"Θ "HIW"%7.2f"NOR" 翴", query_enterprise_color_id(enterprise_id), -stockvalue_change, new_stockvalue));
 		else
 			CHANNEL_D->channel_broadcast("stock", sprintf("%-20s 基 "HIW"  %5.2f"NOR"Θ "HIW"%7.2f"NOR" 翴", query_enterprise_color_id(enterprise_id), stockvalue_change, new_stockvalue));
-*/
+
 		enterprises[enterprise_id]["stockvalue_change"] = stockvalue_change;	
 		enterprises[enterprise_id]["stockvalue"] = new_stockvalue;
 		
@@ -466,6 +464,7 @@ void heart_beat()
 		add_enterprise_to_mrtg(enterprise_id, enterprises[enterprise_id]["enterprise_id_number"], new_stockvalue);
 	}
 }
+*/
 
 void set_enterprise_stockvalue(string enterprise_id, float value)
 {
@@ -480,7 +479,7 @@ void create()
 		save();
 	}
 
-	set_heart_beat(6000);
+	set_heart_beat(600);
 }
 
 

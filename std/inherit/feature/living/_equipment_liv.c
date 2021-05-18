@@ -23,8 +23,6 @@ mapping query_equipments()
 	return equipments;
 }
 
-
-
 //
 // 回傳所有裝備物件
 //
@@ -33,13 +31,46 @@ object *query_equipment_objects()
 	return implode(values(equipments), (: $1+$2 :)) || allocate(0);
 }
 
+//
+// 解除某個物件裝備
+//
+// 1: 並無裝備此物件
+// 2: 無法解除此項裝備
+//
+int unequip(object ob, int ref status)
+{
+	foreach(string partid, object *eqs in equipments)
+	{
+		if( member_array(ob, eqs) != -1 )
+		{
+			// 無法解除此項裝備
+			if( !ob->valid_unequip(this_object()) )
+			{
+				status = 2;
+				return 0;
+			}
+			
+			ob->delete_equipping(this_object());
+			
+			equipments[partid] -= ({ ob });
+			
+			if( !sizeof(equipments[partid]) )
+				map_delete(equipments, partid);
 
+			this_object()->reset_buff_cache();
+			return 1;
+		}
+	}
+
+	// 並無裝備此物件
+	status = 1;
+	return 0;
+}
 
 //
 // 1: 此物件不是裝備
 // 2: 無法裝備在此物件上
 // 3: 不知此物件該裝備在何處
-// 4: 已經有同種類的裝備
 // 5: 已經裝備在其他的部位上
 //
 int equip(object ob, int ref status)
@@ -82,6 +113,12 @@ int equip(object ob, int ref status)
 
 	foreach(string p, object *eqs in equipments)
 	{
+		if( member_array(p, partset[PART_CONFLICT]) != -1 )
+		{
+			status = 4;
+			return 0;
+		}
+
 		if( member_array(ob, eqs) != -1 )
 		{
 			status = 5;
@@ -96,43 +133,9 @@ int equip(object ob, int ref status)
 
 	ob->set_equipping(this_object());
 
+	this_object()->reset_buff_cache();
+
 	return 1;
-}
-
-
-//
-// 解除某個物件裝備
-//
-// 1: 並無裝備此物件
-// 2: 無法解除此項裝備
-//
-int unequip(object ob, int ref status)
-{
-	foreach(string partid, object *eqs in equipments)
-	{
-		if( member_array(ob, eqs) != -1 )
-		{
-			// 無法解除此項裝備
-			if( !ob->valid_unequip(this_object()) )
-			{
-				status = 2;
-				return 0;
-			}
-			
-			ob->delete_equipping(this_object());
-			
-			equipments[partid] -= ({ ob });
-			
-			if( !sizeof(equipments[partid]) )
-				map_delete(equipments, partid);
-
-			return 1;
-		}
-	}
-
-	// 並無裝備此物件
-	status = 1;
-	return 0;
 }
 
 
@@ -155,6 +158,8 @@ object *unequip_all()
 	
 	equipments = allocate_mapping(0);
 	
+	this_object()->reset_buff_cache();
+
 	return all_equipments;
 }
 
@@ -185,7 +190,7 @@ object *unequip_part(string partid)
 	}
 	
 	map_delete(equipments, partid);
-	
+	this_object()->reset_buff_cache();
 	return unequipped_equipments;
 }
 
@@ -241,4 +246,45 @@ string query_equipping_part(object ob)
 	return 0;
 }
 
+
+
+//
+// 判斷是否穿著全套裝備
+//
+int is_full_suit()
+{
+	object eq;
+	int full;
+	string key;
+	string key_temp;
+	
+	foreach(array suit in ({ EQ_BREASTPLATE, EQ_HEAD, EQ_LEGGINGS, EQ_GLOVES, EQ_BELT, EQ_BOOTS, EQ_BRACERS, EQ_CLOAK }))
+	{
+		if( !sizeof(equipments[suit[PART_ID]]) )
+			return 0;
+		
+		eq = equipments[suit[PART_ID]][0];
+		
+		if( !objectp(eq) )
+			return 0;
+
+		key_temp = base_name(eq)[0..strsrch(base_name(eq), "_")-1];
+		
+		if( !key )
+		{
+			key = key_temp;
+			full++;
+			continue;
+		}
+		else if( key != key_temp )
+			return 0;
+		else
+			full++;
+	}
+	
+	if( full == 8 )
+		return 1;
+	else
+		return 0;
+}
 

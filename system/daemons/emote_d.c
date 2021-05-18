@@ -52,7 +52,7 @@ varargs private string do_emote(object me, string verb, string arg, int option)
 {
 	object you;
 	array *emotion;
-	string emotion_msg, your_name, argument, ignore;
+	string emotion_msg, your_name, argument;
 
 	if( !me || !verb || !(emotion = emotions[verb]) ) return 0;
 
@@ -69,23 +69,12 @@ varargs private string do_emote(object me, string verb, string arg, int option)
 		if( sscanf(argument, "%d", which) && which > 1 && objectp(you = present(your_name+" "+which, me) || present(your_name+" "+which, environment(me))) )
 		{
 			your_name += " "+which;
-			argument = remove_fringe_blanks(argument)[strlen(which+"")+1..];
+			argument = trim(argument)[strlen(which+"")+1..];
 		}
 
 		if( !objectp(you) )
 			you =  present(your_name, environment(me)) || find_player(your_name);
 
-		if( objectp(you) && interactive(you))
-		{	ignore = query("deny_user", you);
-			if( arrayp(ignore) )
-			{
-				if( member_array( me->query_id(1), ignore ) >= 0 )
-				{
-					tell(me, "你現在無法對"+ you->query_idname() +"使用表情指令 .\n" +NOR);
-					return 0;
-				}
-			}
-		}
 		/* 找到對象 && 有附加文字 */
 		if( objectp(you) )
 		{
@@ -120,6 +109,17 @@ varargs private string do_emote(object me, string verb, string arg, int option)
 	else
 		emotion_msg = replace_string(emotion[NONE_ALL_ARG], "$T", multi_emote(me, arg, option)+NOR);
 
+	if( objectp(you) && interactive(you) && !wizardp(me) )
+	{
+		string *ignore = query("ignore", you);
+
+		if( arrayp(ignore) && member_array( me->query_id(1), ignore ) != -1 )
+		{
+			tell(me, HIY+pnoun(2, me)+"目前無法對"+you->query_idname()+HIY"使用任何表情指令。\n"NOR);
+			return 0;
+		}
+	}
+
 	// 計算使用次數
 	emotion[USE] = count(emotion[USE],"+",1);
 
@@ -140,23 +140,11 @@ varargs private string do_emote(object me, string verb, string arg, int option)
 		return emotion_msg;
 	}
 	else
-	{
-		if( objectp(you) && interactive(you))
-		{	ignore = query("deny_user", you);
-			if( arrayp(ignore) )
-			{
-				if( member_array( me->query_id(1), ignore ) >= 0 )
-				{
-					tell(me, "你現在無法對"+ you->query_idname() +"使用表情指令 .\n" +NOR);
-					return 0;
-				}
-			}
-		}
-
-		if( !objectp(you) || member_array(you, present_objects(me) + all_inventory(me) +({me})) != -1 )
-			msg(kill_repeat_ansi(emotion_msg)+"\n", me, you, 1, "EMOTE");
+	{	
+		if( !objectp(you) || same_environment(me, you) )
+			msg(emotion_msg+"\n", me, you, 1, EMTMSG);
 		else
-			msg(HIB"遠方"NOR"-"+kill_repeat_ansi(emotion_msg)+"\n", me, you, 1, "EMOTE");
+			msg(HIB"遠方"NOR"-"+emotion_msg+"\n", me, you, 1, EMTMSG);
 	}
 }
 

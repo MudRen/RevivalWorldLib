@@ -21,15 +21,35 @@ int is_module_product()
 	return 1;
 }
 
+string query_module()
+{
+	string module = query_temp("module");
+	
+	if( stringp(module) )
+	{
+		return module;
+	}
+	else
+	{
+		sscanf(base_name(this_object()), PRODUCT_MODULE_PATH"%s_object", module);
+		
+		return module;
+	}
+}
+
 // 查詢 Module Filename
 string query_module_file()
 {
-	return query_temp("module_file");
-}
-
-string query_module()
-{
-	return query_temp("module");
+	string module_file = query_temp("module_file");
+	
+	if( stringp(module_file) ) 
+	{
+		return module_file;
+	}
+	else
+	{
+		return PRODUCT_MODULE_PATH+query_module()+"_module.c";
+	}
 }
 
 // 往 Action File 查詢功能資料
@@ -72,14 +92,45 @@ mapping query_product_info()
 	return fetch_variable("product_info", load_object(query_module_file()));
 }
 
+int query_value()
+{
+	object ob;
+	mapping product_info;
+	mapping inlay = query("design/inlay");
+	int value;
+	
+	product_info = fetch_variable("product_info", load_object(query_module_file()));
+	
+	foreach(string material, int num in product_info["material"])
+		if( objectp(ob = load_object(material)) || objectp(ob = load_object(PRODUCT_MODULE_PATH+material+"_object.c")) )
+			value += to_int(query("value", ob)*num*1.5);
+
+	if( mapp(inlay) && sizeof(inlay) )
+	foreach(string material, int num in inlay)
+	{
+		if( objectp(ob = load_object(material)) && !query("badsell", ob) )
+			value += to_int(query("value", ob)*num*0.8);
+	}
+
+	return value;
+}
+
+void setup_inlay()
+{
+	object module = load_object(query_module_file());
+	
+	if( objectp(module) )
+		module->setup_inlay(this_object());
+}
+
 // 由 Virtual_D 呼叫並送入虛擬物件名稱 file
 varargs void create(string file, string type)
 {
 	string module_file;
 
 	if( !stringp(file) || !stringp(type) ) return;
-	
-	module_file = PRODUCT_MODULE_PATH+type+"/module.c";
+		
+	module_file = PRODUCT_MODULE_PATH+type+"_module.c";
 
 	// 在 Virtual_D 裡便檢查是否缺少 Action File
 	if( !file_exist(module_file) )

@@ -32,6 +32,12 @@ void create()
 	
 	// 技能註解
 	set("note",		"快速穿越各種險要地形的技巧");
+	
+	// 文明時代
+	set("age",		1);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL | COMBAT_SKILL);
 }
 
 

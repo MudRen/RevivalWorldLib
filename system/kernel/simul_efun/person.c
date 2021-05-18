@@ -28,9 +28,9 @@ string pnoun(int pronoun_number, mixed arg)
 		case SECOND_PERSONAL: 
 			switch( arg )
 			{
-				case MALE_GENDER: 	return SECOND_PERSONAL_PRONOUN_MALE;
-				case FEMALE_GENDER:	return SECOND_PERSONAL_PRONOUN_FEMALE;
-				default:		return SECOND_PERSONAL_PRONOUN_DEFAULT;
+				case MALE_GENDER: 	return SECOND_PERSONAL_PRONOUN_MALE;	break;
+				case FEMALE_GENDER:	return SECOND_PERSONAL_PRONOUN_FEMALE;	break;
+				default:		return SECOND_PERSONAL_PRONOUN_DEFAULT;	break;
 			}
 
 		case THIRD_PERSONAL:    
@@ -38,9 +38,10 @@ string pnoun(int pronoun_number, mixed arg)
 				return THIRD_PERSONAL_PRONOUN_ANIMAL;     
 			switch( arg )
 			{
-				case MALE_GENDER: 	return THIRD_PERSONAL_PRONOUN_MALE;
-				case FEMALE_GENDER:	return THIRD_PERSONAL_PRONOUN_FEMALE;
-				default:		return THIRD_PERSONAL_PRONOUN_DEFAULT;
+				case MALE_GENDER: 	return THIRD_PERSONAL_PRONOUN_MALE;	break;
+				case FEMALE_GENDER:	return THIRD_PERSONAL_PRONOUN_FEMALE;	break;
+				case ANIMAL_GENDER:	return THIRD_PERSONAL_PRONOUN_ANIMAL;	break;
+				default:		return THIRD_PERSONAL_PRONOUN_DEFAULT;	break;
 			}
 		default:
 			error("¿ù»~¤HºÙ¥N¦Wµü¡C\n");

@@ -33,24 +33,32 @@ string *manual_skill_sort =
 	"charisma",
 	"charisma-adv",
 	"stamina",
+	"stamina-adv",
 	"health",
+	"health-adv",
 	"energy",
+	"energy-adv",
+	"food",
+	"drink",
 	"feature",
 
 	HIG"綜合技巧"NOR GRN"訓練"NOR,
-	"technology",
 	"leadership",
 	"leadership-adv",
 	"architectonic",
 	"architectonic-adv",
+	"architectonic-high",
 	"exchange",
 	"price",
+	"stock",
 	"estaterebate",
 	"sport",
 	"consciousness",
 	"teach",
 	"eloquence",
 	"idle",
+	"technology",
+	"taichi",
 	
 	HIG"基本原料"NOR GRN"生產"NOR,
 	"metal",
@@ -77,28 +85,73 @@ string *manual_skill_sort =
 	"food-fac",
 	"drink-fac",
 	"clothing-fac",
-	"instrument-fac",
 	"furniture-fac",
 	"hardware-fac",
 	"chemical-fac",
 	"machinery-fac",
 	"electrics-fac",
 	"transportation-fac",
-	"entertainment-fac",
-	"medicine-fac",
 	"adventure-fac",
 	"shortrange-fac",
-	"longrange-fac",
 	"armor-fac",
+	"perfume-fac",
+	"instrument-fac",
+	"entertainment-fac",
+	"longrange-fac",
 	"heavyarmor-fac",
 	"magic-fac",
+	"aircraft-fac",
 	
 	
 	HIY"員工工作"NOR YEL"技能"NOR,
 	"storemanage",
+	"security",
 	"factorymanage",
 	"researchmanage",
-	"security",
+
+	HIY"員工運動"NOR YEL"技能"NOR,
+	"righthand",
+	"lefthand",
+	"twohands",
+	"fourseam",
+	"twoseam",
+	"curveball",
+	"slider",
+	"forkball",
+	"sinker",
+	"hitpower",
+	"hitaccuracy",
+	"hitrange",
+	"fldaccuracy",
+	"fldrange",
+	
+	HIR"基本戰鬥"NOR RED"技能"NOR,
+	"dodge",
+	"unarmed",
+	"blade",
+	"stick",
+	"sword",
+	"axe",
+	
+	HIR"樂器戰鬥"NOR RED"技能"NOR,
+	"flute",
+	"guitar",
+
+	HIR"法力戰鬥"NOR RED"技能"NOR,
+	"staff",
+
+	HIR"戰鬥姿態"NOR RED"技能"NOR,
+	"attack-stance",
+	"defend-stance",
+	"speed-stance",
+	"medic-stance",
+	"attack-stance-adv",
+	"defend-stance-adv",
+	"speed-stance-adv",
+	"medic-stance-adv",
+
+	HIR"特殊戰鬥"NOR RED"技能"NOR,
+	"fatalblow",
 
 });
 
@@ -112,11 +165,50 @@ int query_level_exp(int lv)
 		lv = 100 - lv;
 		return to_int((10000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT);
 	}
-	// 101 - 200 另一種算法
 	else if( lv <= 200 )
 	{
 		lv = 200 - lv;
-		return to_int((1000000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(100);
+		return to_int((30000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(100);
+	}
+	else if( lv <= 300 )
+	{
+		lv = 300 - lv;
+		return to_int((50000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(200);
+	}
+	else if( lv <= 400 )
+	{
+		lv = 400 - lv;
+		return to_int((70000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(300);
+	}
+	else if( lv <= 500 )
+	{
+		lv = 500 - lv;
+		return to_int((90000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(400);
+	}
+	else if( lv <= 600 )
+	{
+		lv = 600 - lv;
+		return to_int((110000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(500);
+	}
+	else if( lv <= 700 )
+	{
+		lv = 700 - lv;
+		return to_int((130000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(600);
+	}
+	else if( lv <= 800 )
+	{
+		lv = 800 - lv;
+		return to_int((150000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(700);
+	}
+	else if( lv <= 900 )
+	{
+		lv = 900 - lv;
+		return to_int((170000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(800);
+	}
+	else if( lv <= 1000 )
+	{
+		lv = 1000 - lv;
+		return to_int((190000000 + EXP_SHIFT)/pow(1+(((lv+39)/10)/250.), lv/0.7) - EXP_SHIFT)+query_level_exp(900);
 	}
 	else
 		return 0;
@@ -136,6 +228,17 @@ string *query_sorted_skills()
 int skill_exists(string skill)
 {
 	return member_array(skill, skills) == -1 ? 0 : 1;
+}
+
+string *baseball_limited_skills = ({ "fourseam", "twoseam", "curveball", "slider", "forkball", "sinker", "hitpower", "hitaccuracy", "hitrange", "fldaccuracy", "fldrange" });
+string *query_baseball_limited_skills()
+{
+	return baseball_limited_skills;
+}
+
+int query_baseball_limited_level()
+{
+	return 2500;
 }
 
 void create()

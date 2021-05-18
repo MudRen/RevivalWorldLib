@@ -35,6 +35,16 @@ private void do_command(object me, string arg)
 			return tell(me, pnoun(2, me)+"想要吃些什麼？\n");
 	}
 	
+	//忙碌中不能下指令
+	if( me->is_delaying() )
+	{
+		if( me->is_npc() )
+			return me->do_command("say "+me->query_delay_msg()+"\n");
+
+		tell(me, me->query_delay_msg());
+		return me->show_prompt();
+	}
+
 	ob = present(arg, me) || present(arg, environment(me));
 	
 	if( !objectp(ob) )
@@ -52,21 +62,27 @@ private void do_command(object me, string arg)
 		else
 			return tell(me, ob->query_idname()+"不是食物，無法食用。\n");
 	}
+
+	if( query_temp("decorated", ob) )
+		return tell(me, pnoun(2, me)+"必須先取消"+ob->query_idname()+"的裝潢。\n");
+
+	if( query_temp("coldtime/eat", me) > time() )
+		return tell(me, pnoun(2, me)+"還需要等待 "+(query_temp("coldtime/eat", me)-time())+" 秒後才能食用"+ob->query_idname()+"。\n");
 	
 	capacity = query("capacity", ob);
 
-	if( capacity + me->query_food_cur() > me->query_food_max() )
+	if( capacity > 0 && !me->add_food(capacity) )
 	{
 		if( me->is_npc() )
 			return me->do_command("say 我吃不下"+ob->query_idname()+"了！\n");
 		else
 			return tell(me, pnoun(2, me)+"吃不下"+ob->query_idname()+"了！\n");
 	}
-	
-	me->add_food(capacity);
 
-	msg("$ME將$YOU吃進肚子裡。\n", me, ob, 1);
+	ob->do_eat(me);
 
-	ob->eat();
+	if( query("coldtime", ob) )
+		set_temp("coldtime/eat", time() + query("coldtime", ob), me);
+
 	destruct(ob, 1);
 }

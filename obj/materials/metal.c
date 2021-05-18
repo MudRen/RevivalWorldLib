@@ -25,6 +25,6 @@ void create()
 	
 	set("material/"+METAL, 1);
 	set("unit","³æ¦ì");
-	set("mass", 1000);
-	set("value", 10);
+	set("mass", 100);
+	set("value", 500);
 }

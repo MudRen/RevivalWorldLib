@@ -21,36 +21,17 @@ mapping actions;
 
 string *awards =
 ({
-	"/obj/book/skill/leadership-adv",
-	"/obj/book/skill/architectonic-adv",
-	"/obj/book/skill/strength-adv",
-	"/obj/book/skill/physique-adv",
-	"/obj/book/skill/intelligence-adv",
-	"/obj/book/skill/agility-adv",	
-	"/obj/book/skill/charisma-adv"
+	"/obj/etc/honor_card",
 });
 
 void do_open_envelope(object me, string arg)
 {
-	object award;
-	int money = range_random(10000, 10000000);
-	string msg;
-	
-	msg = HIY"$RW "+NUMBER_D->number_symbol(money)+NOR;
+	object award = new(awards[random(sizeof(awards))]);
 
-	me->earn_money("RW", money);
-
-	if( !random(10) )
-	{
-		award = new(awards[random(sizeof(awards))]);
-
-		msg += " 和"+award->query_idname();
+	string msg = award->query_idname();
 		
-		award->set_keep();
-		award->move(me);
-	}
-	else
-		msg += " (衰人！沒拿到特殊獎品！)";
+	award->set_keep();
+	award->move(me);
 	
 	CHANNEL_D->channel_broadcast("news", me->query_idname()+"打開"+this_object()->query_idname()+"，得到 "+msg+"。");
 	
@@ -66,10 +47,12 @@ void create()
 	if( this_object()->set_shadow_database() ) return;
 	
 	set("unit", "個");
-	set("long", "重大 BUG 回報獎勵紅包, 有十分之一的機會可以獲得特殊獎品");
+	set("long", "重大 BUG 回報獎勵紅包，打開後可以隨機獲得特殊獎品");
 	set("mass", 100);
 	set("value", -1);
 	set("flag/no_amount", 1);
+	set("flag/no_give", 1);
+	set("flag/no_drop", 1);
 
 	actions = ([ "open_envelope" : (: do_open_envelope :) ]);
 }

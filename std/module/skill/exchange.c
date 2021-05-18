@@ -32,7 +32,13 @@ void create()
 	set("title/100",	HIR"匯率"NOR RED"精算師"NOR);
 	
 	// 技能註解
-	set("note",		"可減少匯兌損失(3%->0.5%)");
+	set("note",		"可減少匯兌損失(5%->3%)");
+	
+	// 文明時代
+	set("age",		1);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL);
 }
 
 // 限制可學習對象, 可用來設定各種學習條件

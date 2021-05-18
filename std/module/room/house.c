@@ -21,7 +21,22 @@
 
 inherit ROOM_ACTION_MOD;
 
-#define REGEN	80
+#define REGEN		60
+#define REGEN_WITH_BED	90
+
+void do_sethome(object me, string arg)
+{
+    object env = environment(me);
+
+    if( query("owner", env) != me->query_id(1) )
+    	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
+    	
+    msg("$ME將此地設定為回家的地方，以後使用 home 指令便可以回到此地。\n", me, 0, 1);
+    
+    set("home", base_name(env), me);
+    
+    me->save();
+}
 
 // 製作紀念品
 void do_make(object me, string arg)
@@ -30,8 +45,8 @@ void do_make(object me, string arg)
 	object env = environment(me);
 	string option;
 
-        if( query("owner", env) != me->query_id(1) )
-        	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
+    if( query("owner", env) != me->query_id(1) )
+    	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
         	
 	if( !arg )
 		return tell(me, pnoun(2, me)+"要製作什麼手工藝品？(souvenir)\n");
@@ -69,30 +84,30 @@ void do_make(object me, string arg)
 			}
 		}
 		
-		if( !objectp(metal) || count(query_temp("amount", metal)||1, "<", num) )
+		if( !objectp(metal) || metal->query_amount() < num*5 )
 			return tell(me, pnoun(2, me)+"附近沒有足夠的"+MATERIAL(METAL)->query_idname()+"。\n");
-		if( !objectp(stone) || count(query_temp("amount", stone)||1, "<", num) )
+		if( !objectp(stone) || stone->query_amount() < num*5 )
 			return tell(me, pnoun(2, me)+"附近沒有足夠的"+MATERIAL(STONE)->query_idname()+"。\n");
-		if( !objectp(wood) || count(query_temp("amount", wood)||1, "<", num) )
+		if( !objectp(wood) || wood->query_amount() < num*5 )
 			return tell(me, pnoun(2, me)+"附近沒有足夠的"+MATERIAL(WOOD)->query_idname()+"。\n");
-		if( !objectp(water) || count(query_temp("amount", water)||1, "<", num) )
+		if( !objectp(water) || water->query_amount() < num*5 )
 			return tell(me, pnoun(2, me)+"附近沒有足夠的"+MATERIAL(WATER)->query_idname()+"。\n");
-		if( !objectp(fuel) || count(query_temp("amount", fuel)||1, "<", num) )
+		if( !objectp(fuel) || fuel->query_amount() < num*5 )
 			return tell(me, pnoun(2, me)+"附近沒有足夠的"+MATERIAL(FUEL)->query_idname()+"。\n");
 			
-		if( !me->cost_energy(50 * num) )
+		if( !me->cost_energy(100 * num) )
 			return tell(me, pnoun(2, me)+"沒有足夠的精神可以用來製作紀念品了。\n");
 			
-		destruct(metal, num);
-		destruct(stone, num);
-		destruct(wood, num);
-		destruct(water, num);
-		destruct(fuel, num);
+		destruct(metal, num*5);
+		destruct(stone, num*5);
+		destruct(wood, num*5);
+		destruct(water, num*5);
+		destruct(fuel, num*5);
 		
 		ob = new("/product/souvenir_"+env->query_city());
 
 		if( num > 1 )
-			set_temp("amount", to_string(num), ob);
+			ob->set_amount(num);
 
 		msg("$ME靠著細膩的手工仔細地製作了 "+num+" 個"+ob->query_idname()+"。\n", me, 0, 1);
 		
@@ -105,12 +120,12 @@ void do_make(object me, string arg)
 // 閱讀雜誌
 void do_readmagazine(object me, string arg)
 {
-        object env = environment(me);
+    object env = environment(me);
 
-        if( query("owner", env) != me->query_id(1) )
-        	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
-        	
-        msg("$ME坐在客廳裡翻開雜誌，輕鬆地閱讀來自世界各地的消息，充實了許多知識，也讓一身僵硬的肌肉輕鬆下來。\n", me, 0, 1);
+    if( query("owner", env) != me->query_id(1) )
+    	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
+    	
+    msg("$ME坐在客廳裡翻開雜誌，輕鬆地閱讀來自世界各地的消息，充實了許多知識，也讓一身僵硬的肌肉輕鬆下來。\n", me, 0, 1);
 
 	me->start_condition(SELFCHARGE);
 }
@@ -125,23 +140,41 @@ void do_sleep(object me, string arg)
 	int health_time;
 	int energy_time;
 	int max_time;
+	int regen;
 	object env = environment(me);
+	object* beds = filter_array(all_inventory(env), (: $1->query_module() == "bed" && query_temp("decorated", $1) :));
 
-        if( query("owner", env) != me->query_id(1) )
-        	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
+    if( query("owner", env) != me->query_id(1) )
+    	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
        
 	if( me->is_delaying() )
 		return tell(me, me->query_delay_msg());
 		
+	if( sizeof(beds) && !random(5000) )
+	{
+		msg("$ME飛身跳上$YOU，不知如何突然「碰」的一聲，$YOU的床腳整個裂開，壞掉了！！\n", me, beds[0], 1);
+		destruct(beds[0], 1);
+		return;
+	}
+
 	stamina_cost = me->query_stamina_max() - me->query_stamina_cur();
 	health_cost = me->query_health_max() - me->query_health_cur();
 	energy_cost = me->query_energy_max() - me->query_energy_cur();
 
-	msg("$ME舒服地躺在床上，一眨眼就睡著了(恢復 "+stamina_cost+" 體力、"+health_cost+" 生命、"+energy_cost+" 精神)。\n", me, 0, 1);
-	
-	stamina_time = 2 * stamina_cost / (me->stamina_regen() + REGEN) + 1;
-	health_time = 2 * health_cost / (me->health_regen() + REGEN) + 1;
-	energy_time = 2 * energy_cost / (me->energy_regen() + REGEN)+ 1;
+	if( sizeof(beds) )
+	{
+		regen = query("effect", beds[0]);
+		msg("$ME舒服地躺在$YOU上，一眨眼就睡著了(恢復 "+stamina_cost+" 體力、"+health_cost+" 生命、"+energy_cost+" 精神)。\n", me, beds[0], 1);
+	}
+	else
+	{
+		regen = REGEN;
+		msg("$ME舒服地躺在臥室地上，一眨眼就睡著了(恢復 "+stamina_cost+" 體力、"+health_cost+" 生命、"+energy_cost+" 精神)。\n", me, 0, 1);
+	}
+
+	stamina_time = 2 * stamina_cost / (me->stamina_regen() + regen) + 1;
+	health_time = 2 * health_cost / (me->health_regen() + regen) + 1;
+	energy_time = 2 * energy_cost / (me->energy_regen() + regen)+ 1;
 	
 	max_time = stamina_time;
 	if( health_time > max_time ) max_time = health_time;
@@ -151,10 +184,18 @@ void do_sleep(object me, string arg)
 		tell(me, pnoun(2, me)+"睜開眼睛站了起來，感覺精神百倍。\n");
 	else
 	{
-		set_temp("rest_regen/stamina", REGEN, me);
-		set_temp("rest_regen/health", REGEN, me);
-		set_temp("rest_regen/energy", REGEN, me);
-		me->start_delay(REST_DELAY_KEY, max_time, pnoun(2, me)+"正在睡覺。\n", pnoun(2, me)+"睜開眼睛站了起來，感覺精神百倍。\n", bind((: delete_temp("rest_regen", $(me)), $(me)->set_stamina_full(), $(me)->set_health_full(), $(me)->set_energy_full() :), me));
+		if( me->in_condition(EXTREME_SILENCE) )
+		{
+			max_time /= 2;
+			
+			if( max_time < 1 )
+				max_time = 1;
+		}
+		
+		set_temp("rest_regen/stamina", regen, me);
+		set_temp("rest_regen/health", regen, me);
+		set_temp("rest_regen/energy", regen, me);
+		me->start_delay(REST_DELAY_KEY, max_time, pnoun(2, me)+"正躺在"+(sizeof(beds)>0?beds[0]->query_idname():"地")+"上睡覺。\n", pnoun(2, me)+"睜開眼睛站了起來，感覺精神百倍。\n", bind((: delete_temp("rest_regen", $(me)), $(me)->set_stamina_full(), $(me)->set_health_full(), $(me)->set_energy_full() :), me));
 	}
 }
 
@@ -163,15 +204,15 @@ void do_ogc(object me, string arg)
 {
 	object env = environment(me);
 
-        if( query("owner", env) != me->query_id(1) )
-        	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
+    if( query("owner", env) != me->query_id(1) )
+    	return tell(me, "這裡不是"+pnoun(2, me)+"的家。\n");
 
 	if( me->is_delaying() )
 		return tell(me, me->query_delay_msg());
 
-        msg("$ME從抽屜拿出奇怪的道具，跑到床上開始做起奇怪的動作...喔...哦...哇...呦...耶。\n", me, 0, 1);
-        
-        me->faint();
+    msg("$ME從抽屜拿出奇怪的道具，跑到床上開始做起奇怪的動作...喔...哦...哇...呦...耶。\n", me, 0, 1);
+    
+    me->faint();
 }
 
 
@@ -200,8 +241,16 @@ HELP,
 @HELP
 製作工藝品的指令，用法如下：
  
-make souvenir		- 製作純手工城市紀念品(需耗費五大原料各一個)
+make souvenir		- 製作純手工城市紀念品(需耗費五大原料各五個)
 make '數量' souvenir	- 一次製作大量的紀念品
+
+HELP,
+
+"sethome":
+@HELP
+設定回家的地點，用法如下：
+ 
+sethome			- 將此地設定為回家地點
 
 HELP,
 
@@ -210,6 +259,7 @@ HELP,
                         ([
                                 "readmagazine"	: (: do_readmagazine :),
                                 "make"		: (: do_make :),
+                                "sethome"	: (: do_sethome :),
                         ]),
         ]),
         "bedroom"       :
@@ -258,7 +308,7 @@ nosave array building_info = ({
         ,AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION
 
         // 開張儀式費用
-        ,"100000"
+        ,100000
 
         // 建築物關閉測試標記
         ,0
@@ -267,7 +317,7 @@ nosave array building_info = ({
         ,1
 
         // 最高可加蓋樓層
-        ,10
+        ,6
 
         // 最大相同建築物數量(0 代表不限制)
         ,1

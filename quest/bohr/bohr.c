@@ -26,7 +26,7 @@
 #include <daemon.h>
 #include <quest.h>
 
-inherit STANDARD_NPC;
+inherit STANDARD_PERSON;
 
 void do_command(string cmd);
 
@@ -172,6 +172,22 @@ void create()
 	set("unit", "位");
 	set("age", 48);
 	set("gender", MALE_GENDER);
+	set("heartbeat", 1); // 永久性心跳
+
+	set("attr/str", 500);
+	set("attr/phy", 500);
+	set("attr/int", 500);
+	set("attr/agi", 500);
+	set("attr/cha", 500);
+
+	set("abi/stamina/max", 30000);
+	set("abi/stamina/cur", 30000);
+	set("abi/health/max", 10000);
+	set("abi/health/cur", 10000);
+	set("abi/energy/max", 1000);
+	set("abi/energy/cur", 1000);
+
+	set("no_fight", 1);
 
 	// 啟動主動行為
 	set_behavior();

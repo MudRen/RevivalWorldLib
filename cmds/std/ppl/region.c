@@ -54,9 +54,10 @@ private void do_command(object me, string arg)
 	
 	if( owner )
 	{
-		if( owner == "GOVERNMENT/"+loc[CITY] )
+		if( belong_to_government(owner) )
 			return tell(me, "這塊地已經是政府徵收的土地，無法重新規劃。\n");
-		
+		else if( belong_to_enterprise(owner) )
+			return tell(me, "這塊地已經是 "+owner[11..]+" 的土地，無法重新規劃。\n");
 		return tell(me, "這塊地已經是 "+owner+" 的土地，無法重新規劃。\n");
 	}
 
@@ -82,7 +83,7 @@ private void do_command(object me, string arg)
 			CITY_D->set_coor_data(loc, VALUE, "100000");
 			CITY_D->set_coor_icon(loc, BGRN"．"NOR);
 			
-			CHANNEL_D->channel_broadcast("city", me->query_idname()+"將"+CITY_D->query_city_idname(loc[CITY], loc[NUM])+" "HIG+(loc[X]+1)+","+(loc[Y]+1)+NOR" 的土地規劃為"HIG HBGRN"農業區"NOR"。\n", me);
+			//CHANNEL_D->channel_broadcast("city", me->query_idname()+"將 "+loc_short(loc)+" 的土地規劃為"HIG HBGRN"農業區"NOR"。\n", me);
 			msg("$ME支付了市政府資產 $"+MONEY_D->city_to_money_unit(loc[CITY])+" "+REGION_COST+" 將此地規劃為農業區。\n", me, 0, 1);
 			
 			break;
@@ -97,7 +98,7 @@ private void do_command(object me, string arg)
 			CITY_D->set_coor_data(loc, VALUE, "200000");
 			CITY_D->set_coor_icon(loc, BYEL"．"NOR);
 			
-			CHANNEL_D->channel_broadcast("city", me->query_idname()+"將"+CITY_D->query_city_idname(loc[CITY], loc[NUM])+" "HIG+(loc[X]+1)+","+(loc[Y]+1)+NOR" 的土地規劃為"HIY HBYEL"工業區"NOR"。\n", me);
+			//CHANNEL_D->channel_broadcast("city", me->query_idname()+"將 "+loc_short(loc)+" 的土地規劃為"HIY HBYEL"工業區"NOR"。\n", me);
 			msg("$ME支付了市政府資產 $"+MONEY_D->city_to_money_unit(loc[CITY])+" "+REGION_COST+" 將此地規劃為工業區。\n", me, 0, 1);
 			break;
 			
@@ -112,7 +113,7 @@ private void do_command(object me, string arg)
 			CITY_D->set_coor_data(loc, VALUE, "300000");
 			CITY_D->set_coor_icon(loc, BCYN"．"NOR);
 			
-			CHANNEL_D->channel_broadcast("city", me->query_idname()+"將"+CITY_D->query_city_idname(loc[CITY], loc[NUM])+" "HIG+(loc[X]+1)+","+(loc[Y]+1)+NOR" 的土地規劃為"HIC HBCYN"商業區"NOR"。\n", me);
+			//CHANNEL_D->channel_broadcast("city", me->query_idname()+"將 "+loc_short(loc)+" 的土地規劃為"HIC HBCYN"商業區"NOR"。\n", me);
 			msg("$ME支付了市政府資產 $"+MONEY_D->city_to_money_unit(loc[CITY])+" "+REGION_COST+" 將此地規劃為商業區。\n", me, 0, 1);
 			break;
 		
@@ -124,7 +125,7 @@ private void do_command(object me, string arg)
 			CITY_D->delete_coor_data(loc, 6);
 			CITY_D->delete_coor_icon(loc);
 			
-			CHANNEL_D->channel_broadcast("city", me->query_idname()+"取消了"+CITY_D->query_city_idname(loc[CITY], loc[NUM])+" "HIG+(loc[X]+1)+","+(loc[Y]+1)+NOR" 原有的土地規劃。\n", me);
+			//CHANNEL_D->channel_broadcast("city", me->query_idname()+"取消了 "+loc_short(loc)+" 原有的土地規劃。\n", me);
 			msg("$ME取消了此地原有的土地規劃。\n", me, 0, 1);
 			break;
 			

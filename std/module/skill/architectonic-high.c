@@ -1,0 +1,108 @@
+/* This program is a part of RW mudlib
+ * See /doc/help/copyright for more info
+ -----------------------------------------
+ * File   : architectonic-high.c
+ * Author : Clode@RevivalWorld
+ * Date   : 2010-01-23
+ * Note   : 偉大建築
+ * Update :
+ *  o 2000-00-00  
+ *
+ -----------------------------------------
+ */
+
+#include <ansi.h>
+#include <skill.h>
+#include <inherit.h>
+#include <message.h>
+#include <daemon.h>
+
+inherit STANDARD_SKILL;
+
+void create()
+{
+	// 技能中文
+	set("name", 	"偉大建築");
+
+	// 技能英文
+	set("id",		"architectonic-high");
+
+	// 技能頭銜
+	//set("title/50",   HIC"城"NOR CYN"市"HIC"巨"NOR CYN"擘"NOR);
+	//set("title/100",  HIW"城"NOR WHT"市"HIW"主"NOR WHT"宰"NOR);
+	
+	// 技能註解
+	set("note",		"遠古諸神遺留在人間的古籍，裡頭記載著各種神乎奇技的建築技術");
+	
+	// 文明時代
+	set("age",		2);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL);
+}
+
+// 限制可學習對象, 可用來設定各種學習條件
+varargs int allowable_learn(object ob)
+{
+	if( undefinedp(ob) )
+		return PLAYER_SKILL;
+	else
+	{
+		if( ob->is_npc() )
+			return 0;
+		else
+			return 1;
+	}
+}
+
+// 可自設每個等級需要的經驗值, 或直接使用 SKILL_D 預設數學式
+int level_exp(int lv)
+{
+	return SKILL_D->query_level_exp(lv);
+}
+
+// 可設定各種最高等級條件, 
+int max_level(object ob)
+{
+	if( ob->is_module_npc() )
+		return 100;
+	else
+		return 100;
+}
+
+// 可設定不同條件之經驗值乘數
+float exp_multiple()
+{
+	return 1;
+}
+
+// 升級之前的事件
+void after_level_up(object ob, int newlevel)
+{
+
+}
+
+// 降級之後的事件
+void before_level_down(object ob, int oldlevel)
+{
+	
+}
+
+// 經驗值增加後的事件
+void added_exp(object ob, float exp)
+{
+
+}
+
+// 是否只能自我學習
+int self_learning()
+{
+	return 1;
+}
+
+// 特殊標記
+string query_special_type()
+{
+	return HIW"史"NOR WHT"詩"NOR;
+}
+

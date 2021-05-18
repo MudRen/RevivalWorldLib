@@ -25,17 +25,11 @@ string help = @HELP
 
 HELP;
 
-nosave string *deer = ({ "deer", "elk", "wapiti" });
-
 private void do_command(object me, string arg)
 {
-	if( !arg ) return tell( me, "請加入想要翻譯的字。\n", CMDMSG);
+	if( !arg ) return tell( me, "請加入想要翻譯的字。\n");
 
-	if( member_array(arg, deer) != -1) {
-		me->faint();
-		return;
-	}
-
+        return tell( me, "經查證此指令會造成 Crash, 先暫停使用。\n");
 	DICT_D->find_word( me, arg);
 	return;
 }

@@ -27,7 +27,7 @@ void create()
 
 	if( this_object()->set_shadow_ob() ) return;
 	
-	set("long", "一顆深藍色的石頭，石頭中央深處似乎有一些深邃的顏色在不停地流動著。\n");
+	set("long", "在這湛藍如深海的石頭中，飄浮流動著幽暗的粒子，反覆發出微弱的光芒後又熄滅\n，彷彿要訴說些什麼。\n");
 	set("unit", "顆");
 	set("mass", 0);
 	set("value", 4000000);

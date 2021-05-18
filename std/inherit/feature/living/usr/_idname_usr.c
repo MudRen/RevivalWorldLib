@@ -29,7 +29,8 @@ nomask int id(string arg)
 	if( !arg || !arrayp(id_name) )
 		return 0;
 
-	no_ansi_id = remove_ansi(id_name[ID]);
+	no_ansi_id = remove_ansi(id_name[ID]);	
+	
 	arg = lower_case(arg);
 
 	return arg == no_ansi_id || arg == capitalize(no_ansi_id);
@@ -44,14 +45,26 @@ nomask varargs string query_id(int raw)
 // 回傳使用者 NAME 
 nomask varargs string query_name(int raw)
 {
-        return id_name ? copy(undefinedp(raw) ? id_name[NAME] : remove_ansi(id_name[NAME])) : 0;
+       	return id_name ? copy(undefinedp(raw) ? id_name[NAME] : remove_ansi(id_name[NAME])) : 0;
 }
 
 // 回傳使用者完整名稱
 nomask varargs string query_idname(int raw)
 {
 	if( !arrayp(id_name) ) return 0;
-	return copy(undefinedp(raw) ? id_name[NAME]+"("+ansi_capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"("+capitalize(remove_ansi(id_name[ID]))+")");
+	
+	/*
+	if( BATTLEFIELD_D->in_battle(this_object()) )
+	{
+		int number = BATTLEFIELD_D->query_player_number(this_object());
+		
+		return WHT+CHINESE_D->chinese_number(number)+"號壞人"NOR"("WHT"No."+number+" Bad Guy"NOR")";
+	}*/
+	
+	if( this_object()->is_dead() )
+		return copy(undefinedp(raw) ? id_name[NAME]+"的屍體(Corpse of "+capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"的屍體(Corpse of "+capitalize(remove_ansi(id_name[ID]))+")");
+	else
+		return copy(undefinedp(raw) ? id_name[NAME]+"("+capitalize(id_name[ID])+")" : remove_ansi(id_name[NAME])+"("+capitalize(remove_ansi(id_name[ID]))+")");
 }
 
 varargs nomask string *set_idname(string id, string name)
@@ -60,7 +73,8 @@ varargs nomask string *set_idname(string id, string name)
 	
 	if( !stringp(id) && !stringp(name) ) return 0;
 	
-	if( previous_object() != load_object(PPL_LOGIN_D) && previous_object() != load_object("/cmds/std/ppl/chfn") ) return 0;
+	if( member_array(previous_object(), ({ this_object(), load_object(PPL_LOGIN_D), COMMAND_D->find_command_object("chfn") })) == -1 ) 
+		return 0;
 
 	if( !arrayp(id_name) )
 	{
@@ -70,8 +84,6 @@ varargs nomask string *set_idname(string id, string name)
 	
 	if( stringp(id) )
 	{
-		id = kill_repeat_ansi(lower_case(remove_fringe_blanks(id))+NOR);
-		
 		// 玩家 ID 只能使用英文
 		foreach( int a in remove_ansi(id) )
 			if( a < 'a' || a > 'z') return 0;
@@ -86,11 +98,7 @@ varargs nomask string *set_idname(string id, string name)
 	}
 	
 	if( stringp(name) )
-	{
-		name = kill_repeat_ansi(remove_fringe_blanks(name)+NOR);
-		
 		id_name[NAME] = name;
-	}
 
 	return copy(id_name);
 }
@@ -136,7 +144,7 @@ varargs string query_status(int flag)
 
 	string status_buff;
 	string status = "";
-	string *extra_status;
+	mapping extra_status;
 
 	if( mapp(extra_status = query_temp("status")) && sizeof(extra_status) )
 		foreach(string key, int sec in extra_status)
@@ -144,6 +152,8 @@ varargs string query_status(int flag)
 
 	if( query("faint") ) 
 		status += HIR"昏"NOR RED"倒 "NOR;
+	if( query("die") ) 
+		status += HIR"死"NOR RED"亡 "NOR;
 	if( in_input() )	
 		status += HIW"輸"NOR WHT"入 "NOR;
 	if( in_edit() )		
@@ -201,15 +211,23 @@ varargs string short()
 	return ret;
 }
 
-void add_title(string title)
+varargs void add_title(string title, string reason)
 {
 	string *all_titles = query("all_titles") || allocate(0);
 		
+	if( member_array(title, all_titles) != -1 ) return;
+
 	all_titles |= ({ title });
 		
-	tell(this_object(), pnoun(2, this_object())+"獲得「"+title+"」的稱號。\n");
-		
+	tell(this_object(), pnoun(2, this_object())+(stringp(reason) ? "完成「"+reason+"」":"")+"獲得「"+title+"」稱號。\n");
+	
+	if( stringp(query("city")) )
+		CHANNEL_D->channel_broadcast("city", query_idname()+(stringp(reason) ? "完成「"+reason+"」":"")+"獲得「"+title+"」稱號。", this_object());
+
 	set("all_titles", all_titles);
+
+	if( !SECURE_D->is_wizard(query_id(1)) )
+		TOP_D->update_top("title", query_id(1), sizeof(all_titles), query_idname(), query("city"));
 
 	this_object()->save();
 }
@@ -228,6 +246,9 @@ void remove_title(string title)
 	
 	if( query("title") == title )
 		delete("title");
+
+	if( !SECURE_D->is_wizard(query_id(1)) )
+		TOP_D->update_top("title", query_id(1), sizeof(all_titles), query_idname(), query("city"));
 
 	this_object()->save();
 }

@@ -32,6 +32,12 @@ void create()
 	
 	// 技能註解
 	set("note",		"說服與表達能力");
+	
+	// 文明時代
+	set("age",		1);
+	
+	// 技能種類
+	set("type",		SOCIAL_SKILL);
 }
 
 // 限制可學習對象, 可用來設定各種學習條件

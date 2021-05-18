@@ -114,4 +114,24 @@ mixed probability(mapping data)
 			return keys[size];
 	}
 }
+
+// ¨ú¥X¼Æ¦r½d³ò°}¦C
+int *int_range_array(int from, int to)
+{
+	int *result = allocate(0);
+
+	if( from == to )
+		result = ({ from });
+	else if( from > to )
+	{
+		for(int i=from;i>=to;i--)
+			result |= ({ i });
+	}
+	else
+	{
+		for(int i=from;i<=to;i++)
+			result |= ({ i });
+	}
 	
+	return result;
+}

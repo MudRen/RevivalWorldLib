@@ -33,19 +33,17 @@ nomask int get_ident();
 private nomask object logon()
 {
 	string daemon;
-
-	switch(query_ip_port())
+	int port = query_ip_port();
+	
+	if( member_array(port, PPL_PORT) != -1 )
+		daemon = PPL_LOGIN_D;
+	else if( member_array(port, WIZ_PORT) != -1 )
+		daemon = WIZ_LOGIN_D;
+	else
 	{
-
-		case PPL_PORT:
-		case CLIENT_PORT:
-			daemon = PPL_LOGIN_D;
-			break;
-		case WIZ_PORT:
-			daemon = WIZ_LOGIN_D;
-			break;
-		default:
-			return 0;
+		tell(this_object(), "您所連接的通訊埠並未開放。\n");
+		destruct(this_object());
+		return 0;
 	}
 
 	if( catch( daemon->logon( this_object() ) ) )

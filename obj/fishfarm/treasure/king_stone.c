@@ -23,11 +23,11 @@ inherit EQUIPMENT;
 void create()
 {
 	set_idname(HIC"king "NOR CYN"stone"NOR, HIC"帝"NOR CYN"王"HIC"石"NOR);
-	set_temp("status", HIC"稀"NOR CYN"有");
+	set_temp("status", HIW"史"NOR WHT"詩");
 
 	if( this_object()->set_shadow_ob() ) return;
 	
-	set("long", "一顆青藍色的石頭，石頭中央深處似乎有一些深邃的顏色在不停地流動著。\n");
+	set("long", "這青灰色的厚實長方石塊，周圍雕刻古代圖案，隱約中不斷地散發出一種令人臣服\n的威嚴。\n");
 	set("unit", "顆");
 	set("mass", 0);
 	set("value", 100000000);

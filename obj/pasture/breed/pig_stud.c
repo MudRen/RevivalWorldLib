@@ -26,7 +26,7 @@ void create()
         
         set("long", "用來交配生產的種畜。\n");
         set("unit", "隻");
-        set("mass", 5000);
+        set("mass", 1000);
         set("value", 1000);
         set("badsell", 1);
 
@@ -46,14 +46,13 @@ void create()
 	       	"material":
 	       	([
 	       		"/obj/materials/water":5,
-	       		"/obj/farming/product/corn":5,
-	       		"/obj/farming/product/rice":5,
+	       		"/obj/farming/product/corn":10,
 	       	]),
 			
 	       	//產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/pasture/product/pork":25,
+	       		"/obj/pasture/product/pork":11,
 	       	]),
 
 		//生成時的訊息

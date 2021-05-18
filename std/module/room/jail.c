@@ -27,8 +27,8 @@ private void do_arrest(object me, string arg)
 	string city = env->query_city();
 	string reason;
 
-	if( !wizardp(me) && !CITY_D->is_mayor(city, me) )
-		return tell(me, "只有市長能夠逮捕犯人。\n");
+	if( !wizardp(me) && !CITY_D->is_mayor_or_officer(city, me) )
+		return tell(me, "只有市長或官員能夠逮捕犯人。\n");
 
 	if( !arg || !arg[0] )
 		return tell(me, pnoun(2, me)+"想要逮捕哪位犯人？\n");
@@ -36,47 +36,68 @@ private void do_arrest(object me, string arg)
 	if( sscanf(arg, "%s because %s", arg, reason) != 2 )
 		return tell(me, "請輸入正確的指令格式。\n");
 
-	target = load_user(arg);
-
-	if( !objectp(target) )
-		return tell(me, "這個世界並沒有這位玩家。\n");
-		
-	if( !wizardp(me) && query("city", target) != city )
+	foreach(string id in explode(arg, " "))
 	{
-		tell(me, target->query_idname()+"並不是本市的市民。\n");
+		reset_eval_cost();
+
+		target = load_user(id);
+	
+		if( !objectp(target) )
+		{
+			tell(me, "這個世界並沒有 "+id+" 這位玩家。\n");
+			continue;
+		}
+			
+		if( !wizardp(me) && query("city", target) != city )
+		{
+			tell(me, target->query_idname()+"並不是本市的市民。\n");
+			
+			if( !userp(target) )
+				destruct(target);
+	
+			continue;
+		}
 		
+		if( target == me )
+		{
+			tell(me, pnoun(2, me)+"無法逮捕自己。\n");
+			continue;
+		}
+		
+		if( !wizardp(me) && CITY_D->is_mayor(city, target) )
+		{
+			tell(me, pnoun(2, me)+"無法逮捕市長。\n");
+			
+			if( !userp(target) )
+				destruct(target);
+				
+			continue;
+		}
+	
+		if( query("prisoner", target) )
+		{
+			tell(me, target->query_idname()+"已經被關進監獄了。\n");
+	
+			if( !userp(target) )
+				destruct(target);
+	
+			continue;
+		}
+	
+		if( wizardp(me) )
+			CHANNEL_D->channel_broadcast("news", target->query_idname()+HIR"因為「"HIW + reason + NOR HIR"」遭到"+me->query_idname()+HIR"的逮捕，關進了巫師監獄接受調查。");
+		else
+			CHANNEL_D->channel_broadcast("city", target->query_idname()+HIR"因為「"HIW + reason + NOR HIR"」遭到"+me->query_idname()+HIR"的逮捕，關進了政府監獄。", me);
+		
+		target->move_to_environment(me);
+		
+		set("prisoner", 1, target);
+		set("quit_place", base_name(env), target);
+		target->save();
+	
 		if( !userp(target) )
 			destruct(target);
-
-		return;
 	}
-	
-	if( target == me )
-		return tell(me, pnoun(2, me)+"無法逮捕自己。\n");
-	
-	if( query("prisoner", target) && same_environment(target, me) )
-	{
-		tell(me, target->query_idname()+"已經被關進監獄了。\n");
-
-		if( !userp(target) )
-			destruct(target);
-
-		return;
-	}
-
-	if( wizardp(me) )
-		CHANNEL_D->channel_broadcast("news", target->query_idname()+HIR"因為「"HIW + reason + NOR HIR"」遭到"+me->query_idname()+HIR"的逮捕，關進了巫師監獄接受調查。");
-	else
-		CHANNEL_D->channel_broadcast("city", target->query_idname()+HIR"因為「"HIW + reason + NOR HIR"」遭到"+me->query_idname()+HIR"的逮捕，關進了政府監獄。", me);
-	
-	target->move_to_environment(me);
-	
-	set("prisoner", 1, target);
-	set("quit_place", base_name(env), target);
-	target->save();
-
-	if( !userp(target) )
-		destruct(target);
 }
 
 private void do_release(object me, string arg)
@@ -95,10 +116,10 @@ private void do_release(object me, string arg)
 	if( sscanf(arg, "%s because %s", arg, reason) != 2 )
 		return tell(me, "請輸入正確的指令格式。\n");
 
-	target = find_player(arg);
+	target = load_user(arg);
 
 	if( !objectp(target) )
-		return tell(me, "線上並沒有這位玩家。\n");
+		return tell(me, "這個世界並沒有 "+arg+" 這位玩家。\n");
 		
 	if( !wizardp(me) && query("city", target) != city )
 		return tell(me, target->query_idname()+"並不是本市的市民。\n");
@@ -123,6 +144,9 @@ private void do_release(object me, string arg)
 	
 	delete("prisoner", target);
 	target->save();
+	
+		if( !userp(target) )
+			destruct(target);
 }
 
 // 設定建築物內房間型態種類
@@ -141,7 +165,7 @@ HELP,
 "arrest":
 @HELP
 逮捕某位玩家，用法如下：
-  arrest '玩家ID' because '原因'	- 將某位線上市民逮捕(市長指令)
+  arrest '玩家ID' because '原因'	- 將某位線上市民逮捕(市長與官員指令)
 HELP,
 
 "release":
@@ -179,7 +203,7 @@ nosave array building_info = ({
 	,AGRICULTURE_REGION | INDUSTRY_REGION
 
 	// 開張儀式費用
-	,"5000000"
+	,5000000
 	
 	// 建築物關閉測試標記
 	,0

@@ -20,8 +20,7 @@
 inherit COMMAND;
 
 string help = @HELP
-    房地產產權轉移指令，除了員工轉移時所有房間設定與內容物將一併
-轉移，景觀、農田等非建築物則無法轉移。
+    房地產產權轉移指令，內容物、員工與景觀、農田等非建築物則無法轉移。
 
 transfer here to 'ID'	- 將此地房地產轉移給另一個玩家
 HELP;
@@ -30,6 +29,8 @@ HELP;
 private void do_command(object me, string arg)
 {
 	string targetid;
+	string roomfile;
+	object room;
 	object targetob;
 	array loc = query_temp("location", me);
 	mapping estdata;
@@ -71,8 +72,16 @@ private void do_command(object me, string arg)
 		
 		if( target_architectonic_level < sizeof(city_roomfiles(loctemp))-1 )
 			return tell(me, targetob->query_idname()+"的建築技術技能等級不足以承受這樣的建築物。\n");
+			
+		foreach(roomfile in city_roomfiles(loctemp))
+		{
+			room = load_object(roomfile[0..<3]);
+			
+			if( sizeof(query("products", room)) )
+				return tell(me, pnoun(2, me)+"必須先將"+room->query_room_name()+" "+room->query_floor()+"F 的架上物品清空。\n");
+		}
 	}
-	
+			
 	building_info = BUILDING_D->query_building(estdata["type"]);
 	
 	if( building_info[ROOMMODULE_MAXLIMIT] > 0 && ESTATE_D->query_owner_amount(targetid, estdata["type"]) >= building_info[ROOMMODULE_MAXLIMIT] )
@@ -82,6 +91,6 @@ private void do_command(object me, string arg)
 	if( !ESTATE_D->transfer_estate(me->query_id(1), targetob->query_id(1), loc) )
 		return tell(me, "房地產轉移發生錯誤，請通知巫師處理。\n");
 	
-	CHANNEL_D->channel_broadcast("city", me->query_idname()+"將位於"+CITY_D->query_city_idname(loc[CITY], loc[NUM])+"("+(loc[X]+1)+","+(loc[Y]+1)+")的房地產轉移給"+targetob->query_idname()+"。", me);
+	CHANNEL_D->channel_broadcast("city", me->query_idname()+"將位於 "+loc_short(loc)+" 的房地產轉移給"+targetob->query_idname()+"。", me);
 	msg("$ME正式將此建築物的房地產轉移給$YOU。\n", me, targetob, 1);
 }

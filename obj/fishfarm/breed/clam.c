@@ -26,8 +26,8 @@ void create()
         
         set("long", "用來培養珍珠的蚌殼。\n");
         set("unit", "個");
-        set("mass", 50);
-        set("value", 10000);
+        set("mass", 200);
+        set("value", 16000);
         set("badsell", 1);
 
 	// 種子資訊
@@ -46,13 +46,13 @@ void create()
 	       	"material":
 	       	([
 	       		"/obj/materials/water":20,
-	       		"/obj/materials/wood":20,
+	       		"/obj/materials/wood":10,
 	       	]),
 			
 	       	//產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/fishfarm/product/pearl":3,
+	       		"/obj/fishfarm/product/pearl":4,
 	       	]),
 
 		//生成時的訊息
@@ -71,8 +71,8 @@ void create()
 			100:	"蚌殼靜靜地在水底一動也不動。\n",
 			300:	"蚌殼突然一口氣吐了一堆砂出來，接著兩片貝殼又漸漸合了起來。\n",
 			600:	"蚌殼在水底輕輕地吐砂，一些小魚小蝦在附近游動。\n",
-			1200:	"蚌殼愈長愈大，從旁可以隱隱看到白色的珍珠在中閃耀。\n",
-			1800:	"蚌殼的大小已經大到足以進行收成了。\n",
+			1000:	"蚌殼愈長愈大，從旁可以隱隱看到白色的珍珠在中閃耀。\n",
+			1200:	"蚌殼的大小已經大到足以進行收成了。\n",
 		]),
 	
 		// 天氣影響敘述

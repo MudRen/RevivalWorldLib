@@ -1,0 +1,17 @@
+ㄧ计:
+
+    LPC ㄧ计獶盽獶盽摸 ANSI C. 狦临⊿﹚竡ㄧ计
+  玡碞稱まノ琘ㄧ计, ê或, ⊿Τㄧ计杠硑Θ岿粇,
+  硈把计Α常ぃ癸.
+
+    ㄧ计:
+
+	ㄧ计肚篈 ㄧ计嘿(戈篈 把计1, 戈篈 把计2, ...);
+
+    ぃ倒把计嘿, よΑ:
+
+        ㄧ计肚篈 ㄧ计嘿(戈篈1, 戈篈2, ....);
+
+    : string query_long();
+	int smile(string name);
+        int smile (string);

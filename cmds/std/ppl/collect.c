@@ -11,10 +11,11 @@
  -----------------------------------------
  */
 
-#define COLLECT_STR_COST	35
+#define COLLECT_STR_COST	40
 
 #define MATERIAL_PATH		"/obj/materials/"
 
+#include <buff.h>
 #include <ansi.h>
 #include <map.h>
 #include <feature.h>
@@ -22,6 +23,7 @@
 #include <message.h>
 #include <material.h>
 #include <location.h>
+#include <citydata.h>
 
 inherit COMMAND;
 
@@ -38,28 +40,22 @@ wood	原木 - 於森林使用木鋸類工具採集
 fuel	燃料 - 於森林使用鏟子類工具採集
 
 指令格式:
-collect metal		- 採集一個金屬(採集身上必須有十字鎬類工具)
-collect 10 metal	- 一次採集十個金屬
-			  可節省些許體力與減少工具損壞率並增加稀有物品獲取率
-collect info		- 查詢當日該城市的原料採集資訊
-
+collect metal			- 採集一個金屬(採集身上必須有十字鎬類工具)
+collect 10 metal		- 一次採集十個金屬
+collect warehouse city N X,Y	- 設定資源採集倉庫地點(ex: collect warehouse wizard 1 50,50)
+collect warehouse -d		- 取消資料倉庫設定
 相關指令: info
 
 HELP;
 
-// 一次採愈多省愈多力
-private int cost_stamina(object me, int amount, int skilllevel)
+private int cost_stamina(object me, int amount, int skilllevel, int quality)
 {
-	if( amount <= 10 )
-		return me->cost_stamina(amount * (COLLECT_STR_COST - skilllevel/4));
-	else if( amount <= 20 )
-		return me->cost_stamina(amount * (COLLECT_STR_COST - skilllevel/4 - 1));
-	else if( amount <= 50 )
-		return me->cost_stamina(amount * (COLLECT_STR_COST - skilllevel/4 - 2));
-	else if( amount <= 100 )
-		return me->cost_stamina(amount * (COLLECT_STR_COST - skilllevel/4 - 3));
+	int collect_buff = me->query_all_buff(BUFF_COLLECT_ABILITY);
+	int stamina_cost = (amount - amount * collect_buff / 100)* (COLLECT_STR_COST - skilllevel/4);
 
-	return me->cost_stamina(amount * (COLLECT_STR_COST - skilllevel/4 - 4));	
+	stamina_cost = to_int(stamina_cost * 100. / quality);
+
+	return me->cost_stamina(stamina_cost);	
 }
 
 private void do_command(object me, string arg)
@@ -68,65 +64,58 @@ private void do_command(object me, string arg)
 	object ob, env = environment(me);
 	mapping coorrangetype;
 	object *tools;
-	int skilllevel, endurance, materialamount, amount;
-	string sloc, arg2;
-	string city;
+	int skilllevel, endurance, amount;
+	string arg2;
+	string area, city;
 	int num;
-	string myid = me->query_id(1);
+	int quality;
+	int x, y;
+	string mycity = query("city", me);
+	object warehouse;
 
 	if( !arg )
 		return tell(me, pnoun(2, me)+"想要採集哪種資源？("HIW"金屬 metal"NOR"、"WHT"原石 stone"NOR"、"HIC"清水 water"NOR"、"YEL"原木 wood"NOR"、"HIM"燃料 fuel"NOR")\n");
 	
-	if( (wizardp(me) && sscanf(arg, "info %s", city) == 1) || arg == "info" )
+	if( arg == "warehouse" )
 	{
-		string msg;
-		string id;
-		mapping collection_record;
-		mapping data;
+		if( !objectp(warehouse = load_module(query("collect_warehouse", me))) )
+			return tell(me, pnoun(2, me)+"尚未設定資源倉庫。\n");
+		else
+			return tell(me, pnoun(2, me)+"目前的資源倉庫設定在"+warehouse->query_room_name()+"。\n");
+	}
+	else if( arg == "warehouse -d" )
+	{
+		if( !query("collect_warehouse", me) )
+			return tell(me, pnoun(2, me)+"原本便未設定資源倉庫。\n");
+			
+		delete("collect_warehouse", me);
+		
+		return tell(me, pnoun(2, me)+"取消了資源倉庫的設定。\n");
+	}
+	else if( sscanf(arg, "warehouse '%s' %d %d,%d", city, num, x, y) == 4 || sscanf(arg, "warehouse %s %d %d,%d", city, num, x, y) == 4 )
+	{
+		string file = CITY_ROOM_MODULE(city, (num-1), (x-1), (y-1), "warehouse");
+		
+		if( !objectp(warehouse = load_module(file)) || query("function", warehouse) != "warehouse" )
+			return tell(me, "座標"+loc_short(city, num-1, x-1, y-1)+"並沒有倉庫。\n");
 
-		if( !city )
-			city = query("city", me);
-		
-		if( !city )
-			return tell(me, pnoun(2, me)+"不屬於任何一座城市。\n");
+		if( query("owner", warehouse) != me->query_id(1) )
+			return tell(me, warehouse->query_room_name()+"並不是"+pnoun(2, me)+"的倉庫。\n");
 
-		if( !CITY_D->city_exist(city) )
-			return tell(me, "沒有 "+city+" 這座城市。\n");
-		
-		msg = CITY_D->query_city_idname(city)+"之當日原料採集狀況如下(自動於每日 23:00 歸零)：\n";
-		msg += WHT"─────────────────────────────────────\n"NOR;
-		
-		for(num=0;CITY_D->city_exist(city, num);num++)
+		if( warehouse != warehouse->query_master() )
 		{
-			msg += CITY_D->query_city_idname(city, num)+"\n";
-
-			collection_record = CITY_D->query_collection_record(city, num);
-			
-			if( !sizeof(collection_record) )
-				msg += "  無人採集\n";
-			else
-			foreach(id, data in collection_record)
-			{
-				msg += sprintf("  %-15s%-10s%-10s%-10s%-10s%-10s\n",
-					capitalize(id),
-					HIW+data["metal"]+NOR,
-					WHT+data["stone"]+NOR,
-					HIC+data["water"]+NOR,
-					YEL+data["wood"]+NOR,
-					HIM+data["fuel"]+NOR);
-			}
-			
-			msg += "\n";
+			file = base_name(warehouse->query_master());
+			warehouse = warehouse->query_master();
 		}
 		
-		msg += WHT"─────────────────────────────────────\n"NOR;
-		msg += HIW"金屬 metal"NOR"、"WHT"原石 stone"NOR"、"HIC"清水 water"NOR"、"YEL"原木 wood"NOR"、"HIM"燃料 fuel"NOR"\n\n";
-		return me->more(msg);
+		set("collect_warehouse", file, me);
+		
+		msg("$ME設定"+warehouse->query_room_name()+"為資源採集的倉庫。\n", me, 0, 1);
+		return;
 	}
-	
+
 	if( !env || !env->is_maproom() )
 		return tell(me, "無法在這裡採集資源。\n");
-
 	
 	//忙碌中不能下指令
 	if( me->is_delaying() )
@@ -135,18 +124,29 @@ private void do_command(object me, string arg)
 		return me->show_prompt();
 	}
 	
+	if( !mycity )
+		return tell(me, pnoun(2, me)+"必須先成為某個城市的市民之後才可以開始採集資源。\n");
+
 	loc = query_temp("location", me);
 	
-	if( (MAP_D->query_map_system(loc)) != CITY_D )
-		return tell(me, "無法在這裡採集資源。\n");
- 
- 	city = loc[CITY];
-	num = loc[NUM];
+	if( (MAP_D->query_map_system(loc)) != AREA_D )
+		return tell(me, "無法在城市內採集資源。\n");
 
- 	if( !CITY_D->is_citizen(me->query_id(1), city) )
- 		return tell(me, pnoun(2, me)+"不是"+CITY_D->query_city_idname(city)+"的市民，無法在這裡採集資源。\n");
+	warehouse = load_module(query("collect_warehouse", me));
+		
+	if( objectp(warehouse) && query("owner", warehouse) != me->query_id(1) )
+		return tell(me, warehouse->query_room_name()+"並不是"+pnoun(2, me)+"的倉庫。\n");
  
-	coorrangetype = CITY_D->query_coor_range(loc, TYPE, 1);
+ 	area = loc[AREA];
+	num = loc[NUM];
+	
+	if( AREA_D->query_lead_city(area, num) != mycity )
+		return tell(me, pnoun(2, me)+"的城市"+CITY_D->query_city_idname(mycity)+"尚未佔領這塊郊區或佔有數量不足 50000，"+pnoun(2, me)+"無法在這裡採集資源。\n");
+
+ 	if( me->is_fatigue_full() )
+		return tell(me, pnoun(2, me)+"實在是太疲勞了，無法再採集資源。\n");
+
+	coorrangetype = AREA_D->query_coor_range(loc, TYPE, 1);
 
 	arg = lower_case(arg);
 
@@ -174,63 +174,58 @@ private void do_command(object me, string arg)
 			if( !sizeof(tools) )
 				return tell(me, pnoun(2, me)+"身上沒有用來開採金屬的工具。\n");
 			
-			// 檢查附近區域的材料存量
-			foreach(sloc in keys(coorrangetype))
+			quality = query("quality", tools[0]);
+
+			if( !cost_stamina(me, amount, skilllevel, quality) )
+				return msg("$ME氣喘噓噓，已經沒力氣再開採金屬了...。\n", me, 0, 1);
+			
+			endurance = query("endurance", tools[0]);
+
+			// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
+			if( !random(endurance + to_int(skilllevel*endurance/100.)) )
 			{
-				loc = restore_variable(sloc);
-				materialamount = CITY_D->query_section_info(city, num, "resource/"+arg);
+				msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來開採金屬了...。\n", me, 0, 1);
 				
-				if( materialamount >= amount )
+				if( !random(2) )
 				{
-					if( !cost_stamina(me, amount, skilllevel) )
-						return msg("$ME氣喘噓噓，已經沒力氣再開採金屬了...。\n", me, 0, 1);
-					
-					endurance = query("endurance", tools[0]);
-		
-					// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
-					if( !random(endurance + to_int(skilllevel*endurance/100.)) )
-					{
-						msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來開採金屬了...。\n", me, 0, 1);
-						
-						if( !random(2) )
-						{
-							tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
-							me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
-						}
-						
-						destruct(tools[0], 1);
-						return;
-					}
-					
-					CITY_D->set_section_info(city, num, "resource/"+arg, materialamount-amount);
-					
-					ob = new(MATERIAL_PATH+arg);
-
-					if( amount > 1 )
-						set_temp("amount", amount, ob);
-
-					msg("$ME賣力地從礦石中鑿出了"+ob->short(1)+"\n", me, 0, 1);
-					
-					// 紀錄原料採集資訊
-					CITY_D->add_collection_record(city, num, myid, arg, amount);
-					
-					if( !me->get_object(ob, amount) )
-					{
-						msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
-						ob->move_to_environment(me);
-					}
-		
-					if( me->query_skill_level("metal") < 20 )
-						me->add_skill_exp("metal", amount*(12+random(11)));
-					else if( me->query_skill_level("metal") == 20 )
-						tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
-
-					me->add_social_exp(to_int(pow(amount*(20+random(21)), 0.9)));
-					TREASURE_D->get_treasure_books(me, amount);
-					return;
+					tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
+					me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
 				}
+				
+				destruct(tools[0], 1);
+				return;
 			}
-			return tell(me, "整座城市的金屬資源都已經被大量開採，剩下都是不能再使用的碎礦。\n");
+			
+			ob = new(MATERIAL_PATH+arg);
+
+			if( amount > 1 )
+				ob->set_amount(amount);
+
+			msg("$ME舉起$YOU賣力地從礦石中鑿出了"+ob->short(1)+"\n", me, tools[0], 1);
+			
+			if( objectp(warehouse) )
+			{
+				warehouse->query_module_file()->input_object(warehouse, "products", MATERIAL_PATH+arg, amount);
+				destruct(ob);
+			}
+			else if( !me->available_get(ob, amount) )
+			{
+				msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
+				ob->move_to_environment(me);
+			}
+			else
+				ob->move(me);
+
+			if( me->query_skill_level("metal") < 20 )
+				me->add_skill_exp("metal", amount*(12+random(11)));
+			else if( me->query_skill_level("metal") == 20 )
+				tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
+
+			me->add_social_exp(to_int(amount*(30+random(31))));
+
+			if( !random(1000) )
+				me->add_fatigue(1);
+
 			break;	
 
 		case "stone":
@@ -246,62 +241,57 @@ private void do_command(object me, string arg)
 			if( !sizeof(tools) )
 				return tell(me, pnoun(2, me)+"身上沒有用來開採石材的工具。\n");
 			
-			// 檢查附近區域的材料存量
-			foreach(sloc in keys(coorrangetype))
+			quality = query("quality", tools[0]);
+
+			if( !cost_stamina(me, amount, skilllevel, quality) )
+				return msg("$ME氣喘噓噓，已經沒力氣再開採石材了...。\n", me, 0, 1);
+			
+			endurance = query("endurance", tools[0]);
+
+			// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
+			if( !random(endurance + to_int(skilllevel*endurance/100.)) )
 			{
-				loc = restore_variable(sloc);
-				materialamount = CITY_D->query_section_info(city, num, "resource/"+arg);
+				msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來開採石材了...。\n", me, 0, 1);
 				
-				if( materialamount >= amount )
+				if( !random(2) )
 				{
-					if( !cost_stamina(me, amount, skilllevel) )
-						return msg("$ME氣喘噓噓，已經沒力氣再開採石材了...。\n", me, 0, 1);
-					
-					endurance = query("endurance", tools[0]);
-		
-					// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
-					if( !random(endurance + to_int(skilllevel*endurance/100.)) )
-					{
-						msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來開採石材了...。\n", me, 0, 1);
-						
-						if( !random(2) )
-						{
-							tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
-							me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
-						}
-						destruct(tools[0], 1);
-						return;
-					}
-					
-					CITY_D->set_section_info(city, num, "resource/"+arg, materialamount-amount);
-					
-					ob = new(MATERIAL_PATH+arg);
-
-					if( amount > 1 )
-						set_temp("amount", amount, ob);
-
-					msg("$ME賣力地從岩層鑿出了"+ob->short(1)+"\n", me, 0, 1);
-					
-					// 紀錄原料採集資訊
-					CITY_D->add_collection_record(city, num, myid, arg, amount);
-
-					if( !me->get_object(ob, amount) )
-					{
-						msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
-						ob->move_to_environment(me);
-					}
-
-					if( me->query_skill_level("stone") < 20 )
-						me->add_skill_exp("stone", amount*(12+random(11)));
-					else if( me->query_skill_level("stone") == 20 )
-						tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
-
-					me->add_social_exp(to_int(pow(amount*(20+random(21)), 0.9)));
-					TREASURE_D->get_treasure_books(me, amount);
-					return;
+					tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
+					me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
 				}
+				destruct(tools[0], 1);
+				return;
 			}
-			return tell(me, "整座城市的石材資源都已經被大量開採，剩下都是不能再使用的碎石。\n");
+			
+			ob = new(MATERIAL_PATH+arg);
+
+			if( amount > 1 )
+				ob->set_amount(amount);
+
+			msg("$ME舉起$YOU賣力地從岩層鑿出了"+ob->short(1)+"\n", me, tools[0], 1);
+			
+			if( objectp(warehouse) )
+			{
+				warehouse->query_module_file()->input_object(warehouse, "products", MATERIAL_PATH+arg, amount);
+				destruct(ob);
+			}
+			else if( !me->available_get(ob, amount) )
+			{
+				msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
+				ob->move_to_environment(me);
+			}
+			else
+				ob->move(me);
+
+			if( me->query_skill_level("stone") < 20 )
+				me->add_skill_exp("stone", amount*(12+random(11)));
+			else if( me->query_skill_level("stone") == 20 )
+				tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
+
+			me->add_social_exp(to_int(amount*(30+random(31))));
+			
+			if( !random(1000) )
+				me->add_fatigue(1);
+
 			break;	
 
 		case "water":
@@ -317,63 +307,58 @@ private void do_command(object me, string arg)
 			if( !sizeof(tools) )
 				return tell(me, pnoun(2, me)+"身上沒有用來集水的工具。\n");
 			
-			// 檢查附近區域的材料存量
-			foreach(sloc in keys(coorrangetype))
+			quality = query("quality", tools[0]);
+
+			if( !cost_stamina(me, amount, skilllevel, quality) )
+				return msg("$ME氣喘噓噓，已經沒力氣再舀水了...。\n", me, 0, 1);
+			
+			endurance = query("endurance", tools[0]);
+
+			// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
+			if( !random(endurance + to_int(skilllevel*endurance/100.)) )
 			{
-				loc = restore_variable(sloc);
-				materialamount = CITY_D->query_section_info(city, num, "resource/"+arg);
+				msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，底部裂了一個大洞，顯然是沒辦法再繼續用來裝水了...。\n", me, 0, 1);
 				
-				if( materialamount >= amount )
+				if( !random(2) )
 				{
-					if( !cost_stamina(me, amount, skilllevel) )
-						return msg("$ME氣喘噓噓，已經沒力氣再舀水了...。\n", me, 0, 1);
-					
-					endurance = query("endurance", tools[0]);
-		
-					// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
-					if( !random(endurance + to_int(skilllevel*endurance/100.)) )
-					{
-						msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，底部裂了一個大洞，顯然是沒辦法再繼續用來裝水了...。\n", me, 0, 1);
-						
-						if( !random(2) )
-						{
-							tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
-							me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
-						}
-
-						destruct(tools[0], 1);
-						return;
-					}
-					
-					CITY_D->set_section_info(city, num, "resource/"+arg, materialamount-amount);
-					
-					ob = new(MATERIAL_PATH+arg);
-					
-					if( amount > 1 )
-						set_temp("amount", amount, ob);
-
-					msg("$ME用力地從河中舀起了"+ob->short(1)+"\n", me, 0, 1);
-					
-					// 紀錄原料採集資訊
-					CITY_D->add_collection_record(city, num, myid, arg, amount);
-
-					if( !me->get_object(ob, amount) )
-					{
-						msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
-						ob->move_to_environment(me);
-					}
-		
-					if( me->query_skill_level("water") < 20 )
-						me->add_skill_exp("water", amount*(12+random(11)));
-					else if( me->query_skill_level("water") == 20 )
-						tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
-
-					me->add_social_exp(to_int(pow(amount*(20+random(21)), 0.9)));
-					TREASURE_D->get_treasure_books(me, amount);
-					return;
+					tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
+					me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
 				}
+
+				destruct(tools[0], 1);
+				return;
 			}
-			return tell(me, "整座城市的水資源都已經被大量使用，水質顯得相當混濁不能再使用了。\n");
+			
+			ob = new(MATERIAL_PATH+arg);
+			
+			if( amount > 1 )
+				ob->set_amount(amount);
+
+			msg("$ME提著$YOU用力地從河中舀起了"+ob->short(1)+"\n", me, tools[0], 1);
+			
+			if( objectp(warehouse) )
+			{
+				warehouse->query_module_file()->input_object(warehouse, "products", MATERIAL_PATH+arg, amount);
+				destruct(ob);
+			}
+			else if( !me->available_get(ob, amount) )
+			{
+				msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
+				ob->move_to_environment(me);
+			}
+			else
+				ob->move(me);
+
+			if( me->query_skill_level("water") < 20 )
+				me->add_skill_exp("water", amount*(12+random(11)));
+			else if( me->query_skill_level("water") == 20 )
+				tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
+
+			me->add_social_exp(to_int(amount*(30+random(31))));
+			
+			if( !random(1000) )
+				me->add_fatigue(1);
+
 			break;
 			
 		case "wood":
@@ -389,63 +374,58 @@ private void do_command(object me, string arg)
 			if( !sizeof(tools) )
 				return tell(me, pnoun(2, me)+"身上沒有用來伐木的工具。\n");
 			
-			// 檢查附近區域的材料存量
-			foreach(sloc in keys(coorrangetype))
+			quality = query("quality", tools[0]);
+
+			if( !cost_stamina(me, amount, skilllevel, quality) )
+				return msg("$ME氣喘噓噓，已經沒力氣再伐木了...。\n", me, 0, 1);
+			
+			endurance = query("endurance", tools[0]);
+
+			// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
+			if( !random(endurance + to_int(skilllevel*endurance/100.)) )
 			{
-				loc = restore_variable(sloc);
-				materialamount = CITY_D->query_section_info(city, num, "resource/"+arg);
+				msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來伐木了...。\n", me, 0, 1);
 				
-				if( materialamount >= amount )
+				if( !random(2) )
 				{
-					if( !cost_stamina(me, amount, skilllevel) )
-						return msg("$ME氣喘噓噓，已經沒力氣再伐木了...。\n", me, 0, 1);
-					
-					endurance = query("endurance", tools[0]);
-		
-					// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
-					if( !random(endurance + to_int(skilllevel*endurance/100.)) )
-					{
-						msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來伐木了...。\n", me, 0, 1);
-						
-						if( !random(2) )
-						{
-							tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
-							me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
-						}
-						
-						destruct(tools[0], 1);
-						return;
-					}
-					
-					CITY_D->set_section_info(city, num, "resource/"+arg, materialamount-amount);
-					
-					ob = new(MATERIAL_PATH+arg);
-				
-					if( amount > 1 )
-						set_temp("amount", amount, ob);
-
-					msg("$ME努力地從巨木鋸下了"+ob->short(1)+"\n", me, 0, 1);
-					
-					// 紀錄原料採集資訊
-					CITY_D->add_collection_record(city, num, myid, arg, amount);
-
-					if( !me->get_object(ob, amount) )
-					{
-						msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
-						ob->move_to_environment(me);
-					}
-		
-					if( me->query_skill_level("wood") < 20 )
-						me->add_skill_exp("wood", amount*(12+random(11)));
-					else if( me->query_skill_level("wood") == 20 )
-						tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
-
-					me->add_social_exp(to_int(pow(amount*(20+random(21)), 0.9)));
-					TREASURE_D->get_treasure_books(me, amount);
-					return;
+					tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
+					me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
 				}
+				
+				destruct(tools[0], 1);
+				return;
 			}
-			return tell(me, "整座城市的樹林資源已經被大量砍伐，剩下都是不能再使用的幼小樹苗。\n");
+	
+			ob = new(MATERIAL_PATH+arg);
+		
+			if( amount > 1 )
+				ob->set_amount(amount);
+
+			msg("$ME手握$YOU努力地從巨木上鋸下了"+ob->short(1)+"\n", me, tools[0], 1);
+			
+			if( objectp(warehouse) )
+			{
+				warehouse->query_module_file()->input_object(warehouse, "products", MATERIAL_PATH+arg, amount);
+				destruct(ob);
+			}
+			else if( !me->available_get(ob, amount) )
+			{
+				msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
+				ob->move_to_environment(me);
+			}
+			else
+				ob->move(me);
+
+			if( me->query_skill_level("wood") < 20 )
+				me->add_skill_exp("wood", amount*(12+random(11)));
+			else if( me->query_skill_level("wood") == 20 )
+				tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
+
+			me->add_social_exp(to_int(amount*(30+random(31))));
+
+			if( !random(1000) )
+				me->add_fatigue(1);
+
 			break;
 
 		case "fuel":
@@ -461,69 +441,66 @@ private void do_command(object me, string arg)
 			if( !sizeof(tools) )
 				return tell(me, pnoun(2, me)+"身上沒有用來開採燃料的工具。\n");
 			
-			// 檢查附近區域的材料存量
-			foreach(sloc in keys(coorrangetype))
+			quality = query("quality", tools[0]);
+
+			if( !cost_stamina(me, amount, skilllevel, quality) )
+				return msg("$ME氣喘噓噓，已經沒力氣再開採燃料了...。\n", me, 0, 1);
+			
+			endurance = query("endurance", tools[0]);
+
+			// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
+			if( !random(endurance + to_int(skilllevel*endurance/100.)) )
 			{
-				loc = restore_variable(sloc);
-				materialamount = CITY_D->query_section_info(city, num, "resource/"+arg);
+				msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來開採燃料了...。\n", me, 0, 1);
 				
-				if( materialamount >= amount )
+				if( !random(2) )
 				{
-					if( !cost_stamina(me, amount, skilllevel) )
-						return msg("$ME氣喘噓噓，已經沒力氣再開採燃料了...。\n", me, 0, 1);
-					
-					endurance = query("endurance", tools[0]);
-		
-					// 工具損壞(損壞機率與工具耐久度和使用者技能相關)
-					if( !random(endurance + to_int(skilllevel*endurance/100.)) )
-					{
-						msg("$ME手上的"+tools[0]->query_idname()+"突然『啪』的一聲，手柄處裂了開來，顯然是沒辦法再繼續用來開採燃料了...。\n", me, 0, 1);
-						
-						if( !random(2) )
-						{
-							tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
-							me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
-						}
-						
-						destruct(tools[0], 1);
-						return;
-					}
-					
-					CITY_D->set_section_info(city, num, "resource/"+arg, materialamount-amount);
-					
-					ob = new(MATERIAL_PATH+arg);
-					
-					if( amount > 1 )
-						set_temp("amount", amount, ob);
-
-					msg("$ME賣力地從土地裡取出了"+ob->short(1)+"\n", me, 0, 1);
-					
-					// 紀錄原料採集資訊
-					CITY_D->add_collection_record(city, num, myid, arg, amount);
-
-					if( !me->get_object(ob, amount) )
-					{
-						msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
-						ob->move_to_environment(me);
-					}
-					if( me->query_skill_level("fuel") < 20 )
-						me->add_skill_exp("fuel", amount*(12+random(11)));
-					else if( me->query_skill_level("fuel") == 20 )
-						tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
-
-					me->add_social_exp(to_int(pow(amount*(20+random(21)), 0.9)));
-					TREASURE_D->get_treasure_books(me, amount);
-					return;
+					tell(me, pnoun(2, me)+"從這個事件中獲得更多的社會經驗。\n");
+					me->add_social_exp(endurance + to_int(skilllevel*endurance/100.) - 50 + random(101));
 				}
+				
+				destruct(tools[0], 1);
+				return;
 			}
-			return tell(me, "整座城市的燃料資源都已經被大量開採，無法再找到可利用的燃料。\n");
-			break;
-		
+			
+			ob = new(MATERIAL_PATH+arg);
+			
+			if( amount > 1 )
+				ob->set_amount(amount);
 
+			msg("$ME舉起$YOU賣力地從土地裡挖出了"+ob->short(1)+"\n", me, tools[0], 1);
+			
+			if( objectp(warehouse) )
+			{
+				warehouse->query_module_file()->input_object(warehouse, "products", MATERIAL_PATH+arg, amount);
+				destruct(ob);
+			}
+			else if( !me->available_get(ob, amount) )
+			{
+				msg("$ME已經拿不動"+ob->short(1)+"了！只好先放在地上。\n", me, 0, 1);
+				ob->move_to_environment(me);
+			}
+			else
+				ob->move(me);
+
+			if( me->query_skill_level("fuel") < 20 )
+				me->add_skill_exp("fuel", amount*(12+random(11)));
+			else if( me->query_skill_level("fuel") == 20 )
+				tell(me, pnoun(2, me)+"的採集技能等級已經到達 20，無法再自我往上提升，更高深的學問必須開始到大學學習。\n");
+
+			me->add_social_exp(amount*(30+random(31)));
+
+			if( !random(1000) )
+				me->add_fatigue(1);
+
+			break;
 
 		default:
 			return tell(me, pnoun(2, me)+"想要收集哪種原料？("HIW"金屬 metal"NOR", "WHT"原石 stone"NOR", "HIC"清水 water"NOR", "YEL"原木 wood"NOR", "HIM"燃料 fuel"NOR")\n");
 			break;
 	}
+	
+	me->remove_status(query_temp("last_time_collect_status", me));
+	me->add_status(set_temp("last_time_collect_status", HIM"採"NOR MAG"集"NOR, me), 30);
 }
 	

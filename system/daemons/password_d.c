@@ -28,6 +28,11 @@ nomask string query_password(string id)
 	return copy(password[id]);
 }
 
+nomask int password_exists(string id)
+{
+	return !undefinedp(password[id]);
+}
+
 nomask int set_password(string id, string pwd)
 {
 	object *stack = call_stack(1);
@@ -64,19 +69,26 @@ nomask void del_password(string id)
 
 private nomask void create()
 {
-  	if( clonep() ) destruct(this_object());
-  	
- 	if( !restore_object(DATA) )
-  	{
-		log_file(LOG, "無法載入密碼存檔。\n");
-		password = allocate_mapping(0);
-  	}
-  	else
-  		/* 整理無用之密碼資訊 */
-  		filter(password, (: file_size(user_data($1)) < 0 && map_delete(password, $1):));
-	
-	save_data();
+        if( clonep() ) destruct(this_object());
+
+        if( !restore_object(DATA) )
+        {
+                log_file(LOG, "無法載入密碼存檔。\n");
+                password = allocate_mapping(0);
+                save_data();
+        }
 }
+
+nomask int save()
+{
+	return save_data();
+}
+
+int remove()
+{
+	return save();
+}
+
 string query_name()
 {
 	return "密碼系統(PASSWORD_D)";

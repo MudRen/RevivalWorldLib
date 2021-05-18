@@ -22,7 +22,7 @@
 
 inherit ROOM_ACTION_MOD;
 
-#define LABOR_RENT	"100000"
+#define LABOR_RENT	100000
 
 #define LABOR_ID	"ID"
 #define LABOR_IDNAME	"IDNAME"
@@ -35,20 +35,17 @@ void do_hire(object me, string arg)
 	int num, i;
 	object newnpc;
 	object env = environment(me)->query_master();
-	int leadership_level;
-	int leadership_adv_level;
+	int max_limit = LABOR_D->get_labor_limit(me);
+	
 	string money_unit = env->query_money_unit();
 
-	if( !arg )
+	if( !arg || !userp(me) )
 		return tell(me, "每個人力介紹費需要 "HIY+money(money_unit, LABOR_RENT)+NOR"。\n"+pnoun(2, me)+"想要雇用全新人力(Boy/Girl)？或是雇用有經驗的人力(list 列表)？\n");
 
 	arg = lower_case(arg);
 
-	leadership_level = me->query_skill_level("leadership");
-	leadership_adv_level = me->query_skill_level("leadership-adv");
-	
-	if( sizeof(query("hirelabors", me)) >= (leadership_level + leadership_adv_level)/5 )
-		return tell(me, pnoun(2, me)+"目前的領導能力最多只能雇用 "+ ((leadership_level + leadership_adv_level)/5)+" 人。\n");
+	if( sizeof(query("hirelabors", me)) >= max_limit )
+		return tell(me, pnoun(2, me)+"目前的領導能力最多只能雇用 "+ max_limit+" 人。\n");
 
 	if( !me->spend_money(money_unit, LABOR_RENT) )
 		return tell(me, pnoun(2, me)+"沒有錢雇用人力了。\n");
@@ -202,7 +199,7 @@ void do_list(object me, string arg)
 			{
 				ob = load_object(file);
 				msg = COMMAND_D->find_command_object("score")->score_standard(ob);
-				msg += COMMAND_D->find_command_object("skill")->skill_list(me, ob);
+				msg += COMMAND_D->find_command_object("skill")->skill_list(me, ob, 1);
 				
 				me->more(msg);
 				return;
@@ -302,7 +299,7 @@ nosave array building_info = ({
     ,AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION
 
     // 開張儀式費用
-    ,"5000000"
+    ,5000000
 
     // 建築物關閉測試標記
     ,0

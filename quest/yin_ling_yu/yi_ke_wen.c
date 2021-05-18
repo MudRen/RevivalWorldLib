@@ -27,14 +27,17 @@
 
 #define QUEST_1 "茵玲羽之謎"
 
-inherit STANDARD_NPC;
+inherit STANDARD_PERSON;
 
 void create()
 {
 	set_idname("yi ke wen","易柯文");
-	set("long", "一位身中數刀失血過多而死的男子。");
+	set("long", "　一位身中數刀失血過多而死的男子。");
 	set("unit", "位");
 	set("age", 26);
 	set("gender", MALE_GENDER);
-	set_temp("status", ([ HIR"屍體"NOR : -1 ]));
+	
+	startup_living();
+	
+	this_object()->die();
 }

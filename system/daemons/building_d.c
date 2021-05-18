@@ -16,6 +16,7 @@
 #include <daemon.h>
 #include <location.h>
 #include <roommodule.h>
+#include <areadata.h>
 #include <citydata.h>
 #include <message.h>
 #include <building.h>
@@ -32,18 +33,18 @@ mapping floor_value;
 
 mapping default_building_table = ([
 
-"land"	:	({ "荒地"		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"farm"	: 	({ HIG"農田"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION						, 0, 1, 0, 1, 0, 1 }),
-"pasture":	({ NOR YEL"牧場"NOR	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION						, 0, 1, 0, 1, 0, 1 }),
-"fishfarm":	({ HIB"養殖場"NOR	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION						, 0, 1, 0, 1, 0, 1 }),
-"light"	:	({ HIY"路燈"NOR 	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"pool"	:	({ HIC"水池"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"pavilion":	({ HIG"涼亭"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"tree":		({ HIG"大樹"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"grass":	({ HIG"草皮"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"statue":	({ HIM"雕像"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
-"fence":	({ HIM"圍牆"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, "0", 0, 0, 0, 0, 1 }),
-"wizhall":	({ HIW"巫師大廳"NOR	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, 0, 1, 0, 1, 0, 1 }),
+"land"	:	({ "荒地"			, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"farm"	: 	({ HIG"農田"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION										, -1, 1, 0, 1, 0, 1 }),
+"pasture":	({ NOR YEL"牧場"NOR	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION										, -1, 1, 0, 1, 0, 1 }),
+"fishfarm":	({ HIB"養殖場"NOR	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION										, -1, 1, 0, 1, 0, 1 }),
+"light"	:	({ HIY"路燈"NOR 	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"pool"	:	({ HIC"水池"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"pavilion":	({ HIG"涼亭"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"tree":		({ HIG"大樹"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"grass":	({ HIG"草皮"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"statue":	({ HIM"雕像"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
+"fence":	({ HIM"圍牆"NOR		, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 0, 0, 0, 0, 1 }),
+"wizhall":	({ HIW"巫師大廳"NOR	, 1, 0, INDIVIDUAL, AGRICULTURE_REGION | INDUSTRY_REGION | COMMERCE_REGION	, -1, 1, 0, 1, 0, 1 }),
 ]);
 
 varargs mapping analyze_building_logic(array loc, int no_owner_check);
@@ -92,10 +93,10 @@ void materialize_city_building(object me, string owner, mapping table, string ci
 	{
 		loc = restore_variable(sloc);
 		
-		switch((MAP_D->query_map_system(loc))->query_coor_data(loc, TYPE))
+		switch(MAP_D->query_coor_data(loc, TYPE))
 		{
 			case WALL:
-				(MAP_D->query_map_system(loc))->set_coor_data(loc, FLAGS, NO_MOVE);
+				MAP_D->set_coor_data(loc, FLAGS, NO_MOVE);
 				break;
 			case DOOR:
 				break;
@@ -111,10 +112,10 @@ void materialize_city_building(object me, string owner, mapping table, string ci
 		loc = restore_variable(sloc);
 		
 		// 設定此座標為 ROOM 標記
-		(MAP_D->query_map_system(loc))->set_coor_data(loc, ROOM, btype);
+		MAP_D->set_coor_data(loc, ROOM, btype);
 		
 		// 設定此座標之地圖圖示為"  "
-		(MAP_D->query_map_system(loc))->set_coor_icon(loc, "  ");
+		MAP_D->set_coor_icon(loc, "  ");
 		
 		file = CITY_ROOM_MODULE(city, num, loc[X], loc[Y], btype);
 		
@@ -135,7 +136,7 @@ void materialize_city_building(object me, string owner, mapping table, string ci
 			
 			if( member_array( save_variable(temploc), table["roomtable"] ) != -1 ) 
 				exits[dir] = CITY_ROOM_MODULE(city, num, temploc[X], temploc[Y], btype);
-			else if( (MAP_D->query_map_system(loc))->query_coor_data(temploc, TYPE) == DOOR ) 
+			else if( MAP_D->query_coor_data(temploc, TYPE) == DOOR ) 
 				exits[dir] = copy(temploc);
 		}
 		
@@ -153,22 +154,22 @@ void materialize_city_building(object me, string owner, mapping table, string ci
 }
 
 // 物質化區域建築, 用來建立郊區區域的獨立建築
-int materialize_area_building(array loc)
+void materialize_area_building(object me, string owner, mapping table, string area, int num, string btype)
 {
-	string sloc;
-	mapping table = analyze_building_logic(loc, 1);
-	
-	if( !mapp(table) ) return 0;
+	array loc, temploc;
+	string file, sloc;
+	mapping exits;
+	object room;
 
 	// 處理牆壁座標資料
 	foreach( sloc in table["walltable"] )
 	{
 		loc = restore_variable(sloc);
 		
-		switch((MAP_D->query_map_system(loc))->query_coor_data(loc, TYPE))
+		switch(MAP_D->query_coor_data(loc, TYPE))
 		{
 			case WALL:
-				(MAP_D->query_map_system(loc))->set_coor_data(loc, FLAGS, NO_MOVE);
+				MAP_D->set_coor_data(loc, FLAGS, NO_MOVE);
 				break;
 			case DOOR:
 				break;
@@ -177,19 +178,49 @@ int materialize_area_building(array loc)
 				error("牆壁資料程式錯誤，請通知巫師處理。\n");
 		}
 	}
+	
 	// 處理房間座標資料
 	foreach( sloc in table["roomtable"] )
 	{
 		loc = restore_variable(sloc);
 		
 		// 設定此座標為 ROOM 標記
-		(MAP_D->query_map_system(loc))->set_coor_data(loc, ROOM, "room");
+		MAP_D->set_coor_data(loc, ROOM, btype);
 		
 		// 設定此座標之地圖圖示為"  "
-		(MAP_D->query_map_system(loc))->set_coor_icon(loc, "  ");
+		MAP_D->set_coor_icon(loc, "  ");
+		
+		file = AREA_ROOM_MODULE(area, num, loc[X], loc[Y], btype);
+		
+		// 摧毀原本在此地的房間物件
+		if( find_object(file) ) destruct(file);
+		// 刪除原本在此地的房間資料
+		if( file_exist(file+".o") ) rm(file+".o");
+			
+		// 載入虛擬房間物件
+		room = load_object(file);
+
+		exits = allocate_mapping(1);
+		
+		// 建立路口連接
+		foreach( temploc, string dir in exits_dir(loc) )
+		{	
+			if( temploc[X] < 0 || temploc[X] > 99 || temploc[Y] < 0 || temploc[Y] > 99 ) continue;
+			
+			if( member_array( save_variable(temploc), table["roomtable"] ) != -1 ) 
+				exits[dir] = AREA_ROOM_MODULE(area, num, temploc[X], temploc[Y], btype);
+			else if( MAP_D->query_coor_data(temploc, TYPE) == DOOR ) 
+				exits[dir] = copy(temploc);
+		}
+		
+		set("exits", exits, room);
+		set("owner", owner, room);
+		room->save();
 	}
-	
-	return 1;
+
+	ESTATE_D->set_estate(owner, table, btype, area, num);
+
+	(MAP_D->query_map_system(loc))->translate_map_to_html(area, num);
 }
 
 // 物質化戶外建築(無室內的建築類型)
@@ -347,14 +378,14 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 
 		if( i>MAX_BUILDING_RANGE )
 		{
-			tell(me, "以現在的技術無法建造這麼大的建築物。\n", CMDMSG);
+			tell(me, "以現在的技術無法建造這麼大的建築物。\n");
 			return 0;
 		}
 	
 		// 並非牆壁圖像
 		if( undefinedp(map[y]) || undefinedp(map[y][x]) || undefinedp(dir = picdir[remove_ansi(map[y][x])]) )
 		{
-			tell(me, "牆壁必須要完整不能有破碎斷裂的地方喔！\n", CMDMSG);
+			tell(me, "牆壁必須要完整不能有破碎斷裂的地方喔！\n");
 			return 0;
 		}
 
@@ -368,7 +399,7 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 		// 此牆壁之入口方向沒有接續上個牆壁之出口方向
 		if( T / lexit &~ dir )
 		{
-			tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(lx,ly)+"的兩座牆壁並不連續！\n", CMDMSG);
+			tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(lx,ly)+"的兩座牆壁並不連續！\n");
 			return 0;
 		}
 
@@ -377,7 +408,7 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 		
 		if( !undefinedp(lentry) && lentry == exit )
 		{
-			tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(lx,ly)+"的兩座牆壁轉折過度！\n", CMDMSG);
+			tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(lx,ly)+"的兩座牆壁轉折過度！\n");
 			return 0;
 		}
 		
@@ -412,14 +443,14 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 	for(y=ry[0];y<=ry[<1];evenwall=evenwallbit=0, y++)
 	for(x=boundary[y][MIN];x<=boundary[y][MAX];x++)
 	{
-		owner = CITY_D->query_coor_data(arrange_location(x,y,loc[Z],loc[PLACE],loc[NUM],loc[EXTRA]), "owner");
+		owner = MAP_D->query_coor_data(arrange_location(x,y,loc[Z],loc[PLACE],loc[NUM],loc[EXTRA]), "owner");
 		
 		if( !tempowner )
 			tempowner = owner;
 		
 		if( !no_owner_check && owner != tempowner )
 		{
-			tell(me, "建築物中的座標"+coorname(x,y)+"的土地擁有人與此地不同。\n", CMDMSG);
+			tell(me, "建築物中的座標"+coorname(x,y)+"的土地擁有人與此地不同。\n");
 			return 0;
 		}
 		
@@ -443,7 +474,7 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 				
 				if( !arrayp(inside_building_table) )
 				{
-					tell(me, "多層次建築之內部建築物邏輯錯誤。\n", CMDMSG);
+					tell(me, "多層次建築之內部建築物邏輯錯誤。\n");
 					return 0;
 				}
 				
@@ -458,7 +489,7 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 				ndir = picdir[remove_ansi(map[y+1][x])];
 				if( ndir && S &~ dir && N &~ ndir )
 				{
-					tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x, y+1)+"兩個牆壁不能這樣疊在一起。\n", CMDMSG);
+					tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x, y+1)+"兩個牆壁不能這樣疊在一起。\n");
 					return 0;
 				}
 			}
@@ -469,7 +500,7 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 				ndir = picdir[remove_ansi(map[y][x+1])];
 				if( ndir && E &~ dir && W &~ ndir )
 				{
-					tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x+1, y)+"兩個牆壁不能這樣疊在一起。\n", CMDMSG);
+					tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x+1, y)+"兩個牆壁不能這樣疊在一起。\n");
 					return 0;
 				}
 			}
@@ -477,14 +508,14 @@ varargs mapping analyze_building_logic(array loc, int no_owner_check)
 			// 斜向牆壁重疊檢查, 避免斜向封閉空間
 			if( y < ry[<1] && x < boundary[y][MAX] && (dir == (N|W)) && (picdir[remove_ansi(map[y+1][x+1])] == (S|E)) )
 			{
-				tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x+1, y+1)+"兩個牆壁不能這樣疊在一起。\n", CMDMSG);
+				tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x+1, y+1)+"兩個牆壁不能這樣疊在一起。\n");
 				return 0;
 			}
 			
 			// 斜向牆壁重疊檢查, 避免斜向封閉空間
 			if( y < ry[<1] && x > boundary[y][MIN] && (dir == (N|E)) && (picdir[remove_ansi(map[y+1][x-1])] == (S|W)) )
 			{
-				tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x-1, y+1)+"兩個牆壁不能這樣疊在一起。\n", CMDMSG);
+				tell(me, "建築物中的座標"+coorname(x,y)+"與座標"+coorname(x-1, y+1)+"兩個牆壁不能這樣疊在一起。\n");
 				return 0;
 			}
 		}
@@ -540,24 +571,24 @@ void create()
 	building_table += copy(default_building_table);
 
 	for(i=1;i<=5;i++)
-		floor_value[i] = count(100000, "*", i);
+		floor_value[i] = 100000 * i;
 	for(i=6;i<=100;i++)
-		floor_value[i] = count(count(100000, "*", i), "*", i-4);
+		floor_value[i] = 100000 * i * (i-4);
 	for(i=101;i<=120;i++)
-		floor_value[i] = count(count(300000, "*", i), "*", i-4);
+		floor_value[i] = 300000 * i * (i-4);
 	for(i=121;i<=140;i++)
-		floor_value[i] = count(count(500000, "*", i), "*", i-4);
+		floor_value[i] = 500000 * i * (i-4);
 	for(i=141;i<=160;i++)
-		floor_value[i] = count(count(700000, "*", i), "*", i-4);
+		floor_value[i] = 700000 * i * (i-4);
 	for(i=161;i<=180;i++)
-		floor_value[i] = count(count(900000, "*", i), "*", i-4);
+		floor_value[i] = 900000 * i * (i-4);
 	for(i=181;i<=200;i++)
-		floor_value[i] = count(count(1100000, "*", i), "*", i-4);
+		floor_value[i] = 1100000 * i * (i-4);
 	for(i=201;i<=1000;i++)
-		floor_value[i] = count(count(5000000, "*", i), "*", i-4);
-
+		floor_value[i] = 5000000 * i * (i-4);
+		
 	for(i=1;i<=1000;i++)
-		floor_total_value[i] = count(floor_total_value[i-1], "+", floor_value[i]);
+		floor_total_value[i] = floor_total_value[i-1] + floor_value[i];
 }
 	
 string query_name()
@@ -567,9 +598,9 @@ string query_name()
 
 int is_loc_closed(array loc)
 {
-	mixed type = CITY_D->query_coor_data(loc, TYPE);
+	mixed type = MAP_D->query_coor_data(loc, TYPE);
 	
-	if( type == DOOR || type == WALL || CITY_D->query_coor_data(loc, ROOM) )
+	if( type == DOOR || type == WALL || MAP_D->query_coor_data(loc, ROOM) )
 		return 1;
 		
 	return 0;

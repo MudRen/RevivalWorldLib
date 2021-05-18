@@ -22,8 +22,8 @@ void create()
         if( this_object()->set_shadow_ob() ) return;
         
         set("long","可用來釀酒或作為粗纖維食品。\n");
-        set("unit", "袋");
-        set("mass", 500);
-        set("value", 200);
+        set("unit", "綑");
+        set("mass", 200);
+        set("value", 300);
 }
 

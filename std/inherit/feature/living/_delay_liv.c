@@ -37,6 +37,8 @@ varargs int start_delay(string key, int second, string msg, string fmsg, functio
 		return 0;
 
 	delayinfo[key] = ({ second, msg, fmsg, fp });
+	
+	this_object()->startup_heartbeat();
 }
 
 varargs void remove_delay(string key)

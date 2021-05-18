@@ -15,6 +15,7 @@
 #include <ansi.h>
 #include <feature.h>
 #include <message.h>
+#include <mudlib.h>
 
 #define HCMD		0
 #define HTIME		1
@@ -36,6 +37,7 @@ history <指令數>		顯示最近 <指令數> 筆的指令歷程
 history <使用者代號>		顯示 <使用者> 的指令歷程 (巫師專用)
 history <指令數> <使用者代號>	顯示 <使用者> 最近 <指令數> 筆的指令歷程 (巫師專用)
 history <使用者代號> <指令數>	同上
+history game			顯示遊戲的重大歷史事件
 
 相關指令: 
 HELP;
@@ -47,6 +49,25 @@ private void do_command(object me, string arg)
 	array cmd_history;
 	object ob;
 
+	if( arg == "game" )
+	{
+		array game_history = HISTORY_D->query_history();	
+		
+		msg = MUD_FULL_NAME"重大歷史事件\n";
+		msg += WHT"───────────────────────────────────────\n"NOR;
+		msg += HIC"編號 時間              事件\n"NOR;
+		msg += WHT"───────────────────────────────────────\n"NOR;
+		
+		for(i=0;i<sizeof(game_history);i+=3)
+		{
+			msg +=sprintf(HIW"%-5d"NOR CYN"%-18s"NOR"%s\n", i/3+1, TIME_D->replace_ctime(game_history[i]), game_history[i+2]);
+		}
+		
+		msg += WHT"───────────────────────────────────────\n"NOR;
+		me->more(msg);
+		return;
+	}
+	
 	if( wizardp(me) && arg == "-l" )
 	{
 		object *sortusers;

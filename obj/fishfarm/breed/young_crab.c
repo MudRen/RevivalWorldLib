@@ -26,8 +26,8 @@ void create()
         
         set("long", "小螃蟹。\n");
         set("unit", "隻");
-        set("mass", 150);
-        set("value", 4000);
+        set("mass", 200);
+        set("value", 8000);
         set("badsell", 1);
 
 	// 種子資訊
@@ -45,15 +45,14 @@ void create()
 	       	//每單位需要的原料種類與數量
 	       	"material":
 	       	([
-	       		"/obj/materials/water":10,
-	       		"/obj/materials/wood":20,
+	       		"/obj/materials/water":15,
 	       		"/obj/materials/stone":10,
 	       	]),
 			
 	       	//產品的數量設定與產品路徑
 	       	"harvest":
 	       	([
-	       		"/obj/fishfarm/product/big_crab":8,
+	       		"/obj/fishfarm/product/big_crab":6,
 	       	]),
 
 		//生成時的訊息
@@ -62,7 +61,7 @@ void create()
 		//種植此類產品所需要的技能與其等級
 		"skill":
 		([
-			"fishfarm":70,
+			"fishfarm":60,
 		]),
 
 		//成長時的訊息
@@ -73,7 +72,7 @@ void create()
 			300:	"小螃蟹愈來愈大，肚子漸漸地胖了起來。\n",
 			500:	"螃蟹的兩隻螯愈來愈大也愈來愈有力。\n",
 			800:	"螃蟹伸長著兩隻黑黑的大眼珠，靜靜地由水底往這頭看。\n",
-			1200:	"肥滿的大閘蟹已經成長到可以收成的程度了。\n",
+			1000:	"肥滿的大閘蟹已經成長到可以收成的程度了。\n",
 		]),
 	
 		// 天氣影響敘述

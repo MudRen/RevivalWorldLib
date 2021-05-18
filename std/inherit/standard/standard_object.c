@@ -30,3 +30,9 @@ inherit ACTION;
 
 /* 保留 */
 inherit KEEP;
+
+/* 數量 */
+inherit AMOUNT;
+
+/* 飛行 */
+inherit FLY;

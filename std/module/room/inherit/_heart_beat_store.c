@@ -17,16 +17,19 @@
 #include <location.h>
 #include <npc.h>
 
-void output_object(object env, string database, string basename, string amount);
+void output_object(object env, string database, string basename, int amount);
 void refresh_class(object env, string database);
 
 void virtual_shopping(object master)
 {
-	int i, size, average_desire, productdesire, num, security, management, ratio, totalrooms;
-	string city, cost, replace_file_name, shoppingmsg="";
+	int i, size, average_desire, productdesire, num, security, management, ratio, totalrooms, cost;
+	string city, replace_file_name, shoppingmsg="";
 	object product, *msgrooms, slave, boss;
 	mapping products;
-	mixed value, amount;
+	int value, amount;
+	int *nums;
+	int demand_rank;
+	int total_sell=0, total_earnmoney=0;
 
 	if( query("mode", master) )
 		return;
@@ -37,7 +40,7 @@ void virtual_shopping(object master)
 		return;
 
 	city = master->query_city();
-	num = master->query_city_num();
+	nums = ({ master->query_city_num() });
 
 	msgrooms = allocate(0);
 	security = query("shopping/security", master);
@@ -45,14 +48,14 @@ void virtual_shopping(object master)
 	
 	foreach( string file in (master->query_slave() || allocate(0)) + ({ base_name(master) }) )
 	{
-		slave = find_object(file);
-		
-		if( !objectp(slave) ) continue;
+		if( !objectp(slave = load_object(file)) ) continue;
 		
 		if( sizeof(filter_array(all_inventory(slave), (: userp($1) :))) )
 			msgrooms += ({ slave });
 		
 		average_desire += query("shopping/desire", slave);
+		
+		nums += ({ slave->query_city_num() });
 	}
 
 	totalrooms = sizeof(master->query_slave())+1;
@@ -61,9 +64,7 @@ void virtual_shopping(object master)
 	
 	boss = find_player(query("owner", master));
 
-	ratio = SHOPPING_D->shopping_cost_ratio(city, num);
-
-	foreach( string shelf, string *data in products )
+	foreach( string shelf, array data in products )
 	{	
 		size = sizeof(data);
 		
@@ -71,59 +72,83 @@ void virtual_shopping(object master)
 			
 		for(i=0;i<size;i+=2)
 		{
-			if( random(ratio) ) continue;
+			num = nums[random(sizeof(nums))];
+
+			ratio = SHOPPING_D->shopping_cost_ratio(city, num);
+
+			if( ratio > 1 && random(ratio) > random(10) ) continue;
 
 			replace_file_name = replace_string(data[i], "/", "#");
 			
 			productdesire = average_desire + query("shopping/productdesire/"+replace_file_name, master);
 			
-			if( productdesire > random(180) )
+			if( productdesire > random(360) )
 			{				
 				if( catch(product = load_object(data[i])) )
 					continue;
 		
 				if( !objectp(product) && !file_exists(data[i]) )
 				{
-					output_object(master, "products", data[i], "all");
+					output_object(master, "products", data[i], -3);
 					continue;
 				}
 
-				value = ""+(query("setup/price/"+replace_file_name, master) || query("value", product));
-				
+				if( query("badsell", product) )
+					continue;
+
+				value = to_int(query("setup/price/"+replace_file_name, master) || query("value", product));
+
+				demand_rank = SHOPPING_D->query_demand_rank(city, num, product);
+
+				if( demand_rank == 100 && random(100) )
+					continue;
+	
+				// 需求 + 購買慾愈低，被購買的機會愈低
+				if( random(to_int(pow(demand_rank, 1.7))) > 300 || random(pow(demand_rank, 0.9)+50) > random(productdesire*2+50) )
+					continue;
+
 				// 購買欲和價格影響數量
-				amount = to_int(ceil( pow(productdesire, 0.45) * pow(totalrooms, 0.3) / pow(sizeof(value), 0.6) ));
+				amount = to_int(ceil( pow(productdesire, 0.9) * pow(totalrooms, 0.4) / pow(to_float(value)/100., 0.3) ));
 
 				if( ratio > 1 )
-					amount /= pow(ratio, 0.7);
+					amount /= pow(ratio, 0.5);
 
-				amount = random(to_int(amount)+1);
+				amount = range_random(to_int(amount/3), to_int(amount));
 
-				if( amount <= 0 ) continue;
+				if( amount <= 0 )
+				{
+					if( !random(100) )
+						amount = 1;
+					else
+						continue;
+				}
 
-				if( count( amount, ">", data[i+1]) )
-					amount = data[i+1];
+				if( amount > to_int(data[i+1]) )
+					amount = to_int(data[i+1]);
 
-				cost = count(amount, "*", value);
+				cost = amount * value;
 				
 				// 消費支出不夠了
-				if( count(SHOPPING_D->query_shopping_info(city, num, "money"), "<", cost) )
+				if( SHOPPING_D->query_shopping_info(city, num, "money") < cost )
 					continue;
 					
 				output_object(master, "products", data[i], amount);
 				
-				if( security < totalrooms && !random(security) )
+				SHOPPING_D->count_demand(city, num, product, cost);
+				
+				if( security < totalrooms )
 				{
-					broadcast(master, HIY"架子上的"+product->query_idname()+HIY"似乎隱約少了一些...。\n"NOR);
+					shoppingmsg += HIY"架子上的"+product->query_idname()+HIY"似乎隱約少了一些...。\n"NOR;
 					
 					if( boss )
 						tell(boss, master->query_room_name()+"傳來消息：似乎有一些小偷正在偷架子上的商品...。\n");
 					
 					continue;
 				}
-				
-				set("money", count(query("money", master), "+", cost), master);
-				set("totalsell", count(amount, "+", query("totalsell", master)), master);
-	
+					
+				total_sell += amount;
+				total_earnmoney += cost;
+
 				if( sizeof(msgrooms) )
 					shoppingmsg += "店員將"+QUANTITY_D->obj(product, amount)+"交給了顧客，並收取"+HIY+QUANTITY_D->money_info(city, cost)+NOR"。\n";
 				
@@ -131,7 +156,14 @@ void virtual_shopping(object master)
 			}
 		}
 	}
-	
+
+	if( total_sell > 0 )
+	{
+		addn("money", total_earnmoney, master);
+		addn("totalsell", total_sell, master);
+		set("lastselltime", time(), master);
+	}
+
 	if( sizeof(msgrooms) )
 	{
 		foreach( slave in msgrooms )
@@ -141,33 +173,28 @@ void virtual_shopping(object master)
 			if( !random(3) )
 			switch(average_desire)
 			{
-				case 1..30:
+				case 1..70:
 					broadcast(slave, "稀稀落落的顧客在店裡選購著商品...。\n"); break;
-				case 31..60:
+				case 71..140:
 					broadcast(slave, "顧客們輕鬆地瀏覽著各種商品...。\n"); break;
-				case 61..100:
+				case 141..210:
 					broadcast(slave, "顧客們交頭接耳地討論著各種商品...。\n"); break;
-				case 101..200:
+				case 211..280:
 					broadcast(slave, "熱鬧的店裡充滿著顧客們的歡笑聲...。\n"); break;
-				case 201..300:
+				case 281..350:
 					broadcast(slave, "大量的顧客們興奮地享受著購物的樂趣...。\n"); break;
-				case 301..99999:
+				case 351..MAX_INT:
 					broadcast(slave, "店裡走道上擠滿了聞名而來的顧客，熱鬧非凡...。\n"); break;
 			}
 		}
 	}
 	
-	
-	
-	if( security < totalrooms && !random(10) )
+	if( objectp(boss) && !random(10) )
 	{
-		if( boss )
+		if( security < totalrooms )
 			tell(boss, master->query_room_name()+"的員工提出報告：商店的巡邏保全("+security+")低於目前的連鎖門市數量("+totalrooms+")，將有商品遭竊的疑慮...。\n");
-	}
 	
-	if( management < totalrooms && !random(10) )
-	{
-		if( boss )
+		if( management < totalrooms )
 			tell(boss, master->query_room_name()+"的員工提出報告：商店的管理上限("+management+")低於目前的連鎖門市數量("+totalrooms+")，造成城市繁榮度的損失(-"+totalrooms+")...。\n");
 	}
 }
@@ -176,15 +203,14 @@ void virtual_shopping(object master)
 // 計算產品基本購買慾，僅與產品自身價格或特性有關，與建築物無關
 varargs void calculate_master_data(object master, string spec_product)
 {
-	int i, size, desire, security, productdesire, valuepercent, valuesize, management;
-	string popproduct;
+	int i, size, desire, security, productdesire, valuepercent, management;
+	string popproduct = SHOPPING_D->query_pop_product();
 	object product, inv;
 	mapping products;
-	mixed value, setvalue;
+	int value, setvalue;
 	string owner = query("owner", master);
-
-	popproduct = SHOPPING_D->query_pop_product();
-
+	int has_air_conditioner = 0;
+	
 	products = query("products", master);
 
 	if( mapp(products) )
@@ -204,54 +230,42 @@ varargs void calculate_master_data(object master, string spec_product)
 				case "展示": continue; break;
 				default: break;
 			}
-					
-			if( data[i] == popproduct )
-				productdesire += 40;
-			else
-				SHOPPING_D->add_product(data[i]);
-				
+			
 			if( catch(product = load_object(data[i])) )
 				continue;
 
 			if( !objectp(product) && !file_exists(data[i]) )
 			{
-				output_object(master, "products", data[i], "all");
+				output_object(master, "products", data[i], -3);
 				continue;
 			}
 
-			value = query("value", product);
+			if( data[i] == popproduct || (product->is_module_product() && product->query_module() == popproduct) )
+				productdesire += 40;
+	
+			value = to_int(query("value", product));
 			
-			if( count(value, "<=", 0) )
+			if( value <= 0 )
 			{
 				set("shopping/productdesire/"+replace_string(data[i], "/", "#"), -10000,  master);
 				continue;
 			}
 
-			setvalue = query("setup/price/"+replace_string(data[i], "/", "#"), master)||value;
+			setvalue = to_int(query("setup/price/"+replace_string(data[i], "/", "#"), master)) || value;
 			
-			valuepercent = to_int(count(count(count(value, "-", setvalue), "*", 100), "/", value));
+			valuepercent = 250 * (value - setvalue) / value;
 			
-			if( valuepercent < -10000 ) valuepercent = -10000;
-
-			// 難賣的商品
-			if( query("badsell", product) && (count(setvalue, ">", value) || count(setvalue, ">", 10000000)) )
-				productdesire = -9999;
-
+			if( valuepercent < -10000 || valuepercent > 10000 ) valuepercent = -10000;
+			
 			// 價格影響購買欲
-			productdesire += 1.5*valuepercent;
-			
-			// 價格愈貴, 購買慾呈 3 次方下降
-			valuesize = sizeof(setvalue+"");
-			
-			if( valuesize > 2 )
-				productdesire -= pow(valuesize-2, 3.0);
-
-			// 玩家生產物品
-			if( product->is_module_object() )
-				productdesire += 30;
+			productdesire += valuepercent;
 
 			// 隨機買氣波動
 			productdesire += range_random(-5, 5);
+
+			// 難賣的商品
+			if( query("badsell", product) )
+				productdesire = -9999;
 
 			set("shopping/productdesire/"+replace_string(data[i], "/", "#"), productdesire,  master);
 		}
@@ -260,14 +274,24 @@ varargs void calculate_master_data(object master, string spec_product)
 	// 店員計算
 	foreach( inv in all_inventory(master) )
 	{
-		if( query("job/cur", inv) == CLERK && query("boss", inv) == owner )
+		if( query("job/type", inv) == CLERK && query("boss", inv) == owner )
 		{
-			desire += inv->query_skill_level("eloquence")/10 + inv->query_cha();
-			security += inv->query_skill_level("security");
-			management += inv->query_skill_level("storemanage");
+			desire += inv->query_skill_level("eloquence")/5 + inv->query_cha()*2;
+			security += inv->query_skill_level("security")*2;
+			management += inv->query_skill_level("storemanage")*2;
+		}
+		else if( inv->query_module() == "air_conditioner" )
+		{
+			has_air_conditioner = 1;
+
+			if( !random(to_int(pow(to_float(query("effect", inv)), 0.9))) )
+				destruct(inv, 1);			
 		}
 	}
 	
+	if( has_air_conditioner == 1 )
+		desire += 500;
+
 	set("shopping/basic_desire", desire/100, master);
 	set("shopping/security", security/6, master);
 	set("shopping/management", management/5, master);
@@ -277,9 +301,9 @@ varargs void calculate_master_data(object master, string spec_product)
 // 計算建築物買氣，與產品無關
 void calculate_shopping_desire(object room)
 {
-	int desire, floor;
+	int desire;
 	array loc;
-	object ownerob, master, broom;
+	object ownerob, master;
 	string roomlong, ownerid;
 	mapping products;
 
@@ -293,13 +317,8 @@ void calculate_shopping_desire(object room)
 		return;
 	}
 
-	// 樓層高度影響
-	if( query("firstfloor", room) && objectp(broom = load_object(query("firstfloor", room))) )
-		floor = query("floor", broom);
-	else
-		floor = query("floor", room);
-
-	desire += floor + pow(2, (floor / 20.));
+	// 連鎖房間數影響
+	desire += sizeof(master->query_slave())+1;
 
 	loc = room->query_location();
 	
@@ -329,20 +348,16 @@ void calculate_shopping_desire(object room)
 		
 	// 若老闆在線上, 依照老闆魅力增加購買慾
 	ownerid = query("owner", room);
+	
 	if( stringp(ownerid) && objectp(ownerob = find_player(ownerid)) )
 		desire += ownerob->query_cha();
-	
-	// 方圓一格商店密集度形成商圈型態增加購買慾
-	/*
-	foreach(string sloc, string type in CITY_D->query_coor_range(loc, ROOM, 1))
-	{
-		loc = restore_variable(sloc);
-		
-		if( type == "store" && objectp(broom = find_object("/city/"+loc[CITY]+"/"+loc[NUM]+"/room/"+loc[X]+"_"+loc[Y]+"_"+type)) )
-			desire += 3*(query("floor", broom)/10) || 1;
-	}
-	*/
 
+	if( find_object(BASEBALL_D) && BASEBALL_D->in_season(ownerid) )
+		desire += 20;
+		
+	if( CITY_D->has_building("prodigy", loc[CITY], loc[NUM]) )
+		desire *= 1.1;
+		
 	set("shopping/desire", desire+query("shopping/basic_desire", master), room);
 }
 
@@ -354,20 +369,22 @@ void update_top_totalsell(object room)
 	
 	if( SECURE_D->is_wizard(id) ) return;
 
-	TOP_D->update_top("storesell", base_name(room), query("totalsell", room), id, room->query_room_name(), room->query_city());
+	TOP_D->update_top("storesell", base_name(room), query("totalsell", room), id, room->query_room_name(3), room->query_city());
 }
 
 // 心跳 (每 5 秒一次)
 void heart_beat(object room)
 {
-	string *slaves = room->query_slave() || allocate(0);
+	string *slaves;
 	int store_heart_beat;
 	
-	if( query("function", room) != "front" ) return;
+	if( query("function", room) != "front" || !sizeof(query("products", room)) ) return;
 
 	// 如果 SHOPPING_D 沒有載入, 則 return;
 	if( !find_object(SHOPPING_D) ) return;
 	
+	slaves = room->query_slave() || allocate(0);
+		
 	if( !(store_heart_beat = query_temp("store_heart_beat", room)) )
 		store_heart_beat = set_temp("store_heart_beat", random(1200)+1, room);
 	else
@@ -376,7 +393,7 @@ void heart_beat(object room)
 	// 消費行為
 	if( find_player(query("owner", room)) )
 		virtual_shopping(room);
-	else if( !(store_heart_beat % 3) )
+	else if( !(store_heart_beat % 50) )
 		virtual_shopping(room);
 	
 	// 5 分鐘計算一次商品購買慾
@@ -391,8 +408,8 @@ void heart_beat(object room)
 	if( !(store_heart_beat%541) )
 		update_top_totalsell(room);
 	
-	// 30 分鐘儲存一次
-	if( !(store_heart_beat%361) )
+	// 20 分鐘儲存一次
+	if( !(store_heart_beat%241) )
 		room->save();
 
 	foreach(string file in slaves)
@@ -407,13 +424,7 @@ void heart_beat(object room)
 			addn_temp("store_heart_beat", 1, room);
 			
 		// 10 分鐘計算一次買氣
-		if( !(store_heart_beat%122) )
+		if( !(store_heart_beat%121) )
 			calculate_shopping_desire(room);
-	
-		// 120 分鐘儲存一次
-		if( !(store_heart_beat%1441) )
-			room->save();
 	}
-
-	
 }

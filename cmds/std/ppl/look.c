@@ -23,7 +23,13 @@
 inherit COMMAND;
 
 string help = @HELP
-        標準 look 指令。
+觀察附近的環境
+
+look			- 查看附近環境狀況
+look '生物ID'		- 查看生物狀況
+look '物品ID'		- 查看物品狀況
+
+
 HELP;
 
 #define MAX_OBJECT_SHOW		30
@@ -44,6 +50,25 @@ int sort_exits(mapping exits, string e1, string e2)
 	if( idx2 == -1 ) return -1;
 
 	return idx1-idx2;
+}
+
+string standard_description(string dir, string color)
+{
+	string hcolor;
+	
+	switch(color)
+	{
+		case "":
+		case WHT: hcolor=HIW; break;
+		case GRN: hcolor=HIG; break;
+		case RED: hcolor=HIR; break;
+		case YEL: hcolor=HIY; break;
+	}
+	
+	if( member_array(dir, EXITSORT) == -1 )
+		return color+"<"+capitalize(dir)+">"NOR;
+	else
+		return color+"<"+hcolor+capitalize(dir[0..0])+NOR+color+dir[1..]+">"NOR;
 }
 
 private void do_command(object me, string arg)
@@ -85,7 +110,13 @@ private void do_command(object me, string arg)
 			}
 	
 			if( !ob->is_living() && mapp(actions = ob->query_actions()) )
-				msg += sprintf("特殊指令 "HIY"%-=80s\n"NOR, implode(keys(actions), ", "));
+			{
+				string* acts = allocate(0);
+				foreach(string key, mixed funp in actions)
+					acts += ({ key });
+					
+				msg += sprintf("特殊指令 "HIY"%-=80s\n"NOR, implode(acts+(function_exists("do_use", ob)?({"use"}):({})), ", "));
+			}
 	
 			msg = " "+ob->long()+msg;
 			return me->more(msg);
@@ -104,7 +135,12 @@ private void do_command(object me, string arg)
 			else
 				return tell(me, "從這裡無法往 "+arg+" 的方向看。\n");
 		}
-		else return tell(me, "這裡沒有 " + arg + " 這個東西或出口。\n");
+		else if( stringp(msg = env->query_look_message(arg)) )
+		{
+			return tell(me, msg);
+		}
+		else
+			return tell(me, "這裡沒有 " + arg + " 這個東西或出口。\n");
 	}
 
 	// 地圖系統
@@ -130,7 +166,6 @@ private void do_command(object me, string arg)
 	// 一般環境物件顯示
 	else	
 	{
-		
 		array loc = env->query_location();
 		object master = env->query_master();
 		string room_function_short = env->query_room_function_short();
@@ -147,10 +182,16 @@ private void do_command(object me, string arg)
 			msg += (env->query_module_file())->look_room(env) || "";
 
 		if( objectp(master) && sizeof(master->query_slave()) )
-			msg += "連鎖 "+ (env == master ? HIG"連鎖"NOR GRN"中心"NOR:query("short", master)+HIG" <"+(master->query_location()[X]+1)+","+(master->query_location()[Y]+1)+">"NOR )+"，共 "+HIG+(sizeof(master->query_slave())+1)+NOR" 處\n";
+			msg += "連鎖 "+ (env == master ? HIG"連鎖"NOR GRN"中心"NOR:master->query_room_name())+"，共 "+HIG+(sizeof(master->query_slave())+1)+NOR" 處\n";
 
-		if( mapp(actions = env->query_actions()) && sizeof(actions))
-			msg += "指令 "HIY+implode(sort_array(keys(actions),1)," ")+NOR+"\n";
+		if( mapp(actions = env->query_actions()) )
+		{
+			string* acts = allocate(0);
+			foreach(string key, mixed funp in actions)
+				acts += ({ key });
+				
+			msg += "指令 "HIY+implode(sort_array(acts, 1)," ")+NOR+"\n";
+		}
 
 		if( !(exits = query("exits", env)) ) 
 			msg += "這個地方沒有任何的出口。\n";
@@ -167,24 +208,24 @@ private void do_command(object me, string arg)
 			{
 				if( arrayp(exits[dir]) )
 				{
-					exitname = HIW"<"+capitalize(dir)+">"NOR;
+					exitname = standard_description(dir, WHT);
 					lockflag = MAP_D->query_coor_data(exits[dir], "lock");
 				}
 				else if( functionp(exits[dir]) )
 				{
-					exitname = HIG"<"+capitalize(dir)+">"NOR;
+					exitname = standard_description(dir, GRN);
 					lockflag = query("lock/"+dir, env);
 				}
 				else
 				{
-					exitname = "<"+capitalize(dir)+">"NOR;
+					exitname = standard_description(dir, WHT);
 					lockflag = query("lock/"+dir, env);
 				}
 				
 				if( lockflag & LOCKED )
-					exitname = HIR"<"+capitalize(dir)+">"NOR;
+					exitname = standard_description(dir, RED);
 				if( lockflag & WIZLOCKED )
-					exitname = HIY"<"+capitalize(dir)+">"NOR;
+					exitname = standard_description(dir, YEL);
 					
 				exitlong += exitname+" ";
 			}
@@ -196,7 +237,7 @@ private void do_command(object me, string arg)
 	}
 
 	foreach(ob in sort_objects(inventories))
-		msg += (ob->is_living()||ob->is_board() ? ob->short(1) : " "+remove_fringe_blanks(ob->short(1)))+ (wizardp(me)&&!userp(ob)?" -> "+NOR WHT+file_name(ob)+NOR:"")+"\n";
+		msg += (ob->is_living() ? ob->short(1) : (query_temp("decorated", ob)?HIW"#"NOR:" ")+trim(ob->short(1)))+ (wizardp(me)&&!userp(ob)?" -> "+NOR WHT+file_name(ob)+NOR:"")+"\n";
 
 	tell(me, msg);
 }

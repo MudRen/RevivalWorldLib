@@ -30,7 +30,11 @@ void save_inventory()
 		if( !arrayp(save_inventory_list[basename][TEMP_DATABASE]) )
 			save_inventory_list[basename][TEMP_DATABASE] = allocate(0);
 
-		save_inventory_list[basename][AMOUNT] = count(query_temp("amount", ob)||1, "+", save_inventory_list[basename][AMOUNT]);
+		if( ob->no_amount() )
+			save_inventory_list[basename][AMOUNT]++;
+		else
+			save_inventory_list[basename][AMOUNT] += ob->query_amount();
+
 		save_inventory_list[basename][TEMP_DATABASE] += ({ ob->query_temp_database() });
 	}
 	
@@ -53,20 +57,21 @@ void restore_inventory()
 	{
 		index = 0;
 
-		if( catch(ob = new(filename)) )
+		if( catch(ob = new(filename)) || !objectp(ob) )
 		{
 			tell(this_object(), pnoun(2, this_object())+"身上的東西似乎有些被系統回收了。\n");
+			log_file("command/inventory", this_object()->query_id(1)+" 身上的 "+filename+" 無法載入。", -1);
 			continue;
 		}
 
 		ob->set_temp_database(info[TEMP_DATABASE][index++]);
 
-		if( query("flag/no_amount", ob) )
-		{
-			int_amount = to_int(info[AMOUNT]);
+		int_amount = to_int(info[AMOUNT]);
 
+		if( ob->no_amount() )
+		{
 			if( ob->is_equipping() )
-				this_object()->equip(ob, &status);
+				this_object()->equip(ob, ref status);
 
 			ob->move(this_object());
 			
@@ -77,10 +82,12 @@ void restore_inventory()
 			while(--int_amount)
 			{
 				catch(newob = new(filename));
-				catch(newob->set_temp_database(info[TEMP_DATABASE][index++]));
+
+				if( index < sizeof(info[TEMP_DATABASE]) )
+					catch(newob->set_temp_database(info[TEMP_DATABASE][index++]));
 				
 				if( newob->is_equipping() )
-					this_object()->equip(newob, &status);
+					this_object()->equip(newob, ref status);
 					
 				newob->move(this_object());
 			}	
@@ -88,8 +95,10 @@ void restore_inventory()
 		}	
 		else
 		{
+			ob->set_amount(int_amount);
+
 			if( ob->is_equipping() )
-				this_object()->equip(ob, &status);
+				this_object()->equip(ob, ref status);
 		
 			ob->move(this_object());
 		}

@@ -222,7 +222,8 @@ void send_all_shutdown()
 }
 
 // 定時更新 mud 資訊
-private void update_info()
+//private void update_info()
+void update_info()
 {
 	string mud;
 	mapping info;
@@ -317,7 +318,6 @@ private void read_callback(int socket,string info,int address)
 	info=ansi(info);
 #endif	
 	
-	NCH_CHANNEL( sprintf( "socket %d\ninfo %s\naddress %d", socket, info, address ));
 	//NCH_CHANNEL(info+"\t\t"+address);
 	// 檢查封包格式是否正確
 	if(!sscanf(info,"@@@%s@@@%*s",info)) return;
@@ -1028,13 +1028,18 @@ void receive_gchannel_msg(mapping info)
 		id=G2B(id);
 		msg=G2B(msg);
 	}
-	if( status & ANTI_AD ) info["CHANNEL"]="ad";
-	if( status & IGNORED ) return;
-	if( info["CHANNEL"]!="ad")
-	compare_last_msg(mudname,info["MSG"],id);
+	
+	//if( status & ANTI_AD ) 
+	//	info["CHANNEL"]="ad";
+		
+	if( status & IGNORED ) 
+		return;
+
+	if( info["CHANNEL"] != "ad" )
+		compare_last_msg(mudname,info["MSG"],id);
 	
 	// 交付給 CHANNEL_D 處理
-	if( accept_channel(info["CHANNEL"]) || info["CHANNEL"]=="ad")
+	if( !(status & ANTI_AD) && accept_channel(info["CHANNEL"]) )
 		CHANNEL_D->channel_broadcast(info["CHANNEL"], info["EMOTE"]?("{"+HBGRN+mudlist[mudname]["NAME"]+NOR+"} "+ msg):("{"+HBGRN+mudlist[mudname]["NAME"]+NOR+"} "+ id+"﹕"+msg));
 	else 
 		CHANNEL_D->channel_broadcast("other", info["EMOTE"]?("["+info["CHANNEL"]+"] "+"{"+HBGRN+mudlist[mudname]["NAME"]+NOR+"} "+msg):("["+info["CHANNEL"]+"] {"+HBGRN+mudlist[mudname]["NAME"]+NOR+"} "+id+"﹕"+msg));

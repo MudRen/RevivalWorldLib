@@ -69,21 +69,10 @@ private void do_command(object me, string arg)
 	int moving_stamina_cost;
 
 	if( !arg )
-		return tell(me, "你想要往那裡走？\n");
+		return tell(me, pnoun(2, me)+"想要往那裡走？\n");
 	
-	// 是犯人
-	if( query("prisoner", me) )
-	{
-		msg("$ME的手腳被鐵鍊銬住，無法自由行動。\n", me, 0, 1);
+	if( !me->valid_move() ) 
 		return;
-	}
-		
-	//忙碌中不能下指令
-	if( me->is_delaying() )
-	{
-		tell(me, me->query_delay_msg());
-		return me->show_prompt();
-	}
 
 	env = environment(me);
 
@@ -114,6 +103,8 @@ private void do_command(object me, string arg)
 					me->faint();
 					return;
 				}
+				
+				delete_temp("go_resist", me);
 				MAP_D->move(me, arg);
 				
 				return;
@@ -122,22 +113,48 @@ private void do_command(object me, string arg)
 			case -1:
 			{
 				if( wizardp(me))
+				{
+					tell(me, "往"+CHINESE_D->to_chinese(arg)+"方向的門被鎖住了，"+pnoun(2, me)+"沒辦法往那走。\n");
 					return MAP_D->move(me, arg);
+				}
 				else
 					return tell(me, "往"+CHINESE_D->to_chinese(arg)+"方向的門被鎖住了，"+pnoun(2, me)+"沒辦法往那走。\n");
 					
 				break;
 			}
 			case -2:
-			{
-				if( query_temp("go_resist", me) == "WALL_"+arg )
+			{	//if( wizardp(me) )
+				//	return MAP_D->move(me, arg);
+
+				if( query_temp("go_resist/WALL_"+arg, me) )
+				{
 					msg("$ME明明知道"+CHINESE_D->to_chinese(arg)+"方是牆，卻依然從正面撞了下去，把嘴唇撞的跟香腸一樣。\n", me, 0, 1);
+					addn_temp("go_resist/WALL_"+arg, 1, me);
+					
+					if( query_temp("go_resist/WALL_"+arg, me) > 15 )
+					{
+						me->cost_health(200);
+						tell(me, pnoun(2, me)+"損失 "HIY"200"NOR" 點生命值。\n");
+					}
+				}
 				else
 				{
-					set_temp("go_resist", "WALL_"+arg, me);
+					addn_temp("go_resist/WALL_"+arg, 1, me);
 					tell(me, "往"+CHINESE_D->to_chinese(arg)+"方向是一塊牆壁，"+pnoun(2, me)+"沒辦法往那走。\n");
 				}
 				return;
+				break;
+			}
+			case -3:
+			{
+				if( wizardp(me))
+				{
+					tell(me, pnoun(2, me)+"無法往那個方向行走。\n");
+					return MAP_D->move(me, arg);
+				}
+				else
+					return tell(me, pnoun(2, me)+"無法往那個方向行走。\n");
+					
 				break;
 			}
 			default:
@@ -154,12 +171,6 @@ private void do_command(object me, string arg)
 
 	if( exit = exits[arg] )
 	{
-		if( me->is_fighting() )
-		{
-			if( !COMBAT_D->do_flee(me) )
-				return;
-		}
-
 		from = CHINESE_D->to_chinese(corresponding[arg]);
 
 		if( functionp(exit) )
@@ -186,7 +197,7 @@ private void do_command(object me, string arg)
 			me->follower_move(env, exit);
 		}
 		// 若是物件名稱出口
-		else if( stringp(exit) )
+		else if( stringp(exit) || objectp(exit) )
 		{
 			if( query("lock/"+arg, env) & LOCKED && !wizardp(me))                       
 				return tell(me, "往 "+capitalize(arg)+" 方向的門被鎖住了，"+pnoun(2, me)+"沒辦法往那走。\n");
@@ -212,7 +223,7 @@ private void do_command(object me, string arg)
 	{
 		int current_floor = env->query_floor()-1;
 		int floor = to_int(arg)-1;
-		string msg = "";
+
 		array loc = env->query_location();
 
 		if( current_floor == floor )
@@ -238,10 +249,7 @@ private void do_command(object me, string arg)
 				newenv = load_object(exit[0..<3]);
 			}
 			
-			//for(current_floor = env->query_floor();current_floor<=floor;current_floor++)		
-			msg += pnoun(2, me)+"搭乘電梯往第 "WHT+(floor+1)+NOR" 樓上去。\n";
-
-			tell(me, msg);
+			msg("$ME搭乘電梯往第 "WHT+(floor+1)+NOR" 樓上去。\n", me, 0, 1, 0, ({ me }));
 			me->move(newenv);
 			me->follower_move(env, newenv);
 		}
@@ -262,11 +270,8 @@ private void do_command(object me, string arg)
 					
 				newenv = load_object(exit[0..<3]);
 			}
-
-			//for(current_floor = env->query_floor()-2;current_floor>=floor;current_floor--)
-				msg += pnoun(2, me)+"搭乘電梯往第 "WHT+(floor+1)+NOR" 樓下去。\n";
-			
-			tell(me, msg);
+		
+			msg("$ME搭乘電梯往第 "WHT+(floor+1)+NOR" 樓下去。\n", me, 0, 1, 0, ({ me }));
 			me->move(newenv);
 			me->follower_move(env, newenv);
 		}

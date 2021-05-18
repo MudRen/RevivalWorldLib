@@ -23,6 +23,6 @@ void create()
 	
 	set("long","可作為一般的主食。\n");
 	set("unit", "袋");
-	set("mass", 400);
-	set("value", 100);
+	set("mass", 200);
+	set("value", 200);
 }

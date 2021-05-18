@@ -31,10 +31,13 @@ HELP;
 private nosave int shutdowntime;
 private nosave string shutdowntype;
 
-private void regular_remove_process()
+private varargs void regular_remove_process(int kick)
 {
 	string systeminfo = SYSTEM_D->query_total_system_info();
 
+	// 關閉系統心跳時間
+	set_heartbeat_interval(0);
+	
 	// 儲存玩家資料
 	foreach( object user in users() )
 	{
@@ -51,18 +54,27 @@ private void regular_remove_process()
 		else
 			LOGOUT_D->quit(user);
 	}
+	
+	if( kick )
+	{
+		// 重新啟動系統心跳時間
+		set_heartbeat_interval(1);
+		return;
+	}
 
 	// 先紀錄主要資料
 	MONEY_D->save();
 	MAP_D->save();
 	ESTATE_D->save();
 	CITY_D->save_all();
-	
-	// 使所有物件正常關閉
-	foreach(object ob in objects())
+	AREA_D->save_all();
+
+	foreach(object ob in objects( (: $1->is_module_room() || $1->is_module_npc() :)))
 	{
 		reset_eval_cost();
-		ob->remove();
+
+		if( objectp(ob) )
+			ob->save();
 	}
 }
 
@@ -102,8 +114,7 @@ void heart_beat()
 				break;
 			case "k":
 				shout(BEEP"\n\n"MUD_FULL_NAME"開始執行踢除玩家程序...\n\n"HIR"請稍後幾秒後再行登入。\n\n"NOR);
-				foreach( object user in users() )
-					if( !wizardp(user) ) LOGOUT_D->quit(user);
+				regular_remove_process(1);
 				break;
 			default:
 				break;
@@ -129,7 +140,7 @@ void system_auto_reboot()
 	
 	shutdowntime = 300;
 	shutdowntype = "r";
-	set_heart_beat(10);
+	set_heart_beat(1);
 	
 	shout(BEEP"\n\n"+HIY+MUD_FULL_NAME HIY"記憶體使用過量，自行啟動了重新啟動程序。\n\n"NOR);
 }
@@ -145,7 +156,7 @@ private void command(object me, string arg)
 	if( !arg )
 		return tell(me, SYNOPSIS);
 	
-	arg = remove_fringe_blanks(lower_case(arg));
+	arg = trim(lower_case(arg));
 	
 	sscanf( arg, "-%s %s", type, time );
 	
@@ -160,7 +171,7 @@ private void command(object me, string arg)
 			switch(type)
 			{
 			case "r":
-				shout(BEEP"\n\n"+HIR+me->query_idname()+HIR"強制重啟系統，請稍後幾秒後等待系統重新啟動完畢後再行登入。\n\n"NOR);
+				shout(BEEP"\n\n"+HIR+me->query_idname()+HIR"強制重啟系統，請稍等幾分鐘等待系統重新啟動完畢後再行登入。\n\n"NOR);
 				shutdown();
 				break;
 			case "h":
@@ -168,9 +179,8 @@ private void command(object me, string arg)
 				shutdown(-1);
 				break;
 			case "k":
-				shout(BEEP"\n\n"+HIR+me->query_idname()+HIR"強制踢除所有玩家，請稍後幾秒後再行登入。\n\n"NOR);
-				foreach( object user in users() )
-					if( !wizardp(user) ) destruct(user);
+				shout(BEEP"\n\n"+HIR+me->query_idname()+HIR"強制踢除所有玩家，請稍等幾分鐘後再行登入。\n\n"NOR);
+				regular_remove_process(1);
 				break;
 			default:
 				return tell(me, SYNOPSIS);
@@ -181,7 +191,7 @@ private void command(object me, string arg)
 			switch(type)
 			{
 			case "r":
-				shout(BEEP"\n\n"+HIY+me->query_idname()+HIY"執行了"MUD_FULL_NAME HIY"的立即重新啟動程序...\n\n"HIR"請稍後幾秒後等待系統重新啟動完畢後再行登入。\n\n"NOR);
+				shout(BEEP"\n\n"+HIY+me->query_idname()+HIY"執行了"MUD_FULL_NAME HIY"的立即重新啟動程序...\n\n"HIR"請稍等幾分鐘等待系統重新啟動完畢後再行登入。\n\n"NOR);
 				regular_remove_process();
 				shutdown();
 				break;
@@ -191,10 +201,8 @@ private void command(object me, string arg)
 				shutdown(-1);
 				break;
 			case "k":
-				shout(BEEP"\n\n"+HIY+me->query_idname()+HIY"執行了"MUD_FULL_NAME HIY"的立即踢除玩家程序...\n\n"HIR"請稍後幾秒後再行登入。\n\n"NOR);
-				regular_remove_process();
-				foreach( object user in users() )
-					if( !wizardp(user) ) destruct(user);
+				shout(BEEP"\n\n"+HIY+me->query_idname()+HIY"執行了"MUD_FULL_NAME HIY"的立即踢除玩家程序...\n\n"HIR"請稍等幾分鐘後再行登入。\n\n"NOR);
+				regular_remove_process(1);
 				break;
 			default:
 				return tell(me, SYNOPSIS);
@@ -252,7 +260,7 @@ private void command(object me, string arg)
 				shutdowntime = itime;
 				shutdowntype = type;
 				
-				set_heart_beat(10);
+				set_heart_beat(1);
 			}
 			else
 				return tell(me, SYNOPSIS);

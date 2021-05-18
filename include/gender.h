@@ -14,3 +14,4 @@
 #define DEFAULT_GENDER		0
 #define MALE_GENDER		1
 #define FEMALE_GENDER		2
+#define ANIMAL_GENDER		3

@@ -10,11 +10,19 @@
  *
  -----------------------------------------
  */
- 
+
+#include <daemon.h>
+
 nomask varargs string *set_idname(string id, string name);
 nomask varargs int restore(int i);
 
 nomask int restore_usr(string id)
 {
 	return arrayp(set_idname(id)) && restore();
+}
+
+int remove()
+{
+	CHANNEL_D->remove_user(this_object());
+	return 1;
 }

@@ -27,15 +27,20 @@
 
 #define QUEST_1 "茵玲羽之謎"
 
-inherit STANDARD_NPC;
+inherit STANDARD_PERSON;
 
 void create()
 {
 	set_idname("liang fan huan","良凡環");
 
-	set("long", "一位被刺殺身亡的男子，胸口的刀身深及背部。");
+	set("long", "　一位被刺殺身亡的男子，胸口的刀身深及背部。");
 	set("unit", "位");
 	set("age", 25);
 	set("gender", MALE_GENDER);
-	set_temp("status", ([ HIR"屍體"NOR : -1 ]));
+
+	set("no_fight", 1);
+
+	startup_living();
+	
+	this_object()->die();
 }

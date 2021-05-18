@@ -42,7 +42,7 @@ private void do_command(object me, string arg)
 		ratio = 2;
 	}
 
-	else if( sscanf(arg, "%s %d -%d", city, num, ratio) != 3 || ( !CITY_D->city_exist(city, --num) && !AREA_D->area_exist(city, num)) )
+	else if( (sscanf(arg, "%s %d -%d", city, num, ratio) != 3 && sscanf(arg, "'%s' %d -%d", city, num, ratio) != 3) || ( !CITY_D->city_exist(city, --num) && !AREA_D->area_exist(city, num)) )
 		return tell(me, "請輸入正確的城市名稱與都會區編號。(例: map center 1 -2)\n");
 
 	if( ratio > 10 ) ratio = 10;
@@ -50,7 +50,7 @@ private void do_command(object me, string arg)
 		
 	loc = arrange_city_location(1, 1, city, num);
 	
-	map = MAP_D->query_map_reduction(MAP_D->query_map(loc, 1), ratio);
+	map = MAP_D->query_map_reduction(MAP_D->query_map(loc, 0), ratio);
 	
 	if( !map )
 		tell(me, "無法產生此地圖。\n");

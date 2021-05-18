@@ -2,7 +2,7 @@
  * See /doc/help/copyright for more info
  -----------------------------------------
  * File	  : box.c
- * Author :
+ * Author : 
  * Date	  : 2003-5-31
  * Note	  : 寶箱
  * Update :
@@ -15,6 +15,7 @@
 #include <message.h>
 #include <inherit.h>
 #include <daemon.h>
+#include <map.h>
 
 inherit	STANDARD_OBJECT;
 
@@ -29,7 +30,7 @@ void do_open(object me,	string arg, object box)
 	env = environment(box);
 	
 	if( !box->id(arg) )
-		return tell(me,	pnoun(2, me)+"要打開什麼東西？\n", CMDMSG);
+		return tell(me,	pnoun(2, me)+"要打開什麼東西？\n");
 
 	if( arrayp(loc) && env && env->is_maproom() )
 	{
@@ -39,47 +40,53 @@ void do_open(object me,	string arg, object box)
 			return msg("$YOU在一旁冷冷地看著$ME，$ME不敢隨意地開啟地上的寶箱。\n", me, find_player(owner), 1);
 	}
 		
-	switch(	random(21) ) {
+	switch(	random(23) ) {
 		case 0..8:
-			i = range_random(20, 50);
-			ob = new("/obj/fishing/fish/fish"+random(4));
+			i = range_random(20, 100);
+			ob = new("/obj/fishing/fish/fish"+random(9));
 			set_temp("amount", i, ob);
-			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1, CMDMSG);
+			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1);
 			break;
 		case 9..15:
-			i = range_random(20, 50);
+			i = range_random(20, 100);
 			ob = new("/obj/fishing/adv_fish/fish"+random(4));
 			set_temp("amount", i, ob);
-			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1, CMDMSG);
+			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1);
 			break;
-		case 16..19:
-			i = range_random(20, 50);
+		case 16..22:
+			i = range_random(20, 100);
 			ob = new("/obj/fishing/sp_fish/fish"+random(3));
 			set_temp("amount", i, ob);
-			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1, CMDMSG);
-			break;
-		case 20:
-			i = range_random(10, 30);
-			ob = new("/obj/gem/gem"+random(7));
-			set_temp("amount", i, ob);
-			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1, CMDMSG);
+			msg("$ME打開寶箱一看，發現裡面裝著"+ob->short(1)+"。\n",	me, 0, 1);
 			break;
 	}
 
-	if( objectp(ob)	&& !me->get_object(ob)	)
+	if( objectp(ob)	)
 	{
-		msg("$ME拿不動那麼多東西，只好先把"+ob->short(1)+"放在地上了。\n", me, 0, 1, CMDMSG);
-		
-		if( query_temp("location", me) )
-			ob->move(copy(query_temp("location", me)));
+		if( !me->available_get(ob) )
+		{
+			loc = query_temp("location", me);
+			
+			if( MAP_D->query_map_system(loc) && (MAP_D->query_map_system(loc))->query_coor_data(loc, TYPE) == RIVER ) 
+			{
+				msg("$ME拿不動那麼多東西，"+ob->short(1)+"被水沖走消失了。\n", me, 0, 1);
+				destruct(ob);
+			}
+			else
+			{
+				msg("$ME拿不動那麼多東西，只好先把"+ob->short(1)+"放在地上了。\n", me, 0, 1);
+				ob->move_to_environment(me);
+			}
+		}
 		else
-			ob->move(environment(me));
+			ob->move(me);
 	}
-	destruct(this_object());
+		
+	destruct(this_object(), 1);
 }
 void create()
 {
-	set_idname("treasure chest", HIY"寶箱"NOR);
+	set_idname(HIY"treasure"NOR YEL" chest"NOR, HIY"寶"NOR YEL"箱"NOR);
 
 	actions	= ([ "open" : (: do_open :) ]);
 
@@ -88,5 +95,4 @@ void create()
 	set("unit", "個");
 	set("value", 5000);
 	set("mass", 500);
-	set("flag/no_amount", 1);
 }

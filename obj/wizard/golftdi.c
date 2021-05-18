@@ -30,18 +30,14 @@ void fire_process(object me, object target, int combo, int sec)
 {
 	if( sec == 0 )
 	{
-		int damage, faint;
+		int damage;
 		for(int i=0;i<combo;i++)
 		{
 			damage = range_random(1, 125);
-			
-			if( !target->cost_health(damage) )
-				faint = 1;
-			
-			msg("$YOU被$ME發射的 12 型光炮陣列擊中，導致 "HIR+damage+NOR" 的生命傷害("NOR GRN+target->query_health_cur()+NOR"/"HIG+target->query_health_max()+NOR")。\n", me, target, 1);
 
-			if( faint )
-				target->faint();
+			msg("$YOU被$ME發射的 12 型光炮陣列擊中，導致 "HIR+damage+NOR" 的生命傷害("NOR GRN+target->query_health_cur()+NOR"/"HIG+target->query_health_max()+NOR")。\n", me, target, 1);
+						
+			COMBAT_D->cause_damage(me, target, damage);
 		}
 		
 		delete_temp("delay/fire");
@@ -281,27 +277,33 @@ LONG
 	set("value", 0);
 	set("flag/no_amount", 1);
 
-	set(BUFF_STR, 200);
-	set(BUFF_PHY, 200);
-	set(BUFF_INT, 200);
-	set(BUFF_AGI, 200);
-	set(BUFF_CHA, 200);
+	set(BUFF_STR, 999);
+	set(BUFF_PHY, 999);
+	set(BUFF_INT, 999);
+	set(BUFF_AGI, 999);
+	set(BUFF_CHA, 999);
 
-	set(BUFF_STAMINA_MAX, 200);
-	set(BUFF_HEALTH_MAX, 200);
-	set(BUFF_ENERGY_MAX, 200);
+	set(BUFF_STAMINA_MAX, 999);
+	set(BUFF_HEALTH_MAX, 999);
+	set(BUFF_ENERGY_MAX, 999);
 	
-	set(BUFF_STAMINA_REGEN, 200);
-	set(BUFF_HEALTH_REGEN, 200);
-	set(BUFF_ENERGY_REGEN, 200);
+	set(BUFF_STAMINA_REGEN, 999);
+	set(BUFF_HEALTH_REGEN, 999);
+	set(BUFF_ENERGY_REGEN, 999);
 
-	set(BUFF_LOADING_MAX, 200);
-	set(BUFF_FOOD_MAX, 200);
-	set(BUFF_DRINK_MAX, 200);
+	set(BUFF_LOADING_MAX, 99999);
+	set(BUFF_SLOT_MAX, 9999);
+	set(BUFF_FOOD_MAX, 999);
+	set(BUFF_DRINK_MAX, 999);
 	
-	set(BUFF_SOCIAL_EXP_BONUS, 200);
+	set(BUFF_SOCIAL_EXP_BONUS, 999);
+	set(BUFF_COMBAT_EXP_BONUS, 999);
+
+	set(ATTACK, 999);
+	set(DEFEND, 999);
+	set(SPEED, 999);
 
 	set("buff/status", HIW"GOLF"NOR"-"WHT"TDI");
 	
-	::setup_equipment(EQ_MOUNT, HIG"駕"NOR GRN"駛"NOR);
+	::setup_equipment(EQ_VEHICLE, HIC"汽"NOR CYN"車"NOR);
 }

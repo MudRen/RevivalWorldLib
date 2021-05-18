@@ -23,6 +23,6 @@ void create()
         
         set("long","玫瑰花語：相愛‧高貴‧愛情。\n");
         set("unit", "朵");
-        set("mass", 5);
-        set("value", 500);
+        set("mass", 200);
+        set("value", 700);
 }

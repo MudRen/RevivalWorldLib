@@ -15,5 +15,5 @@
 mixed valid_database(object ob, string action, mixed *info)
 {
 	// Mysql Password
-        return "xxx";
+        return "twkumysql";
 }

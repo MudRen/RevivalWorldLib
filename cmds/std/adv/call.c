@@ -54,7 +54,7 @@ private void command(object me, string arg)
 	size = sizeof((args = explode(param, ",")));
 
 	for(i=0; i<size; i++) {
-		args[i] = remove_fringe_blanks(args[i]);
+		args[i] = trim(args[i]);
 		if( sscanf(args[i], "%d", args[i]) ) continue;
 		if( sscanf(args[i], "\"%s\"", args[i]) ) continue;
 	}

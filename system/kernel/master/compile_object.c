@@ -40,8 +40,14 @@
 */
 
 #include <daemon.h>
+#include <function.h>
 
-varargs mixed compile_object(string file, int cloning)
+function fp;
+
+varargs object compile_object(string file, int cloning)
 {
-	return VIRTUAL_D->compile_object(file, cloning);
+	if( !fp || functionp(fp) & FP_OWNER_DESTED )
+		fp = VIRTUAL_D->query_compile_object_fp();
+
+	return evaluate(fp, file, cloning);
 }

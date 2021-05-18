@@ -34,6 +34,7 @@ void create()
 	set("flag/no_amount", 1);
 	set(BUFF_CHA, 45);
 	set(BUFF_SOCIAL_EXP_BONUS, 25);
+	set(BUFF_COMBAT_EXP_BONUS, 25);
 	set("buff/status", HIG"¨Ã¸¦"NOR GRN"½¬"NOR);
 	
 	::setup_equipment(EQ_BROOCH, HIG"¯Ý"NOR GRN"°w"NOR);

@@ -31,7 +31,8 @@ void create()
 可以偶爾見到幾株正在生長的野山人參，而在這個方正的山洞正中央則有一個很顯
 著的白玉石臺，石臺的上方似乎可以放一些東西。
 TEXT);
-	
+	set("exits", ([ "out" : ({ 10, 70, 0, "lightforest", 7, 0, "10/70/0/lightforest/7/0" }) ]));
+
 	::reset_objects();
 }
 

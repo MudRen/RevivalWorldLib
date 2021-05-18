@@ -26,7 +26,7 @@
 #include <daemon.h>
 #include <quest.h>
 
-inherit STANDARD_NPC;
+inherit STANDARD_PERSON;
 
 void do_command(string cmd);
 
@@ -46,9 +46,7 @@ void delete_behavior()
 }
 
 void reply_say(object me, string msg)
-{
-	if( !objectp(me) ) return;
-	
+{	
 	if( !msg || !msg[0] )
 		do_command("say "+pnoun(2, me)+"說什麼？");
 	
@@ -73,9 +71,7 @@ void reply_say(object me, string msg)
 
 void reply_emote(object me, string verb, string args)
 {
-	if( !objectp(me) ) return;
-	
-	//do_command(verb + " " + me->query_id(1) + " " + (args||""));
+	do_command(verb + " " + me->query_id(1) + " " + (args||""));
 }
 
 int target_gone(object me)
@@ -106,6 +102,8 @@ void reply_get_object(object me, object ob, mixed amount)
 		if( query_temp("quest/"QUEST_YIN_LING_YU"/running", me) )
 			return;
 		
+		tell(me, HIY"注意：以下故事進行過程中若離開此地或離線將導致任務失敗。\n"NOR);
+
 		set_temp("quest/"QUEST_YIN_LING_YU"/running", 1, me);
 		
 		// 停止主動行為
@@ -114,7 +112,7 @@ void reply_get_object(object me, object ob, mixed amount)
 		process_function(({
 			2,
 			(: target_gone($(me)) :),
-			(: msg("$ME呆呆地看著野山人蔘，$YOU告訴她易柯文已經死亡的訊息。\n", this_object(), $(me), 1) :),
+			(: msg("$ME呆呆地看著野山人參，$YOU告訴她易柯文已經死亡的訊息。\n", this_object(), $(me), 1) :),
 			6,
 			(: target_gone($(me)) :),
 			(: msg("$ME開始失魂落魄地說起一段故事。\n\n", this_object(), $(me), 1) :),
@@ -294,17 +292,17 @@ void reply_get_object(object me, object ob, mixed amount)
 			(: msg("$ME斷斷續續地講完這段故事，不斷流出的眼淚中充滿著悔恨\n", this_object(), $(me), 1) :),
 			6,
 			(: target_gone($(me)) :),
-			(: msg("$ME把手中的野山人蔘交給了$YOU\n", this_object(), $(me), 1) :),
+			(: msg("$ME把手中的野山人參交給了$YOU\n", this_object(), $(me), 1) :),
 			2,
 			(: target_gone($(me)) :),
-			(: do_command("say 這把野山人蔘我已經沒用了，就給了"+pnoun(2, $(me))+"吧 ") :),
+			(: do_command("say 這把野山人參我已經沒用了，就給了"+pnoun(2, $(me))+"吧 ") :),
 			(: new("/quest/yin_ling_yu/tear_wild_ginseng")->move($(me)) :),
 			(: $(me)->set_quest_finish(QUEST_YIN_LING_YU, QUEST_YIN_LING_YU_NAME, "遇見了『茵玲羽』，幫她找到了易柯文，但易柯文已經死了。") :),
 			(: delete_temp("quest/"QUEST_YIN_LING_YU"/running", $(me)) :),
 			(: !wizardp($(me)) && CHANNEL_D->channel_broadcast("city", $(me)->query_idname()+" 解開了「"+QUEST_YIN_LING_YU_NAME+"」", $(me)) :),
 			6,
 			(: target_gone($(me)) :),
-			(: msg("$YOU看著手上把野山人蔘上浸滿著淚水，$YOU被這段悲慘的故事震撼了，久久不發一語。\n", this_object(), $(me), 1) :),
+			(: msg("$YOU看著手上把野山人參上浸滿著淚水，$YOU被這段悲慘的故事震撼了，久久不發一語。\n", this_object(), $(me), 1) :),
 			
 			6,
 			(: target_gone($(me)) :),
@@ -317,9 +315,9 @@ void reply_get_object(object me, object ob, mixed amount)
 	{
 		process_function(({
 			1,
-			do_command("say 這是什麼？我不要這個東西..."),
+			(: do_command("say 這是什麼？我不要這個東西...") :),
 			1,
-			do_command("drop all "+ob->query_id(1)),
+			(: do_command("drop all "+$(ob)->query_id(1)) :),
 		    }));
 	}
 }
@@ -328,13 +326,16 @@ void reply_get_object(object me, object ob, mixed amount)
 void create()
 {
 	set_idname("yin ling yu",HIC"茵"NOR CYN"玲羽"NOR);
-	set_temp("status", HIC"絕望"NOR CYN"悔恨"NOR);
+	set_temp("status", ([HIC"絕望"NOR CYN"悔恨"NOR:-1]));
 	
 	set("long", "一個傷心欲絕的女子，不知道她為何如此傷心。");
 	set("unit", "位");
 	set("age", 22);
 	set("gender", FEMALE_GENDER);
+	set("heartbeat", 1); // 永久性心跳
 	
+	set("no_fight", 1);
+
 	// 啟動主動行為
 	set_behavior();
 	

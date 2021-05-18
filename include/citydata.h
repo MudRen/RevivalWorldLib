@@ -21,3 +21,9 @@
 #define CITY_NUM_ESTATE(city, num)		CITY_NUM(city, num)+"estate"
 
 #define CITY_ROOM_MODULE(city, num, x, y, roomtype)		CITY_NUM_ROOM(city, num)+(string)x+"_"+(string)y+"_"+(string)roomtype
+
+#define MAP		"map"
+#define RMAP		"realtime_map"
+#define DATA		"data"
+#define INFO		"info"
+#define CROOM		"cityroom"

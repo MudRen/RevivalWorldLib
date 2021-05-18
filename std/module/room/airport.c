@@ -26,37 +26,18 @@ inherit ROOM_ACTION_MOD;
 // 設定建築物內房間型態種類
 nosave mapping action_info =
 ([
-	"toilet"	:
+	"airstrip"	:
 	([
-		"short"	: HIY"公共廁所"NOR,
+		"short"	: HIC"飛機跑道"NOR,
 		"help"	:
 			([
 "topics":
 @HELP
-    車站內的公共廁所。
-read			閱讀書籍
+    旅客搭機的候機室。
 HELP,
 			]),
 		"heartbeat":0,	// 實際時間 1 秒為單位
-		"job": 0,
-		"action":
-			([
-				
-			]),
-	
-	]),	
-	"platform"	:
-	([
-		"short"	: HIY"月台"NOR,
-		"help"	:
-			([
-"topics":
-@HELP
-    旅客搭車的月台。
-HELP,
-			]),
-		"heartbeat":0,	// 實際時間 1 秒為單位
-		"job": 0,
+		"master": 0,
 		"action":
 			([
 
@@ -65,16 +46,16 @@ HELP,
 	]),	
 	"lobby"	:
 	([
-		"short"	: HIY"車站"NOR YEL"大廳"NOR,
+		"short"	: HIC"機場"NOR CYN"大廳"NOR,
 		"help"	:
 			([
 "topics":
 @HELP
-    購買車票的大廳。
+    購買機票的大廳。
 HELP,
 			]),
 		"heartbeat":0,	// 實際時間 1 秒為單位
-		"job": 0,
+		"master": 0,
 		"action":
 			([
 
@@ -101,13 +82,13 @@ nosave array building_info = ({
 	,COMMERCE_REGION
 
 	// 開張儀式費用
-	,"180000000"
+	,180000000
 	
 	// 建築物關閉測試標記
-	,1
+	,0
 
 	// 繁榮貢獻度
-	,120
+	,100
 	
 	// 最高可加蓋樓層
 	,1
